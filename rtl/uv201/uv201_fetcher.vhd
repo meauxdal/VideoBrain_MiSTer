@@ -23,6 +23,11 @@ ENTITY uv201_fetcher IS
     video_en   : IN  std_logic;
     list_a     : IN  std_logic;
 
+    -- Global pixel doubling from the command register. X zoom also doubles
+    -- the object's start column, as in MAME screen_update().
+    x_zoom     : IN  std_logic;
+    y_zoom     : IN  std_logic;
+
     obj_addr   : OUT uv8;
     obj_rdata  : IN  uv8;
 
@@ -139,8 +144,12 @@ BEGIN
   PROCESS(clk, reset_na) IS
     VARIABLE y_v      : natural RANGE 0 TO 511;
     VARIABLE height_v : natural RANGE 0 TO 64;
+    VARIABLE span_v   : natural RANGE 0 TO 510;
+    VARIABLE height_t : natural RANGE 0 TO 128;
+    VARIABLE y_t      : natural RANGE 0 TO 511;
+    VARIABLE xstart_v : natural RANGE 0 TO 510;
     VARIABLE row_v    : natural RANGE 0 TO 511;
-    VARIABLE width_v  : natural RANGE 0 TO 31;
+    VARIABLE width_v  : natural RANGE 0 TO 32;
     VARIABLE base_v   : unsigned(12 DOWNTO 0);
     VARIABLE offset_v : natural RANGE 0 TO 16383;
   BEGIN
@@ -195,7 +204,29 @@ BEGIN
 
           WHEN ST_DY =>
             dy_l <= obj_rdata;
-            state <= ST_RP_LO;
+
+            -- Early Y reject. The pointer, width and column registers are
+            -- only needed for an object that is on this scanline, and
+            -- fetching them for the other fifteen costs four BRCLK each,
+            -- which is enough to run the line out of time. Hardware checks
+            -- the start row first.
+            height_t := to_integer(obj_rdata(5 DOWNTO 0));
+            IF height_t = 0 THEN
+              height_t := 64;
+            END IF;
+            IF y_zoom = '1' THEN
+              height_t := height_t * 2;
+            END IF;
+            y_t := to_integer(xy_hi_l(7) & y_lo_l);
+
+            IF to_integer(vpos) >= y_t AND to_integer(vpos) < y_t + height_t THEN
+              state <= ST_RP_LO;
+            ELSIF entry_i = 15 THEN
+              state <= ST_IDLE;
+            ELSE
+              entry_i <= entry_i + 1;
+              state <= ST_Y_LO;
+            END IF;
 
           WHEN ST_RP_LO =>
             rp_lo_l <= obj_rdata;
@@ -215,18 +246,41 @@ BEGIN
 
           WHEN ST_DECIDE =>
             y_v := to_integer(xy_hi_l(7) & y_lo_l);
+            -- Measured on hardware by kevtris (group archive, 2013-05-09):
+            -- height is six bits, 0 means 64 scanlines, and bits 6/7 do
+            -- nothing. Width is five bytes-wide bits, 0 meaning 32 bytes
+            -- (256 pixels). MAME differs on both and draws nothing for 0.
             height_v := to_integer(dy_l(5 DOWNTO 0));
             IF height_v = 0 THEN
               height_v := 64;
             END IF;
+
             width_v := to_integer(dx_l(4 DOWNTO 0));
+            IF width_v = 0 THEN
+              width_v := 32;
+            END IF;
+
+            IF y_zoom = '1' THEN
+              span_v := height_v * 2;
+            ELSE
+              span_v := height_v;
+            END IF;
+
+            IF x_zoom = '1' THEN
+              xstart_v := to_integer(x_l) * 2;
+            ELSE
+              xstart_v := to_integer(x_l);
+            END IF;
 
             IF to_integer(vpos) >= y_v AND
-               to_integer(vpos) < y_v + height_v AND
-               width_v /= 0 AND
-               to_integer(x_l) >= xdelta_l THEN
+               to_integer(vpos) < y_v + span_v AND
+               xstart_v >= xdelta_l THEN
 
-              row_v := to_integer(vpos) - y_v;
+              IF y_zoom = '1' THEN
+                row_v := (to_integer(vpos) - y_v) / 2;
+              ELSE
+                row_v := to_integer(vpos) - y_v;
+              END IF;
               base_v := rp_hi_l(4 DOWNTO 0) & rp_lo_l;
               IF dx_l(7) = '1' THEN
                 offset_v := row_v;
@@ -242,9 +296,9 @@ BEGIN
               color_l <= std_logic_vector(dx_l(6 DOWNTO 5)) &
                          rp_hi_l(5) & rp_hi_l(6) & rp_hi_l(7);
 
-              IF to_integer(x_l) > xdelta_l THEN
-                gap_l <= to_unsigned(to_integer(x_l) - xdelta_l, 8);
-                xdelta_l <= to_integer(x_l);
+              IF xstart_v > xdelta_l THEN
+                gap_l <= to_unsigned(xstart_v - xdelta_l, 8);
+                xdelta_l <= xstart_v;
                 state <= ST_GAP_PUSH;
               ELSE
                 state <= ST_DMA_WAIT;
@@ -267,7 +321,11 @@ BEGIN
 
           WHEN ST_DMA_PUSH =>
             IF fifo_writable = '1' THEN
-              xdelta_l <= xdelta_l + 8;
+              IF x_zoom = '1' THEN
+                xdelta_l <= xdelta_l + 16;
+              ELSE
+                xdelta_l <= xdelta_l + 8;
+              END IF;
 
               IF bytes_left > 1 THEN
                 bytes_left <= bytes_left - 1;

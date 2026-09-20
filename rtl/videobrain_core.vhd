@@ -21,10 +21,20 @@ ENTITY videobrain_core IS
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
 
-    f8_pi_a_n : IN  uv8;
-    f8_pi_b_n : IN  uv8;
+    -- Keyboard matrix, 9 columns x 4 rows, flattened by column, active high.
+    kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
+    joy_fire   : IN std_logic_vector(3 DOWNTO 0);
+
+    audio_code : OUT std_logic_vector(1 DOWNTO 0);
+    audio_stb  : OUT std_logic;
+    joy_enable : OUT std_logic;
+
     f8_po_a_n : OUT uv8;
     f8_po_b_n : OUT uv8;
+
+    -- BRCLK phase enable.  An external renderer must present fifo_pop in this
+    -- phase: the FIFO only acts on pops while it is high.
+    brclk_ena  : OUT std_logic;
 
     fifo_pop   : IN  std_logic;
     fifo_valid : OUT std_logic;
@@ -39,6 +49,18 @@ ENTITY videobrain_core IS
     field    : OUT std_logic;
     hpos     : OUT unsigned(7 DOWNTO 0);
     vpos     : OUT unsigned(8 DOWNTO 0);
+
+    -- renderer controls, consumed by whatever drives fifo_pop
+    final_mod  : OUT uv8;
+    background : OUT uv8;
+    x_zoom     : OUT std_logic;
+    y_zoom     : OUT std_logic;
+    video_en   : OUT std_logic;
+
+    dl_addr  : IN unsigned(15 DOWNTO 0);
+    dl_data  : IN uv8;
+    dl_wr    : IN std_logic;
+    dl_index : IN uv8;
 
     pc0 : OUT uv16;
     pc1 : OUT uv16;
@@ -64,8 +86,9 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL ext_class : bus_access_t;
   SIGNAL ext_grant : std_logic;
 
-  SIGNAL brclk_ena : std_logic;
+  SIGNAL brclk_ena_l : std_logic;
   SIGNAL dmareq0 : std_logic;
+  SIGNAL line_start_l   : std_logic;
   SIGNAL hblank_falling : std_logic;
   SIGNAL hblank_rising  : std_logic;
   SIGNAL field_l : std_logic;
@@ -83,6 +106,28 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL fifo_wr_en : std_logic;
   SIGNAL fifo_wr_entry : uv201_fifo_entry_t;
 
+  SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
+  SIGNAL uv_o_kbd_l : std_logic;
+  SIGNAL x_zoom_l, y_zoom_l : std_logic;
+
+  SIGNAL io_addr  : uv8;
+  SIGNAL io_rd    : std_logic;
+  SIGNAL io_wr    : std_logic;
+  SIGNAL io_wdata : uv8;
+  SIGNAL io_rdata : uv8;
+  SIGNAL smi_rdata : uv8;
+  SIGNAL smi_sel   : std_logic;
+
+  SIGNAL int_req    : std_logic;
+  SIGNAL int_vector : uv16;
+  SIGNAL int_ack    : std_logic;
+  SIGNAL ext_int    : std_logic;
+
+  SIGNAL uv_o_int_l  : std_logic;
+  SIGNAL uv_o_frz_l  : std_logic;
+  SIGNAL uv_y_int_l  : uv8;
+  SIGNAL uv_yint_ho_l : std_logic;
+
 BEGIN
 
   u_cpu : ENTITY work.f8_cpu
@@ -93,13 +138,14 @@ BEGIN
       romc     => romc,
       tick     => tick,
       phase    => phase,
-      po_a_n   => f8_po_a_n,
-      pi_a_n   => f8_pi_a_n,
-      po_b_n   => f8_po_b_n,
-      pi_b_n   => f8_pi_b_n,
+      po_a_n   => po_a_n_l,
+      pi_a_n   => x"FF",
+      po_b_n   => po_b_n_l,
+      pi_b_n   => pi_b_n_l,
       clk      => clk,
       ce       => cpu_ce,
       reset_na => reset_na,
+      intreq   => int_req,
       acco     => OPEN,
       visaro   => OPEN,
       iozcso   => OPEN
@@ -124,9 +170,50 @@ BEGIN
       ext_req   => ext_req,
       ext_class => ext_class,
       ext_grant => ext_grant,
+      io_addr    => io_addr,
+      io_rd      => io_rd,
+      io_wr      => io_wr,
+      io_wdata   => io_wdata,
+      io_rdata   => io_rdata,
+      int_vector => int_vector,
+      int_ack    => int_ack,
       pc0o      => pc0,
       pc1o      => pc1,
       dc0o      => dc0
+      );
+
+  -- Only the SMI answers external I/O so far; ports 0/1 are inside the CPU.
+  io_rdata <= smi_rdata WHEN smi_sel = '1' ELSE (OTHERS => '1');
+
+  u_smi : ENTITY work.f3853
+    PORT MAP (
+      clk        => clk,
+      reset_na   => reset_na,
+      ce         => brclk_ena_l,
+      io_addr    => io_addr,
+      io_rd      => io_rd,
+      io_wr      => io_wr,
+      io_wdata   => io_wdata,
+      io_rdata   => smi_rdata,
+      io_sel     => smi_sel,
+      ext_int    => ext_int,
+      int_req    => int_req,
+      int_vector => int_vector,
+      int_ack    => int_ack
+      );
+
+  u_yint : ENTITY work.uv201_yint
+    PORT MAP (
+      clk            => clk,
+      reset_na       => reset_na,
+      brclk_ena      => brclk_ena_l,
+      hblank_falling => hblank_falling,
+      cur_vpos       => vpos_l,
+      y_int          => uv_y_int_l,
+      yint_ho        => uv_yint_ho_l,
+      cmd_int        => uv_o_int_l,
+      cmd_frz        => uv_o_frz_l,
+      irq_pulse      => ext_int
       );
 
   u_uv202 : ENTITY work.uv202_top
@@ -147,7 +234,7 @@ BEGIN
       dmareq0        => dmareq0,
       dmareq1        => OPEN,
       mclk_ena       => OPEN,
-      brclk_ena      => brclk_ena,
+      brclk_ena      => brclk_ena_l,
       brclk_phase    => OPEN,
       cpu_ena_raw    => OPEN,
       cpu_ce         => cpu_ce,
@@ -159,6 +246,7 @@ BEGIN
       field          => field_l,
       hpos           => hpos,
       vpos           => vpos_l,
+      line_start     => line_start_l,
       hblank_falling => hblank_falling,
       hblank_rising  => hblank_rising,
       busy           => OPEN
@@ -179,31 +267,58 @@ BEGIN
       uv_cur_vpos    => vpos_l,
       uv_capture_stb => '0',
       uv_capture_x   => (OTHERS => '0'),
-      uv_o_x_zm      => OPEN,
-      uv_o_frz       => OPEN,
+      uv_o_x_zm      => x_zoom_l,
+      uv_o_frz       => uv_o_frz_l,
       uv_o_enb       => uv_o_enb,
-      uv_o_int       => OPEN,
-      uv_o_kbd       => OPEN,
-      uv_o_y_zm      => OPEN,
+      uv_o_int       => uv_o_int_l,
+      uv_o_kbd       => uv_o_kbd_l,
+      uv_o_y_zm      => y_zoom_l,
       uv_o_a_b       => uv_o_a_b,
-      uv_o_yint_ho   => OPEN,
-      uv_y_int       => OPEN,
-      uv_final_mod   => OPEN,
-      uv_background  => OPEN,
+      uv_o_yint_ho   => uv_yint_ho_l,
+      uv_y_int       => uv_y_int_l,
+      uv_final_mod   => final_mod,
+      uv_background  => background,
       uv_obj_addr    => uv_obj_addr,
-      uv_obj_rdata   => uv_obj_rdata
+      uv_obj_rdata   => uv_obj_rdata,
+      dl_addr        => dl_addr,
+      dl_data        => dl_data,
+      dl_wr          => dl_wr,
+      dl_index       => dl_index
       );
+
+  u_io : ENTITY work.videobrain_io
+    PORT MAP (
+      clk          => clk,
+      reset_na     => reset_na,
+      port_a_n     => po_a_n_l,
+      port_b_n     => po_b_n_l,
+      port_b_in_n  => pi_b_n_l,
+      kbd_matrix   => kbd_matrix,
+      joy_fire     => joy_fire,
+      uv_kbd       => uv_o_kbd_l,
+      key_latch    => OPEN,
+      joy_enable   => joy_enable,
+      accessory_p5 => OPEN,
+      accessory_p1 => OPEN,
+      audio_code   => audio_code,
+      audio_stb    => audio_stb
+      );
+
+  f8_po_a_n <= po_a_n_l;
+  f8_po_b_n <= po_b_n_l;
 
   u_fetcher : ENTITY work.uv201_fetcher
     PORT MAP (
       clk           => clk,
       reset_na      => reset_na,
-      brclk_ena     => brclk_ena,
-      line_start    => hblank_falling,
+      brclk_ena     => brclk_ena_l,
+      line_start    => line_start_l,
       fifo_clear    => hblank_rising,
       vpos          => vpos_l,
       video_en      => uv_o_enb,
       list_a        => uv_o_a_b,
+      x_zoom        => x_zoom_l,
+      y_zoom        => y_zoom_l,
       obj_addr      => uv_obj_addr,
       obj_rdata     => uv_obj_rdata,
       bb_addr       => bb_addr,
@@ -220,7 +335,7 @@ BEGIN
     PORT MAP (
       clk           => clk,
       reset_na      => reset_na,
-      brclk_ena     => brclk_ena,
+      brclk_ena     => brclk_ena_l,
       hblank_rising => hblank_rising,
       wr_en         => fifo_wr_en,
       wr_entry      => fifo_wr_entry,
@@ -232,7 +347,11 @@ BEGIN
       level         => fifo_level
       );
 
-  field <= field_l;
-  vpos  <= vpos_l;
+  field    <= field_l;
+  vpos     <= vpos_l;
+  video_en <= uv_o_enb;
+  x_zoom   <= x_zoom_l;
+  y_zoom   <= y_zoom_l;
+  brclk_ena <= brclk_ena_l;
 
 END ARCHITECTURE rtl;

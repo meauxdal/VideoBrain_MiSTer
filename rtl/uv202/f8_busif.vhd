@@ -35,6 +35,17 @@ ENTITY f8_busif IS
     ext_class : OUT bus_access_t;
     ext_grant : IN  std_logic;
 
+    -- F8 external I/O ports (4-15). Ports 0/1 are internal to the CPU.
+    io_addr  : OUT uv8;
+    io_rd    : OUT std_logic;
+    io_wr    : OUT std_logic;
+    io_wdata : OUT uv8;
+    io_rdata : IN  uv8;
+
+    -- Interrupt vector from the F3853, latched on int_ack.
+    int_vector : IN  uv16;
+    int_ack    : OUT std_logic;
+
     pc0o      : OUT uv16;
     pc1o      : OUT uv16;
     dc0o      : OUT uv16
@@ -43,7 +54,9 @@ END ENTITY f8_busif;
 
 ARCHITECTURE rtl OF f8_busif IS
 
-  SIGNAL dc0, pc0, pc1 : uv16 := (OTHERS => '0');
+  -- DC1 exists only to be swapped with DC0 by XDC (ROMC 1D). Nothing else
+  -- addresses it, which is why upstream Channel F never needed it.
+  SIGNAL dc0, dc1, pc0, pc1 : uv16 := (OTHERS => '0');
   SIGNAL dr_l : uv8 := (OTHERS => '0');
   SIGNAL dv_l : std_logic := '0';
 
@@ -55,6 +68,13 @@ ARCHITECTURE rtl OF f8_busif IS
   SIGNAL ext_wdata_l : uv8 := (OTHERS => '0');
   SIGNAL write_pending : std_logic := '0';
 
+  -- Port number for the next ROMC 1A/1B. IN/OUT aa leave it in dr_l from the
+  -- preceding ROMC 03; INS/OUTS n put it on dw during the preceding ROMC 1C.
+  SIGNAL port_l : uv8 := (OTHERS => '0');
+  SIGNAL io_rd_l, io_wr_l : std_logic := '0';
+  SIGNAL io_wdata_l : uv8 := (OTHERS => '0');
+  SIGNAL int_ack_l : std_logic := '0';
+
   FUNCTION classify(a : unsigned(13 DOWNTO 0); is_write : std_logic)
     RETURN bus_access_t IS
     VARIABLE a_eff : unsigned(13 DOWNTO 0) := cpu_addr_fold(a);
@@ -64,8 +84,6 @@ ARCHITECTURE rtl OF f8_busif IS
       result := ACC_NONE;
     ELSIF a_eff <= to_unsigned(ADDR_UV201_HI, 14) THEN
       result := ACC_UV201_WR WHEN is_write = '1' ELSE ACC_UV201_RD;
-    ELSIF a_eff <= to_unsigned(ADDR_CART1_HI, 14) THEN
-      result := ACC_CART_WR WHEN is_write = '1' ELSE ACC_CART_RD;
     ELSIF a_eff <= to_unsigned(ADDR_RAM_HI, 14) THEN
       result := ACC_RAM_WR WHEN is_write = '1' ELSE ACC_RAM_RD;
     ELSIF a_eff <= to_unsigned(ADDR_CART2_HI, 14) THEN
@@ -88,6 +106,7 @@ BEGIN
       pc0 <= (OTHERS => '0');
       pc1 <= (OTHERS => '0');
       dc0 <= (OTHERS => '0');
+      dc1 <= (OTHERS => '0');
       dr_l <= (OTHERS => '0');
       dv_l <= '0';
       ext_req_l <= '0';
@@ -101,6 +120,9 @@ BEGIN
     ELSIF rising_edge(clk) THEN
       ext_rd_l <= '0';
       ext_wr_l <= '0';
+      io_rd_l   <= '0';
+      io_wr_l   <= '0';
+      int_ack_l <= '0';
 
       IF write_pending = '1' THEN
         ext_wdata_l <= dw;
@@ -143,16 +165,21 @@ BEGIN
               CASE romc IS
                 WHEN ROMC_00 =>
                   pc0 <= pc0 + 1;
+                -- These four take the byte the addressed device placed on the
+                -- bus, latched into dr_l at phase 2.  dw is the CPU's own
+                -- output and is only correct for the CPU-sourced ROMC states
+                -- (0A, 12, 14-19).
                 WHEN ROMC_01 =>
-                  pc0 <= pc0 + sext(dw, 16);
+                  pc0 <= pc0 + sext(dr_l, 16);
                 WHEN ROMC_03 =>
                   pc0 <= pc0 + 1;
+                  port_l <= dr_l;   -- IN/OUT aa: the immediate is the port
                 WHEN ROMC_0C =>
-                  pc0(7 DOWNTO 0) <= dw;
+                  pc0(7 DOWNTO 0) <= dr_l;
                 WHEN ROMC_0E =>
-                  dc0(7 DOWNTO 0) <= dw;
+                  dc0(7 DOWNTO 0) <= dr_l;
                 WHEN ROMC_11 =>
-                  dc0(15 DOWNTO 8) <= dw;
+                  dc0(15 DOWNTO 8) <= dr_l;
                 WHEN OTHERS =>
                   NULL;
               END CASE;
@@ -239,9 +266,53 @@ BEGIN
               pc1 <= pc0 + 1;
             END IF;
 
-          -- Interrupt-vector ROMC states need the future F3853 path.
-          WHEN ROMC_0F | ROMC_13 =>
-            NULL;
+          -- ROMC 0F: the interrupting device supplies the low vector byte and
+          -- all devices copy PC0 into PC1.  This core's terminating ROMC 00 has
+          -- already fetched and discarded the next opcode, so PC0 sits one past
+          -- the interrupted instruction and PC1 must back up over it.
+          WHEN ROMC_0F =>
+            IF phase = 1 THEN
+              int_ack_l <= '1';
+            END IF;
+            IF phase = 2 THEN
+              dr_l <= int_vector(7 DOWNTO 0);
+              dv_l <= '1';
+            END IF;
+            IF phase = 6 THEN
+              pc1 <= pc0 - 1;
+              pc0(7 DOWNTO 0) <= int_vector(7 DOWNTO 0);
+            END IF;
+
+          -- ROMC 13: high vector byte, and the device drops its request.
+          WHEN ROMC_13 =>
+            IF phase = 2 THEN
+              dr_l <= int_vector(15 DOWNTO 8);
+              dv_l <= '1';
+            END IF;
+            IF phase = 6 THEN
+              pc0(15 DOWNTO 8) <= int_vector(15 DOWNTO 8);
+            END IF;
+
+          -- INS/OUTS n drive the port number onto the data bus here.
+          WHEN ROMC_1C =>
+            IF phase = 6 THEN
+              port_l <= dw;
+            END IF;
+
+          WHEN ROMC_1A =>
+            IF phase = 6 THEN
+              io_wdata_l <= dw;
+              io_wr_l <= '1';
+            END IF;
+
+          WHEN ROMC_1B =>
+            IF phase = 2 THEN
+              io_rd_l <= '1';
+            END IF;
+            IF phase = 6 THEN
+              dr_l <= io_rdata;
+              dv_l <= '1';
+            END IF;
 
           WHEN ROMC_12 =>
             IF phase = 6 THEN
@@ -279,6 +350,12 @@ BEGIN
               dc0(7 DOWNTO 0) <= dw;
             END IF;
 
+          WHEN ROMC_1D =>
+            IF phase = 6 THEN
+              dc0 <= dc1;
+              dc1 <= dc0;
+            END IF;
+
           WHEN ROMC_1E =>
             IF phase = 2 THEN
               dr_l <= pc0(7 DOWNTO 0);
@@ -307,6 +384,12 @@ BEGIN
   ext_wdata <= ext_wdata_l;
   ext_req   <= ext_req_l;
   ext_class <= ext_class_l;
+
+  io_addr  <= port_l;
+  io_rd    <= io_rd_l;
+  io_wr    <= io_wr_l;
+  io_wdata <= io_wdata_l;
+  int_ack  <= int_ack_l;
 
   pc0o <= pc0;
   pc1o <= pc1;
