@@ -117,6 +117,7 @@ ARCHITECTURE rtl OF sys_bus IS
   -- and its upper half must mirror the lower rather than read as zero.
   SIGNAL cart_big : std_logic := '0';
   SIGNAL cart_a   : unsigned(11 DOWNTO 0);
+  SIGNAL cart_cpu_a : unsigned(11 DOWNTO 0);
 
 BEGIN
 
@@ -179,42 +180,46 @@ BEGIN
   END PROCESS;
 
   ----------------------------------------------------------------------------
-  -- read mux (combinational)
+  -- read mux (registered).  Cyclone V M10K/MLAB have no async read port, so
+  -- this is the template Quartus needs to infer block RAM for
+  -- res1_rom/res2_rom/cart_rom/sys_ram instead of packing them into logic.
+  -- Adds 1 clk of read latency on rdata_l/ext_rdata - covered by the
+  -- existing arbiter wait states, but worth re-checking against
+  -- WAIT_CPU_RDWR in uv202_pack if timing looks off in sim.
   ----------------------------------------------------------------------------
 
-  PROCESS (a_eff, cart_a, cart_ram_rd, cart_ram_a, cart_ram, cs1, cart_type,
-           res1_rom, res2_rom, cart_rom, sys_ram, uv_reg_rdata) IS
+  PROCESS (clk) IS
   BEGIN
-    IF a_eff <= to_unsigned(ADDR_RES1_HI, 14) THEN
-      rdata_l <= res1_rom(to_integer(a_eff));
+    IF rising_edge(clk) THEN
+      IF a_eff <= to_unsigned(ADDR_RES1_HI, 14) THEN
+        rdata_l <= res1_rom(to_integer(a_eff));
 
-    ELSIF a_eff <= to_unsigned(ADDR_UV201_HI, 14) THEN
-      rdata_l <= uv_reg_rdata;
+      ELSIF a_eff <= to_unsigned(ADDR_UV201_HI, 14) THEN
+        rdata_l <= uv_reg_rdata;
 
-    ELSIF a_eff <= to_unsigned(ADDR_RAM_HI, 14) THEN
-      rdata_l <= sys_ram(to_integer(a_eff - to_unsigned(ADDR_RAM_LO, 14)));
+      ELSIF a_eff <= to_unsigned(ADDR_RAM_HI, 14) THEN
+        rdata_l <= sys_ram(to_integer(a_eff - to_unsigned(ADDR_RAM_LO, 14)));
 
-    ELSIF a_eff <= to_unsigned(ADDR_CART2_HI, 14) THEN
-      IF cart_ram_rd = '1' THEN
-        rdata_l <= cart_ram(to_integer(cart_ram_a));
-      ELSIF cs1 = '1' AND cart_type = CART_TIMESHARE THEN
-        rdata_l <= cart_rom(to_integer(a_eff(10 DOWNTO 0)));
+      ELSIF a_eff <= to_unsigned(ADDR_CART2_HI, 14) THEN
+        IF cart_ram_rd = '1' THEN
+          rdata_l <= cart_ram(to_integer(cart_ram_a));
+        ELSE
+          rdata_l <= cart_rom(to_integer(cart_cpu_a));
+        END IF;
+
+      ELSIF a_eff <= to_unsigned(ADDR_RES2_HI, 14) THEN
+        rdata_l <= res2_rom(to_integer(a_eff - to_unsigned(ADDR_RES2_LO, 14)));
+
+      ELSIF a_eff >= to_unsigned(ADDR_EXP_LO, 14) THEN
+        IF cart_ram_rd = '1' THEN
+          rdata_l <= cart_ram(to_integer(cart_ram_a));
+        ELSE
+          rdata_l <= (OTHERS => '1');  -- nothing drives the expansion window
+        END IF;
+
       ELSE
-        rdata_l <= cart_rom(to_integer(cart_a));
+        rdata_l <= (OTHERS => '1');  -- 2800-2FFF folds; nothing else is mapped
       END IF;
-
-    ELSIF a_eff <= to_unsigned(ADDR_RES2_HI, 14) THEN
-      rdata_l <= res2_rom(to_integer(a_eff - to_unsigned(ADDR_RES2_LO, 14)));
-
-    ELSIF a_eff >= to_unsigned(ADDR_EXP_LO, 14) THEN
-      IF cart_ram_rd = '1' THEN
-        rdata_l <= cart_ram(to_integer(cart_ram_a));
-      ELSE
-        rdata_l <= (OTHERS => '1');  -- nothing drives the expansion window
-      END IF;
-
-    ELSE
-      rdata_l <= (OTHERS => '1');  -- 2800-2FFF folds; nothing else is mapped
     END IF;
   END PROCESS;
 
@@ -254,6 +259,14 @@ BEGIN
     IF rising_edge(clk) THEN
       IF dl_cart = '1' THEN
         cart_rom(to_integer(dl_addr(11 DOWNTO 0))) <= dl_data;
+      END IF;
+    END IF;
+  END PROCESS;
+
+  PROCESS (clk) IS
+  BEGIN
+    IF rising_edge(clk) THEN
+      IF dl_cart = '1' THEN
         IF dl_addr(11) = '1' THEN
           cart_big <= '1';
         ELSIF dl_addr = x"0000" THEN
@@ -296,8 +309,20 @@ BEGIN
       open_bus    => bb_open_bus
       );
 
-  bb_res2_rdata <= res2_rom(to_integer(bb_res2_addr));
-  bb_ram_rdata  <= sys_ram(to_integer(bb_ram_addr));
+  -- Registered, same reasoning as the CPU-side read mux above: this is a
+  -- second, independent read port into res2_rom/sys_ram/cart_rom, and must
+  -- be synchronous for Quartus to inline it as a real dual-port block RAM
+  -- read rather than replicated logic.
+  PROCESS (clk) IS
+  BEGIN
+    IF rising_edge(clk) THEN
+      bb_res2_rdata <= res2_rom(to_integer(bb_res2_addr));
+      bb_ram_rdata  <= sys_ram(to_integer(bb_ram_addr));
+      bb_cart_rdata <= cart_rom(to_integer(bb_cart_addr AND
+                                           (cart_big & "11111111111")));
+    END IF;
+  END PROCESS;
+
   -- /CS1 is 1000-17FF and /CS2 is 1800-1FFF; the expansion window at
   -- 3000-3FFF has no chip select and only some mappers answer there.
   cs1 <= to_std_logic(a_eff >= to_unsigned(16#1000#, 14) AND
@@ -308,14 +333,14 @@ BEGIN
 
   -- ROM address within the cartridge. A 2K image mirrors into the upper half.
   cart_a <= resize(a_eff(11 DOWNTO 0), 12) AND (cart_big & "11111111111");
+  cart_cpu_a <= resize(a_eff(10 DOWNTO 0), 12)
+                WHEN cs1 = '1' AND cart_type = CART_TIMESHARE
+                ELSE cart_a;
 
   -- RAM lives on CS2 for Timeshare, and at 3800-3FFF for Money Minder. Both
   -- have 1K, so both mirror within their window.
   cart_ram_rd <= (cs2 AND to_std_logic(cart_type = CART_TIMESHARE)) OR
                  (exp AND a_eff(11) AND to_std_logic(cart_type = CART_MONEYMINDER));
   cart_ram_a  <= a_eff(9 DOWNTO 0);
-
-  bb_cart_rdata <= cart_rom(to_integer(bb_cart_addr AND
-                                       (cart_big & "11111111111")));
 
 END ARCHITECTURE rtl;

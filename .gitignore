@@ -1,5 +1,8 @@
-/docs
-.DS_Store
+# reference material; don't redistribute
+/refs
+
+# ROM and cartridge images
+/software
 
 # verilator harness build products
 verilator/obj_dir/
@@ -8,9 +11,16 @@ verilator/gen/
 verilator/ghdl_work/
 verilator/out/
 verilator/*.vcd
-
-# ROM and cartridge images used for testing. This repo is public; keeping the
-# images out of it is deliberate. Point the sims at them with --res1/--res2/--cart.
-/software
 verilator/imgui.ini
 verilator/rtl_v/
+
+# quartus build products
+/db
+/incremental_db
+/output_files
+
+# mac
+.DS_Store
+
+# miscellaneous
+*.log

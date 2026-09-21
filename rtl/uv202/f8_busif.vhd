@@ -75,26 +75,42 @@ ARCHITECTURE rtl OF f8_busif IS
   SIGNAL io_wdata_l : uv8 := (OTHERS => '0');
   SIGNAL int_ack_l : std_logic := '0';
 
-  FUNCTION classify(a : unsigned(13 DOWNTO 0); is_write : std_logic)
-    RETURN bus_access_t IS
-    VARIABLE a_eff : unsigned(13 DOWNTO 0) := cpu_addr_fold(a);
-    VARIABLE result : bus_access_t;
-  BEGIN
-    IF a_eff < to_unsigned(ADDR_UV201_LO, 14) THEN
-      result := ACC_NONE;
-    ELSIF a_eff <= to_unsigned(ADDR_UV201_HI, 14) THEN
-      result := ACC_UV201_WR WHEN is_write = '1' ELSE ACC_UV201_RD;
-    ELSIF a_eff <= to_unsigned(ADDR_RAM_HI, 14) THEN
-      result := ACC_RAM_WR WHEN is_write = '1' ELSE ACC_RAM_RD;
-    ELSIF a_eff <= to_unsigned(ADDR_CART2_HI, 14) THEN
-      result := ACC_CART_WR WHEN is_write = '1' ELSE ACC_CART_RD;
-    ELSIF a_eff <= to_unsigned(ADDR_RES2_HI, 14) THEN
-      result := ACC_RES2;
+FUNCTION classify(a : unsigned(13 DOWNTO 0); is_write : std_logic)
+  RETURN bus_access_t IS
+  VARIABLE a_eff  : unsigned(13 DOWNTO 0) := cpu_addr_fold(a);
+  VARIABLE result : bus_access_t := ACC_NONE;
+BEGIN
+  IF (a_eff >= to_unsigned(ADDR_UV201_LO, 14)) AND
+     (a_eff <= to_unsigned(ADDR_UV201_HI, 14)) THEN
+    IF is_write = '1' THEN
+      result := ACC_UV201_WR;
     ELSE
-      result := ACC_NONE;
+      result := ACC_UV201_RD;
     END IF;
-    RETURN result;
-  END FUNCTION;
+
+  ELSIF (a_eff >= to_unsigned(ADDR_RAM_LO, 14)) AND
+        (a_eff <= to_unsigned(ADDR_RAM_HI, 14)) THEN
+    IF is_write = '1' THEN
+      result := ACC_RAM_WR;
+    ELSE
+      result := ACC_RAM_RD;
+    END IF;
+
+  ELSIF (a_eff >= to_unsigned(ADDR_CART2_LO, 14)) AND
+        (a_eff <= to_unsigned(ADDR_CART2_HI, 14)) THEN
+    IF is_write = '1' THEN
+      result := ACC_CART_WR;
+    ELSE
+      result := ACC_CART_RD;
+    END IF;
+
+  ELSIF (a_eff >= to_unsigned(ADDR_RES2_LO, 14)) AND
+        (a_eff <= to_unsigned(ADDR_RES2_HI, 14)) THEN
+    result := ACC_RES2;
+  END IF;
+
+  RETURN result;
+END FUNCTION;
 
 BEGIN
 
