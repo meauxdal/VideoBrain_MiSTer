@@ -70,11 +70,11 @@ PACKAGE uv202_pack IS
   CONSTANT ADDR_RES1_LO   : natural := 16#0000#;  -- RES1 ROM, 2K, 0 wait
   CONSTANT ADDR_RES1_HI   : natural := 16#07FF#;
 
-  CONSTANT ADDR_UV201_LO  : natural := 16#0800#;  -- UV201 regs, 6-10 BRCLK wait
-  CONSTANT ADDR_UV201_HI  : natural := 16#08FF#;
-
-  CONSTANT ADDR_CART1_LO  : natural := 16#0900#;  -- cart-mapped window (/800-BFF range)
-  CONSTANT ADDR_CART1_HI  : natural := 16#0BFF#;
+  -- UV201 regs, 6-10 BRCLK wait. The 256-byte page is mirrored four times
+  -- across 0800-0BFF: A8 and A9 are undecoded, and UV202 pin 37 is named
+  -- /800-BFF. Register selection is a_eff(7 DOWNTO 0).
+  CONSTANT ADDR_UV201_LO  : natural := 16#0800#;
+  CONSTANT ADDR_UV201_HI  : natural := 16#0BFF#;
 
   CONSTANT ADDR_RAM_LO    : natural := 16#0C00#;  -- system RAM, 1K (8x 2102), 4-6 BRCLK
   CONSTANT ADDR_RAM_HI    : natural := 16#0FFF#;
@@ -84,6 +84,14 @@ PACKAGE uv202_pack IS
 
   CONSTANT ADDR_RES2_LO   : natural := 16#2000#;  -- RES2 ROM, 2K
   CONSTANT ADDR_RES2_HI   : natural := 16#27FF#;
+
+  CONSTANT ADDR_EXP_LO    : natural := 16#3000#;  -- cartridge expansion window
+  CONSTANT ADDR_EXP_HI    : natural := 16#3FFF#;
+
+  -- Cartridge mapper selection, matching MAME's bus/vidbrain devices.
+  CONSTANT CART_STD        : natural := 0;  -- ROM over both chip selects
+  CONSTANT CART_TIMESHARE  : natural := 1;  -- 2K ROM on CS1, 1K RAM on CS2
+  CONSTANT CART_MONEYMINDER: natural := 2;  -- 4K ROM, 1K RAM at 3800-3FFF
 
   -- 2800-3FFF mirror 0800-1FFF (ASIC/cart/RAM/cart mirror)
 
@@ -188,9 +196,12 @@ END PACKAGE uv202_pack;
 
 PACKAGE BODY uv202_pack IS
 
+  -- 2800-2FFF mirrors the UV201 page and system RAM (A13 undecoded for both,
+  -- per MAME's mirror(0x2300) and mirror(0x2000)). 3000-3FFF is the cartridge
+  -- expansion window and must not fold onto the 1000-1FFF cartridge windows.
   FUNCTION cpu_addr_fold(a : unsigned(13 DOWNTO 0)) RETURN unsigned IS
   BEGIN
-    IF a >= to_unsigned(16#2800#, 14) THEN
+    IF a >= to_unsigned(16#2800#, 14) AND a < to_unsigned(16#3000#, 14) THEN
       RETURN a - to_unsigned(16#2000#, 14);
     ELSE
       RETURN a;
