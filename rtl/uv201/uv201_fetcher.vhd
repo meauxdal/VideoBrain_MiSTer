@@ -185,11 +185,7 @@ BEGIN
           state <= ST_IDLE;
         END IF;
 
-      ELSIF state = ST_DMA_WAIT AND dmareq = '1' THEN
-        dma_data_l <= bb_rdata;
-        state <= ST_DMA_PUSH;
-
-      ELSIF brclk_ena = '1' THEN
+      ELSE
         CASE state IS
           WHEN ST_IDLE =>
             NULL;
@@ -205,11 +201,7 @@ BEGIN
           WHEN ST_DY =>
             dy_l <= obj_rdata;
 
-            -- Early Y reject. The pointer, width and column registers are
-            -- only needed for an object that is on this scanline, and
-            -- fetching them for the other fifteen costs four BRCLK each,
-            -- which is enough to run the line out of time. Hardware checks
-            -- the start row first.
+            -- Reject off-line objects before pointer and width reads.
             height_t := to_integer(obj_rdata(5 DOWNTO 0));
             IF height_t = 0 THEN
               height_t := 64;
@@ -312,15 +304,18 @@ BEGIN
             END IF;
 
           WHEN ST_GAP_PUSH =>
-            IF fifo_writable = '1' THEN
+            IF brclk_ena = '1' AND fifo_writable = '1' THEN
               state <= ST_DMA_WAIT;
             END IF;
 
           WHEN ST_DMA_WAIT =>
-            NULL;
+            IF dmareq = '1' THEN
+              dma_data_l <= bb_rdata;
+              state <= ST_DMA_PUSH;
+            END IF;
 
           WHEN ST_DMA_PUSH =>
-            IF fifo_writable = '1' THEN
+            IF brclk_ena = '1' AND fifo_writable = '1' THEN
               IF x_zoom = '1' THEN
                 xdelta_l <= xdelta_l + 16;
               ELSE
