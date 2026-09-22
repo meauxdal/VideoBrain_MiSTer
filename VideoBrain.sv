@@ -71,7 +71,7 @@ wire forced_scandoubler;
 wire   [1:0] buttons;
 wire [127:0] status;
 wire  [10:0] ps2_key;
-wire  [31:0] joystick_0;
+wire  [31:0] joystick_0, joystick_1, joystick_2, joystick_3;
 
 wire        ioctl_download;
 wire        ioctl_wr;
@@ -99,6 +99,9 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.ioctl_index(ioctl_index),
 
 	.joystick_0(joystick_0),
+	.joystick_1(joystick_1),
+	.joystick_2(joystick_2),
+	.joystick_3(joystick_3),
 	.ps2_key(ps2_key)
 );
 
@@ -197,8 +200,19 @@ always @(posedge clk_sys) begin
 	end
 end
 
+// Joystick pots follow MAME ranges: 0..99 centered at 50; P4 Y 0..139 centered at 70.
+wire [7:0] joy1_x = (!status[5] || (joystick_0[0] == joystick_0[1])) ? 8'd50 : (joystick_0[0] ? 8'd99 : 8'd0);
+wire [7:0] joy1_y = (!status[5] || (joystick_0[2] == joystick_0[3])) ? 8'd50 : (joystick_0[2] ? 8'd99 : 8'd0);
+wire [7:0] joy2_x = (!status[5] || (joystick_1[0] == joystick_1[1])) ? 8'd50 : (joystick_1[0] ? 8'd99 : 8'd0);
+wire [7:0] joy2_y = (!status[5] || (joystick_1[2] == joystick_1[3])) ? 8'd50 : (joystick_1[2] ? 8'd99 : 8'd0);
+wire [7:0] joy3_x = (!status[5] || (joystick_2[0] == joystick_2[1])) ? 8'd50 : (joystick_2[0] ? 8'd99 : 8'd0);
+wire [7:0] joy3_y = (!status[5] || (joystick_2[2] == joystick_2[3])) ? 8'd50 : (joystick_2[2] ? 8'd99 : 8'd0);
+wire [7:0] joy4_x = (!status[5] || (joystick_3[0] == joystick_3[1])) ? 8'd50 : (joystick_3[0] ? 8'd99 : 8'd0);
+wire [7:0] joy4_y = (!status[5] || (joystick_3[2] == joystick_3[3])) ? 8'd70 : (joystick_3[2] ? 8'd139 : 8'd0);
+wire [63:0] joy_pots = {joy4_y, joy4_x, joy3_y, joy3_x, joy2_y, joy2_x, joy1_y, joy1_x};
+
 // Fire buttons share the row lines with the keyboard.
-wire [3:0] joy_fire = status[5] ? {3'b000, joystick_0[4]} : 4'b0000;
+wire [3:0] joy_fire = status[5] ? {joystick_3[4], joystick_2[4], joystick_1[4], joystick_0[4]} : 4'b0000;
 
 ///////////////////////   CORE   /////////////////////////////////
 
@@ -214,6 +228,7 @@ videobrain_core core
 
 	.kbd_matrix (kbd_matrix),
 	.joy_fire   (joy_fire),
+	.joy_pots   (joy_pots),
 	.audio_code (audio_code),
 	.audio_stb  (),
 	.joy_enable (),
