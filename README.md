@@ -41,7 +41,9 @@ Use Quartus 17.0.2
 
 ## Sources
 
-- kevtris
-- Sean Riddle
-- MAME
-- US patents 4,232,374 & US 4,177,462
+- [kevtris](http://blog.kevtris.org/blogfiles/videobrain/videobrain_unwrapped.txt)
+- [Sean Riddle](https://www.seanriddle.com/vbinfo.html)
+- [MAME](https://github.com/mamedev/mame/tree/master/src/mame/vidbrain)
+- US patents [US4232374A](https://patents.google.com/patent/US4232374A) & [US4177462A](https://patents.google.com/patent/US4177462A)
+- [orphanedgames.com/videobrain](https://orphanedgames.com/videobrain/)
+- [channel_f_and_videobrain Yahoo/groups.io group](https://groups.io/g/Channel-F-and-VideoBrain)
