@@ -347,7 +347,7 @@ BEGIN
     ELSIF rising_edge(clk) THEN
       joy_capture_stb <= '0';
 
-      IF hblank_rising = '1' AND joy_enable_l = '1' THEN
+      IF hblank_rising = '1' AND joy_enable_l = '1' AND joy_timer_active = '0' THEN
         joy_data_v := (OTHERS => '0');
         FOR i IN 0 TO 7 LOOP
           IF key_latch_l(i) = '1' THEN

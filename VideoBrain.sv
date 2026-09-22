@@ -314,7 +314,7 @@ video_mixer #(.GAMMA(0)) video_mixer
 ///////////////////////   AUDIO   ////////////////////////////////
 
 // Two-bit R-2R ladder on port 0 bits 1:0, clocked by port 1 bit 4.
-wire [15:0] dac_level = 16'h5000 + {audio_code, 13'd0};
+wire [15:0] dac_level = 16'h6000 + {audio_code, 12'd0};
 
 assign AUDIO_L = dac_level;
 assign AUDIO_R = dac_level;
