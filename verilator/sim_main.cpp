@@ -336,9 +336,9 @@ int main(int argc, char** argv, char** env) {
             "Letters A-Z and , ; / type themselves.\n"
             "Digits are SHIFTED letters, and SHIFT is a lock: tap it, do not hold.\n"
             "  1=Z 2=X 3=C 4=S 5=D 6=F 7=W 8=E 9=R 0=/\n"
-            "SPACE = RUN/STOP      BACKSPACE = ERASE/RESTART\n"
-            "F1 = BACK/TEXT        F2 = PREVIOUS/COLOR\n"
-            "F3 = NEXT/CLOCK       F4 = SPECIAL/ALARM");
+            "SPACE = RUN/STOP      F1 = BACK/TEXT\n"
+            "F2 = PREVIOUS/COLOR   F3 = NEXT/CLOCK\n"
+            "F4 = SPECIAL/ALARM    F5 = ERASE/RESTART");
         ImGui::Separator();
         ImGui::Text("matrix %09llX  latch %02X",
                     (unsigned long long)top->kbd_matrix, (unsigned)TOP(po_a_n) ^ 0xFF);

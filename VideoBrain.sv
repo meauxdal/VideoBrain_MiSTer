@@ -166,7 +166,7 @@ always @(posedge clk_sys) begin
 			'h02C: kbd_matrix[12] <= key_pressed;  // T
 			'h033: kbd_matrix[13] <= key_pressed;  // H
 			'h031: kbd_matrix[14] <= key_pressed;  // N
-			'h066: kbd_matrix[15] <= key_pressed;  // backspace = ERASE/RESTART
+			'h003: kbd_matrix[15] <= key_pressed;  // F5 = ERASE/RESTART
 
 			'h02D: kbd_matrix[16] <= key_pressed;  // R
 			'h034: kbd_matrix[17] <= key_pressed;  // G

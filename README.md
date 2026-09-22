@@ -1,51 +1,47 @@
 # VideoBrain Family Computer for MiSTer
 
-An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8
-(3850 CPU, 3853 SMI) with the Umtech UV201 video chip and UV202 clock/bus chip.
+An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (3850 CPU, 3853 SMI) with the Umtech UV201 video chip and UV202 clock/bus chip. 
 
 ## Status
 
-The BIOS boots to its title screen and cartridges run. Not yet tested on real
-hardware; see STATUS.md for what is and is not implemented.
+- All tested software boots and plays
+- 15.7kHz analog video works and is stable on 60Hz CRT
+- WIP: Scratchy audio
 
 ## Installing
 
-Put `VideoBrain.rbf` in a folder on the SD card, alongside:
+Place VideoBrain.rbf in e.g. /media/fat/_Computers. A BIOS is required. Verified BIOS ROMs are circulated split:
 
-    boot.rom     4096 bytes: RES1 then RES2, 2048 each
+- uvres1.bin: MD5 `CDF2F70F616AB61D7FBF31A3763BFC21`, 2,048 bytes
+- uvres2.bin: MD5 `E4B8B681CCCF4E8ECB09C3FDC206B8B2`, 2,048 bytes
 
-Build it from the two BIOS dumps:
+A script to concatenate the circulating dumps is provided.
 
-    tools/make_boot_rom.sh uvres1.bin uvres2.bin boot.rom
-
-Main_MiSTer uploads `boot.rom` automatically at core start. Load cartridges
-from the OSD.
+```text
+tools/make_boot_rom.sh uvres1.bin uvres2.bin boot.rom
+```
+- boot.rom: MDS `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
 
 ## Keyboard
 
-Nine columns by four rows. Digits are shifted letters, and SHIFT is a lock:
-tap it, do not hold it.
+![VideoBrain keyboard manual](/docs/VB_Keyboard.gif)
 
-    1=Z 2=X 3=C 4=S 5=D 6=F 7=W 8=E 9=R 0=/
+VideoBrain SHIFT is a toggle (think CapsLock on a modern keyboard). In the BIOS, the square in the bottom right of the screen changes color to indicate when SHIFT is active.
 
-    SPACE       RUN/STOP
-    BACKSPACE   ERASE/RESTART
+    SPACE       RUN/STOP                
     F1          BACK/TEXT
     F2          PREVIOUS/COLOR
     F3          NEXT/CLOCK
     F4          SPECIAL/ALARM
+    F5          ERASE/RESTART
 
 ## Building
 
-Quartus 17.0.2 Standard. Open `VideoBrain.qpf`.
-
-`verilator/` holds a graphical and a headless simulator that share the core's
-RTL renderer; see `verilator/README.md`. `docs/` (not in git) collects the
-hardware documentation the implementation was derived from.
+Use Quartus 17.0.2
 
 ## Sources
 
-The Umtech patents US 4,232,374 and US 4,177,462, Sean Riddle's board netlist
-and schematics, MAME's `vidbrain.cpp`/`uv201.cpp`/`f3853.cpp`, and kevtris's
-2013 logic-analyzer measurements in the Channel-F/VideoBrain group archive.
-Where these disagree, the measurements win.
+- kevtris
+- Sean Riddle
+- MAME
+- US patents 4,232,374 & US 4,177,462
