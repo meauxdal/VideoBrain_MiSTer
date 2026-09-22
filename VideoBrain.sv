@@ -298,18 +298,11 @@ video_mixer #(.GAMMA(0)) video_mixer
 
 ///////////////////////   AUDIO   ////////////////////////////////
 
-// Two-bit R-2R ladder on port 0 bits 1:0, clocked by port 1 bit 4 (120k and
-// 56k on the board). Centred in the unsigned range, then a single-pole low
-// pass near 9kHz so the square edges do not alias in the 48kHz path.
+// Two-bit R-2R ladder on port 0 bits 1:0, clocked by port 1 bit 4.
 wire [15:0] dac_level = 16'h5000 + {audio_code, 13'd0};
 
-reg  signed [24:0] dac_filt = 25'sh0800000;
-wire signed [24:0] dac_in   = {1'b0, dac_level, 8'd0};
-always @(posedge clk_sys) dac_filt <= dac_filt + ((dac_in - dac_filt) >>> 8);
-
-wire [15:0] dac = dac_filt[23:8];
-assign AUDIO_L = dac;
-assign AUDIO_R = dac;
+assign AUDIO_L = dac_level;
+assign AUDIO_R = dac_level;
 
 assign LED_USER = ioctl_download;
 
