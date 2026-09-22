@@ -6,12 +6,6 @@
 // rtl/*.vhd -- see the Makefile.  Only the netlist's port names are stable,
 // so everything the harness needs is a real port on videobrain_core.
 //
-// videobrain_core has no pixel path: it exposes the UV201 FIFO and takes
-// fifo_pop as an input, so the renderer lives here.  It follows MAME
-// uv201.cpp screen_update(): MSB-first bytes, 0 bits take the background
-// register, the 5-bit result is XORed with the final modifier, and the
-// gaps between objects take the background unmodified.
-//
 
 module top(
    input         clk_sys /*verilator public_flat*/,
