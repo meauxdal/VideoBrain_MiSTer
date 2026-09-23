@@ -121,7 +121,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
-  SIGNAL joy_timer : unsigned(12 DOWNTO 0) := (OTHERS => '0');
+  SIGNAL joy_timer : unsigned(13 DOWNTO 0) := (OTHERS => '0');
   SIGNAL joy_timer_active : std_logic := '0';
   SIGNAL joy_started : std_logic := '0';
   SIGNAL joy_capture_stb : std_logic := '0';
@@ -337,7 +337,7 @@ BEGIN
   PROCESS (clk, reset_na) IS
     VARIABLE joy_data_v : unsigned(7 DOWNTO 0);
     VARIABLE joy_value_v : natural RANGE 0 TO 255;
-    VARIABLE delay_v     : natural RANGE 0 TO 8191;
+    VARIABLE delay_v     : natural RANGE 0 TO 16383;
   BEGIN
     IF reset_na = '0' THEN
       joy_timer        <= (OTHERS => '0');

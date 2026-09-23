@@ -34,7 +34,7 @@ assign HDMI_FREEZE = 0;
 assign HDMI_BLACKOUT = 0;
 assign HDMI_BOB_DEINT = 0;
 
-assign AUDIO_S   = 0;   // unsigned
+assign AUDIO_S   = 1;   // signed
 assign AUDIO_MIX = 0;
 
 assign LED_DISK  = 0;
@@ -72,6 +72,8 @@ wire   [1:0] buttons;
 wire [127:0] status;
 wire  [10:0] ps2_key;
 wire  [31:0] joystick_0, joystick_1, joystick_2, joystick_3;
+wire [15:0] joystick_l_analog_0, joystick_l_analog_1;
+wire [15:0] joystick_l_analog_2, joystick_l_analog_3;
 
 wire        ioctl_download;
 wire        ioctl_wr;
@@ -102,6 +104,10 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.joystick_1(joystick_1),
 	.joystick_2(joystick_2),
 	.joystick_3(joystick_3),
+	.joystick_l_analog_0(joystick_l_analog_0),
+	.joystick_l_analog_1(joystick_l_analog_1),
+	.joystick_l_analog_2(joystick_l_analog_2),
+	.joystick_l_analog_3(joystick_l_analog_3),
 	.ps2_key(ps2_key)
 );
 
@@ -200,18 +206,33 @@ always @(posedge clk_sys) begin
 	end
 end
 
-// TODO: Map hps_io analog stick axes to the joystick pots.
-// Pot resistance in kilohms; the BIOS calibrates from the measured extremes.
-localparam [7:0] JOY_LO = 8'd0, JOY_MID = 8'd50, JOY_HI = 8'd99;
-localparam [7:0] JOY4Y_LO = 8'd0, JOY4Y_MID = 8'd70, JOY4Y_HI = 8'd139;
-wire [7:0] joy1_x = (!status[5] || (joystick_0[0] == joystick_0[1])) ? JOY_MID : (joystick_0[0] ? JOY_HI : JOY_LO);
-wire [7:0] joy1_y = (!status[5] || (joystick_0[2] == joystick_0[3])) ? JOY_MID : (joystick_0[2] ? JOY_HI : JOY_LO);
-wire [7:0] joy2_x = (!status[5] || (joystick_1[0] == joystick_1[1])) ? JOY_MID : (joystick_1[0] ? JOY_HI : JOY_LO);
-wire [7:0] joy2_y = (!status[5] || (joystick_1[2] == joystick_1[3])) ? JOY_MID : (joystick_1[2] ? JOY_HI : JOY_LO);
-wire [7:0] joy3_x = (!status[5] || (joystick_2[0] == joystick_2[1])) ? JOY_MID : (joystick_2[0] ? JOY_HI : JOY_LO);
-wire [7:0] joy3_y = (!status[5] || (joystick_2[2] == joystick_2[3])) ? JOY_MID : (joystick_2[2] ? JOY_HI : JOY_LO);
-wire [7:0] joy4_x = (!status[5] || (joystick_3[0] == joystick_3[1])) ? JOY_MID : (joystick_3[0] ? JOY_HI : JOY_LO);
-wire [7:0] joy4_y = (!status[5] || (joystick_3[2] == joystick_3[3])) ? JOY4Y_MID : (joystick_3[2] ? JOY4Y_HI : JOY4Y_LO);
+// VideoBrain joystick pots are 0..99 kOhm equivalents. MiSTer reports
+// signed -127..127 analog axes in each byte; preserve center as a real,
+// symmetric neutral value and suppress only the small electrical deadband.
+function automatic [7:0] axis_to_pot(input [7:0] raw_axis);
+	reg signed [7:0] axis;
+	reg signed [15:0] scaled;
+	reg signed [15:0] pot;
+	begin
+		axis = raw_axis;
+		if (axis >= -8'sd8 && axis <= 8'sd8) axis_to_pot = 8'd50;
+		else begin
+			scaled = (($signed(axis) <<< 4) + ($signed(axis) <<< 3) + $signed(axis)) >>> 6;
+			pot = 16'sd50 + scaled;
+			axis_to_pot = pot[7:0];
+		end
+	end
+endfunction
+
+localparam [7:0] JOY_MID = 8'd50;
+wire [7:0] joy1_x = !status[5] ? JOY_MID : ((joystick_0[0] == joystick_0[1]) ? axis_to_pot(joystick_l_analog_0[7:0]) : (joystick_0[0] ? 8'd99 : 8'd0));
+wire [7:0] joy1_y = !status[5] ? JOY_MID : ((joystick_0[2] == joystick_0[3]) ? axis_to_pot(joystick_l_analog_0[15:8]) : (joystick_0[2] ? 8'd99 : 8'd0));
+wire [7:0] joy2_x = !status[5] ? JOY_MID : ((joystick_1[0] == joystick_1[1]) ? axis_to_pot(joystick_l_analog_1[7:0]) : (joystick_1[0] ? 8'd99 : 8'd0));
+wire [7:0] joy2_y = !status[5] ? JOY_MID : ((joystick_1[2] == joystick_1[3]) ? axis_to_pot(joystick_l_analog_1[15:8]) : (joystick_1[2] ? 8'd99 : 8'd0));
+wire [7:0] joy3_x = !status[5] ? JOY_MID : ((joystick_2[0] == joystick_2[1]) ? axis_to_pot(joystick_l_analog_2[7:0]) : (joystick_2[0] ? 8'd99 : 8'd0));
+wire [7:0] joy3_y = !status[5] ? JOY_MID : ((joystick_2[2] == joystick_2[3]) ? axis_to_pot(joystick_l_analog_2[15:8]) : (joystick_2[2] ? 8'd99 : 8'd0));
+wire [7:0] joy4_x = !status[5] ? JOY_MID : ((joystick_3[0] == joystick_3[1]) ? axis_to_pot(joystick_l_analog_3[7:0]) : (joystick_3[0] ? 8'd99 : 8'd0));
+wire [7:0] joy4_y = !status[5] ? JOY_MID : ((joystick_3[2] == joystick_3[3]) ? axis_to_pot(joystick_l_analog_3[15:8]) : (joystick_3[2] ? 8'd99 : 8'd0));
 wire [63:0] joy_pots = {joy4_y, joy4_x, joy3_y, joy3_x, joy2_y, joy2_x, joy1_y, joy1_x};
 
 // Fire buttons share the row lines with the keyboard.
@@ -224,6 +245,7 @@ wire       vid_field;
 wire [7:0] vid_r, vid_g, vid_b;
 wire       vid_de, vid_hs, vid_vs, vid_hb, vid_vb;
 wire [1:0] audio_code;
+wire audio_stb;
 
 videobrain_core core
 (
@@ -234,7 +256,7 @@ videobrain_core core
 	.joy_fire   (joy_fire),
 	.joy_pots   (joy_pots),
 	.audio_code (audio_code),
-	.audio_stb  (),
+	.audio_stb  (audio_stb),
 	.joy_enable (),
 	.f8_po_a_n  (),
 	.f8_po_b_n  (),
@@ -318,10 +340,22 @@ video_mixer #(.GAMMA(0)) video_mixer
 ///////////////////////   AUDIO   ////////////////////////////////
 
 // Two-bit R-2R ladder on port 0 bits 1:0, clocked by port 1 bit 4.
-wire [15:0] dac_level = 16'h6000 + {audio_code, 12'd0};
+// Convert the four unipolar ladder codes to signed samples centered on zero.
+reg [15:0] audio_sample = 16'h0000;
+always @(posedge clk_sys) begin
+	if (reset) audio_sample <= 16'h0000;
+	else if (audio_stb) begin
+		case (audio_code)
+			2'd0: audio_sample <= 16'hE000;
+			2'd1: audio_sample <= 16'hF000;
+			2'd2: audio_sample <= 16'h0000;
+			2'd3: audio_sample <= 16'h1000;
+		endcase
+	end
+end
 
-assign AUDIO_L = dac_level;
-assign AUDIO_R = dac_level;
+assign AUDIO_L = audio_sample;
+assign AUDIO_R = audio_sample;
 
 assign LED_USER = ioctl_download;
 
