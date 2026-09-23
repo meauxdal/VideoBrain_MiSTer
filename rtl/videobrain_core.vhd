@@ -123,6 +123,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL joy_enable_l : std_logic;
   SIGNAL joy_timer : unsigned(12 DOWNTO 0) := (OTHERS => '0');
   SIGNAL joy_timer_active : std_logic := '0';
+  SIGNAL joy_started : std_logic := '0';
   SIGNAL joy_capture_stb : std_logic := '0';
   SIGNAL joy_capture_x : uv8 := (OTHERS => '0');
   SIGNAL uv_o_kbd_l : std_logic;
@@ -341,13 +342,18 @@ BEGIN
     IF reset_na = '0' THEN
       joy_timer        <= (OTHERS => '0');
       joy_timer_active <= '0';
+      joy_started      <= '0';
       joy_capture_stb  <= '0';
       joy_capture_x    <= (OTHERS => '0');
 
     ELSIF rising_edge(clk) THEN
       joy_capture_stb <= '0';
 
-      IF hblank_rising = '1' AND joy_enable_l = '1' AND joy_timer_active = '0' THEN
+      -- The BIOS holds enable high for one measurement, then reads the capture.
+      IF joy_enable_l = '0' THEN
+        joy_timer_active <= '0';
+        joy_started <= '0';
+      ELSIF hblank_rising = '1' AND joy_started = '0' THEN
         joy_data_v := (OTHERS => '0');
         FOR i IN 0 TO 7 LOOP
           IF key_latch_l(i) = '1' THEN
@@ -360,6 +366,7 @@ BEGIN
         delay_v := 184 + joy_value_v * 47 + joy_value_v / 4;
         joy_timer <= to_unsigned(delay_v, joy_timer'length);
         joy_timer_active <= '1';
+        joy_started <= '1';
 
       ELSIF joy_timer_active = '1' THEN
         IF joy_timer = 0 THEN

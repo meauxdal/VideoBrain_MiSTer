@@ -124,7 +124,11 @@ $(EXE): $(V_SRC) $(C_SRC) Makefile
 lint: $(GEN_V)
 	$V --lint-only -Wall -Wno-DECLFILENAME -Wno-fatal $(TOP) $(V_SRC)
 
+test-cpu-clock: $(GEN_V)
+	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_cpu_clock.vhd
+	$(GHDL) -r --std=08 --workdir=$(WORK) tb_cpu_clock --assert-level=error
+
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 
-.PHONY: all headless netlist lint clean
+.PHONY: all headless netlist lint test-cpu-clock clean

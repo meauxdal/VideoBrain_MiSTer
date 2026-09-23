@@ -10,7 +10,7 @@
 --   bits 0..3 = OR of selected keyboard rows and joystick fire buttons.
 -- Port 01 write:
 --   bit 4 = sound clock; rising edge latches port-00 bits 1..0 to the DAC.
---   bits 5/6 = accessory outputs; bit 7 = active-low joystick enable.
+--   bits 5/6 = accessory outputs; bit 7 = joystick scan enable.
 --
 -- The ninth keyboard column is selected by UV201 command bit KBD.  MAME's
 -- kbd_r() returns that bit directly, and the machine reads column 8 when it is
@@ -59,7 +59,7 @@ END ENTITY videobrain_io;
 ARCHITECTURE rtl OF videobrain_io IS
   SIGNAL key_latch_l : uv8 := (OTHERS => '0');
   SIGNAL sound_clk_l : std_logic := '0';
-  SIGNAL joy_enable_l : std_logic := '1';
+  SIGNAL joy_enable_l : std_logic := '0';
   SIGNAL accessory_p5_l : std_logic := '0';
   SIGNAL accessory_p1_l : std_logic := '0';
   SIGNAL audio_code_l : std_logic_vector(1 DOWNTO 0) := (OTHERS => '0');
@@ -73,7 +73,7 @@ BEGIN
     IF reset_na = '0' THEN
       key_latch_l    <= (OTHERS => '0');
       sound_clk_l    <= '0';
-      joy_enable_l   <= '1';
+      joy_enable_l   <= '0';
       accessory_p5_l <= '0';
       accessory_p1_l <= '0';
       audio_code_l   <= (OTHERS => '0');
@@ -96,7 +96,7 @@ BEGIN
       sound_clk_l    <= port_b_v(4);
       accessory_p5_l <= port_b_v(5);
       accessory_p1_l <= port_b_v(6);
-      joy_enable_l   <= NOT port_b_v(7);
+      joy_enable_l   <= port_b_v(7);
     END IF;
   END PROCESS;
 

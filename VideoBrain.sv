@@ -201,9 +201,9 @@ always @(posedge clk_sys) begin
 end
 
 // TODO: Map hps_io analog stick axes to the joystick pots.
-// Keep digital positions within one scanline of the joystick timer.
-localparam [7:0] JOY_LO = 8'd39, JOY_MID = 8'd45, JOY_HI = 8'd51;
-localparam [7:0] JOY4Y_LO = 8'd58, JOY4Y_MID = 8'd64, JOY4Y_HI = 8'd70;
+// Pot resistance in kilohms; the BIOS calibrates from the measured extremes.
+localparam [7:0] JOY_LO = 8'd0, JOY_MID = 8'd50, JOY_HI = 8'd99;
+localparam [7:0] JOY4Y_LO = 8'd0, JOY4Y_MID = 8'd70, JOY4Y_HI = 8'd139;
 wire [7:0] joy1_x = (!status[5] || (joystick_0[0] == joystick_0[1])) ? JOY_MID : (joystick_0[0] ? JOY_HI : JOY_LO);
 wire [7:0] joy1_y = (!status[5] || (joystick_0[2] == joystick_0[3])) ? JOY_MID : (joystick_0[2] ? JOY_HI : JOY_LO);
 wire [7:0] joy2_x = (!status[5] || (joystick_1[0] == joystick_1[1])) ? JOY_MID : (joystick_1[0] ? JOY_HI : JOY_LO);

@@ -23,7 +23,7 @@
 --   2. Produces `brclk_ena`: a 1-`clk`-wide enable pulse at BRCLK rate
 --      (MCLK/4), 50% duty cycle equivalent for anything that samples on
 --      brclk_ena rising activity.
---   3. Produces `cpu_ena`: a clean, glitch-free enable pulse at ~2.0MHz
+--   3. Produces `cpu_ena`: two half-cycle enables per ~2.0MHz CPU clock
 --      (nominally MCLK/7, but free-running and NOT phase-locked to the
 --      real hardware's broken divider - matches the "external 2MHz osc"
 --      behavior, not the UV202 pin 7 behavior).
@@ -52,7 +52,7 @@ ENTITY uv202_clkgen IS
     -- divide down to a single MCLK-rate enable first.
     CLK_DIV_MCLK : positive := 1;
 
-    -- CPU enable divisor, applied to the MCLK-rate enable. Default 7
+    -- CPU clock divisor, applied to the MCLK-rate enable. Default 7
     -- matches the real ~2.045MHz rate (14.318181/7); the doc notes real
     -- consoles actually run 2.0MHz exactly off a separate oscillator, so
     -- treat this as approximate/tunable rather than load-bearing for any
@@ -72,7 +72,7 @@ ENTITY uv202_clkgen IS
     -- uv202_timing, uv202_arbiter, and everything in uv201/.
     brclk_ena  : OUT std_logic;
 
-    -- Free-running ~2MHz CPU enable, gated externally by uv202_arbiter
+    -- Free-running CPU half-cycle enable, gated externally by uv202_arbiter
     -- to implement wait states (i.e. arbiter ANDs this with "not waiting"
     -- before it reaches f8_cpu's `ce` input).
     cpu_ena    : OUT std_logic;
@@ -157,7 +157,7 @@ BEGIN
   brclk_phase <= brclk_phase_l;
 
   ----------------------------------------------------------------------------
-  -- Stage 3: mclk_ena -> cpu_ena (free-running ~2MHz enable, NOT gated by
+  -- Stage 3: mclk_ena -> cpu_ena (two enables per CPU clock, NOT gated by
   -- brclk - the real CPU clock is an independent oscillator, not derived
   -- from UV202's internal BRCLK chain). uv202_arbiter stalls this
   -- externally by masking the enable it forwards to f8_cpu's `ce`.
@@ -176,6 +176,10 @@ BEGIN
           cpu_ena_l   <= '1';
         ELSE
           cpu_div_cnt <= cpu_div_cnt + 1;
+        END IF;
+        -- f8_cpu uses 8/12 half-cycles for the F8's 4/6-clock bus cycles.
+        IF cpu_div_cnt = CPU_CLK_DIV / 2 - 1 THEN
+          cpu_ena_l <= '1';
         END IF;
       END IF;
     END IF;

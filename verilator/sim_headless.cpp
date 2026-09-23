@@ -430,7 +430,7 @@ static void usage(const char* argv0) {
 "  --joy DIR@F[:H]     hold player 1 UP/DOWN/LEFT/RIGHT/FIRE. Repeatable.\n"
 "  --frame-log          one line per frame with size and hash\n"
 "  --probe              per-frame UV201 fetcher/FIFO activity counters\n"
-"  --joy-trace F        log freeze register changes from frame F\n"
+"  --joy-trace F        log joystick control and freeze changes from frame F\n"
 "  --quiet              suppress progress output\n", argv0);
 }
 
@@ -559,7 +559,7 @@ int main(int argc, char** argv) {
     top->ps2_key = 0;
     top->kbd_matrix = 0;   // active high, nothing pressed
     top->joy_fire = 0;
-    top->joy_pots = 0x402D2D2D2D2D2D2DULL;
+    top->joy_pots = 0x4632323232323232ULL;
     top->cart_type = (uint8_t)cart_type;
     top->eval();
 
@@ -573,6 +573,8 @@ int main(int argc, char** argv) {
     bool decide_logged = false;
     long ext_int_n = 0, int_ack_n = 0, int_req_n = 0, io_wr_n = 0, overrun_n = 0;
     int last_freeze_x = -1, last_freeze_y = -1;
+    int last_joy_enable = -1, last_joy_latch = -1;
+    unsigned last_joy_pc = 0xffff;
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
 
@@ -592,9 +594,9 @@ int main(int argc, char** argv) {
                 if (pr.direction == "RIGHT") right = true;
                 if (pr.direction == "FIRE") fire = true;
             }
-            uint8_t x = left == right ? 45 : (right ? 51 : 39);
-            uint8_t y = up == down ? 45 : (down ? 51 : 39);
-            top->joy_pots = 0x402D2D2D2D2D0000ULL | (uint64_t(y) << 8) | x;
+            uint8_t x = left == right ? 50 : (right ? 99 : 0);
+            uint8_t y = up == down ? 50 : (down ? 99 : 0);
+            top->joy_pots = 0x4632323232320000ULL | (uint64_t(y) << 8) | x;
             top->joy_fire = fire ? 1 : 0;
         }
 
@@ -604,6 +606,28 @@ int main(int argc, char** argv) {
 
         top->clk_sys = 1;
         top->eval();
+
+        if (joy_trace_from >= 0 && fg.frame >= joy_trace_from) {
+            unsigned pc = top->rootp->top__DOT__pc0;
+            // RES2 joystick routine returns through PK at 0x22BE.
+            if (last_joy_pc == 0x22be && pc != last_joy_pc)
+                printf("[joy-result] frame=%ld latch=%02X value=%02X\n", fg.frame,
+                       (unsigned)CORE(key_latch_l), (unsigned)CPU(acc));
+            last_joy_pc = pc;
+        }
+
+        if (joy_trace_from >= 0 && fg.frame >= joy_trace_from &&
+            ((int)CORE(joy_enable_l) != last_joy_enable ||
+             (int)CORE(key_latch_l) != last_joy_latch)) {
+            last_joy_enable = CORE(joy_enable_l);
+            last_joy_latch = CORE(key_latch_l);
+            printf("[joy-control] cycle=%llu frame=%ld pc=%04X enable=%d latch=%02X "
+                   "h=%d v=%d active=%d timer=%d\n",
+                   (unsigned long long)cycles, fg.frame,
+                   (unsigned)top->rootp->top__DOT__pc0, last_joy_enable, last_joy_latch,
+                   (int)top->rootp->top__DOT__hpos, (int)top->rootp->top__DOT__vpos,
+                   (int)CORE(joy_timer_active), (int)CORE(joy_timer));
+        }
 
         if (joy_trace_from >= 0 && fg.frame >= joy_trace_from &&
             ((int)UVR(r_freeze_x) != last_freeze_x || (int)UVR(r_freeze_y) != last_freeze_y)) {
