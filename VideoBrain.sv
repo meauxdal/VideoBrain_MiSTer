@@ -225,14 +225,14 @@ function automatic [7:0] axis_to_pot(input [7:0] raw_axis);
 endfunction
 
 localparam [7:0] JOY_MID = 8'd50;
-wire [7:0] joy1_x = !status[5] ? JOY_MID : ((joystick_0[0] == joystick_0[1]) ? axis_to_pot(joystick_l_analog_0[7:0]) : (joystick_0[0] ? 8'd99 : 8'd0));
-wire [7:0] joy1_y = !status[5] ? JOY_MID : ((joystick_0[2] == joystick_0[3]) ? axis_to_pot(joystick_l_analog_0[15:8]) : (joystick_0[2] ? 8'd99 : 8'd0));
-wire [7:0] joy2_x = !status[5] ? JOY_MID : ((joystick_1[0] == joystick_1[1]) ? axis_to_pot(joystick_l_analog_1[7:0]) : (joystick_1[0] ? 8'd99 : 8'd0));
-wire [7:0] joy2_y = !status[5] ? JOY_MID : ((joystick_1[2] == joystick_1[3]) ? axis_to_pot(joystick_l_analog_1[15:8]) : (joystick_1[2] ? 8'd99 : 8'd0));
-wire [7:0] joy3_x = !status[5] ? JOY_MID : ((joystick_2[0] == joystick_2[1]) ? axis_to_pot(joystick_l_analog_2[7:0]) : (joystick_2[0] ? 8'd99 : 8'd0));
-wire [7:0] joy3_y = !status[5] ? JOY_MID : ((joystick_2[2] == joystick_2[3]) ? axis_to_pot(joystick_l_analog_2[15:8]) : (joystick_2[2] ? 8'd99 : 8'd0));
-wire [7:0] joy4_x = !status[5] ? JOY_MID : ((joystick_3[0] == joystick_3[1]) ? axis_to_pot(joystick_l_analog_3[7:0]) : (joystick_3[0] ? 8'd99 : 8'd0));
-wire [7:0] joy4_y = !status[5] ? JOY_MID : ((joystick_3[2] == joystick_3[3]) ? axis_to_pot(joystick_l_analog_3[15:8]) : (joystick_3[2] ? 8'd99 : 8'd0));
+wire [7:0] joy1_x = !status[5] ? JOY_MID : ((joystick_0[2] == joystick_0[3]) ? axis_to_pot(joystick_l_analog_0[7:0]) : (joystick_0[2] ? 8'd0 : 8'd99));
+wire [7:0] joy1_y = !status[5] ? JOY_MID : ((joystick_0[0] == joystick_0[1]) ? axis_to_pot(joystick_l_analog_0[15:8]) : (joystick_0[0] ? 8'd0 : 8'd99));
+wire [7:0] joy2_x = !status[5] ? JOY_MID : ((joystick_1[2] == joystick_1[3]) ? axis_to_pot(joystick_l_analog_1[7:0]) : (joystick_1[2] ? 8'd0 : 8'd99));
+wire [7:0] joy2_y = !status[5] ? JOY_MID : ((joystick_1[0] == joystick_1[1]) ? axis_to_pot(joystick_l_analog_1[15:8]) : (joystick_1[0] ? 8'd0 : 8'd99));
+wire [7:0] joy3_x = !status[5] ? JOY_MID : ((joystick_2[2] == joystick_2[3]) ? axis_to_pot(joystick_l_analog_2[7:0]) : (joystick_2[2] ? 8'd0 : 8'd99));
+wire [7:0] joy3_y = !status[5] ? JOY_MID : ((joystick_2[0] == joystick_2[1]) ? axis_to_pot(joystick_l_analog_2[15:8]) : (joystick_2[0] ? 8'd0 : 8'd99));
+wire [7:0] joy4_x = !status[5] ? JOY_MID : ((joystick_3[2] == joystick_3[3]) ? axis_to_pot(joystick_l_analog_3[7:0]) : (joystick_3[2] ? 8'd0 : 8'd99));
+wire [7:0] joy4_y = !status[5] ? JOY_MID : ((joystick_3[0] == joystick_3[1]) ? axis_to_pot(joystick_l_analog_3[15:8]) : (joystick_3[0] ? 8'd0 : 8'd99));
 wire [63:0] joy_pots = {joy4_y, joy4_x, joy3_y, joy3_x, joy2_y, joy2_x, joy1_y, joy1_x};
 
 // Fire buttons share the row lines with the keyboard.
