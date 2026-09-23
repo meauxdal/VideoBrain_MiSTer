@@ -27,7 +27,7 @@ assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
 
-assign VGA_F1 = 0;
+assign VGA_F1 = vid_field;
 assign VGA_SCALER  = 0;
 assign VGA_DISABLE = 0;
 assign HDMI_FREEZE = 0;
@@ -200,15 +200,18 @@ always @(posedge clk_sys) begin
 	end
 end
 
-// Joystick pots follow MAME ranges: 0..99 centered at 50; P4 Y 0..139 centered at 70.
-wire [7:0] joy1_x = (!status[5] || (joystick_0[0] == joystick_0[1])) ? 8'd50 : (joystick_0[0] ? 8'd99 : 8'd0);
-wire [7:0] joy1_y = (!status[5] || (joystick_0[2] == joystick_0[3])) ? 8'd50 : (joystick_0[2] ? 8'd99 : 8'd0);
-wire [7:0] joy2_x = (!status[5] || (joystick_1[0] == joystick_1[1])) ? 8'd50 : (joystick_1[0] ? 8'd99 : 8'd0);
-wire [7:0] joy2_y = (!status[5] || (joystick_1[2] == joystick_1[3])) ? 8'd50 : (joystick_1[2] ? 8'd99 : 8'd0);
-wire [7:0] joy3_x = (!status[5] || (joystick_2[0] == joystick_2[1])) ? 8'd50 : (joystick_2[0] ? 8'd99 : 8'd0);
-wire [7:0] joy3_y = (!status[5] || (joystick_2[2] == joystick_2[3])) ? 8'd50 : (joystick_2[2] ? 8'd99 : 8'd0);
-wire [7:0] joy4_x = (!status[5] || (joystick_3[0] == joystick_3[1])) ? 8'd50 : (joystick_3[0] ? 8'd99 : 8'd0);
-wire [7:0] joy4_y = (!status[5] || (joystick_3[2] == joystick_3[3])) ? 8'd70 : (joystick_3[2] ? 8'd139 : 8'd0);
+// TODO: Map hps_io analog stick axes to the joystick pots.
+// Keep digital positions within one scanline of the joystick timer.
+localparam [7:0] JOY_LO = 8'd39, JOY_MID = 8'd45, JOY_HI = 8'd51;
+localparam [7:0] JOY4Y_LO = 8'd58, JOY4Y_MID = 8'd64, JOY4Y_HI = 8'd70;
+wire [7:0] joy1_x = (!status[5] || (joystick_0[0] == joystick_0[1])) ? JOY_MID : (joystick_0[0] ? JOY_HI : JOY_LO);
+wire [7:0] joy1_y = (!status[5] || (joystick_0[2] == joystick_0[3])) ? JOY_MID : (joystick_0[2] ? JOY_HI : JOY_LO);
+wire [7:0] joy2_x = (!status[5] || (joystick_1[0] == joystick_1[1])) ? JOY_MID : (joystick_1[0] ? JOY_HI : JOY_LO);
+wire [7:0] joy2_y = (!status[5] || (joystick_1[2] == joystick_1[3])) ? JOY_MID : (joystick_1[2] ? JOY_HI : JOY_LO);
+wire [7:0] joy3_x = (!status[5] || (joystick_2[0] == joystick_2[1])) ? JOY_MID : (joystick_2[0] ? JOY_HI : JOY_LO);
+wire [7:0] joy3_y = (!status[5] || (joystick_2[2] == joystick_2[3])) ? JOY_MID : (joystick_2[2] ? JOY_HI : JOY_LO);
+wire [7:0] joy4_x = (!status[5] || (joystick_3[0] == joystick_3[1])) ? JOY_MID : (joystick_3[0] ? JOY_HI : JOY_LO);
+wire [7:0] joy4_y = (!status[5] || (joystick_3[2] == joystick_3[3])) ? JOY4Y_MID : (joystick_3[2] ? JOY4Y_HI : JOY4Y_LO);
 wire [63:0] joy_pots = {joy4_y, joy4_x, joy3_y, joy3_x, joy2_y, joy2_x, joy1_y, joy1_x};
 
 // Fire buttons share the row lines with the keyboard.
@@ -217,6 +220,7 @@ wire [3:0] joy_fire = status[5] ? {joystick_3[4], joystick_2[4], joystick_1[4], 
 ///////////////////////   CORE   /////////////////////////////////
 
 wire       ce_pix;
+wire       vid_field;
 wire [7:0] vid_r, vid_g, vid_b;
 wire       vid_de, vid_hs, vid_vs, vid_hb, vid_vb;
 wire [1:0] audio_code;
@@ -255,7 +259,7 @@ videobrain_core core
 	.burst      (),
 	.csync      (),
 	.scanline   (),
-	.field      (),
+	.field      (vid_field),
 	.hpos       (),
 	.vpos       (),
 

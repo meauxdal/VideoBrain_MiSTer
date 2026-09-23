@@ -179,6 +179,7 @@ int main(int argc, char** argv, char** env) {
 
     top->kbd_matrix = 0;   // active high, nothing pressed
     top->joy_fire = 0;
+    top->joy_pots = 0x402D2D2D2D2D2D2DULL;
     top->cart_type = (uint8_t)opt_cart_type;
     top->reset = 1;
 

@@ -38,6 +38,7 @@ module top(
    // Keyboard matrix, 9 columns x 4 rows flattened by column, active high.
    input [35:0]  kbd_matrix /*verilator public_flat*/,
    input [3:0]   joy_fire /*verilator public_flat*/,
+   input [63:0]  joy_pots /*verilator public_flat*/,
    input [7:0]   cart_type /*verilator public_flat*/
 );
 
@@ -74,6 +75,7 @@ module top(
 
       .kbd_matrix (kbd_matrix),
       .joy_fire   (joy_fire),
+      .joy_pots   (joy_pots),
       .audio_code (audio_code),
       .audio_stb  (audio_stb),
       .joy_enable (joy_enable),

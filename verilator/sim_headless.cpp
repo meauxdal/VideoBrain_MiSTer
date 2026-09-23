@@ -365,6 +365,9 @@ static void dump_state(FILE* f, long frame, const FrameGrabber& fg, bool want_ra
     fprintf(f, "hpos=%3d vpos=%3d field=%d fifo_level=%d\n",
             (int)top->rootp->top__DOT__hpos, (int)top->rootp->top__DOT__vpos,
             (int)CORE(field_l), (int)top->rootp->top__DOT__fifo_level);
+    fprintf(f, "freeze_x=%d freeze_y=%d joy_enable=%d joy_latch=%02X\n",
+            (int)UVR(r_freeze_x), (int)UVR(r_freeze_y),
+            (int)CORE(joy_enable_l), (unsigned)CORE(key_latch_l));
 
     // 16 objects x 9 banks, laid out as the object list the fetcher walks.
     fprintf(f, "-- object list (rp_lo rp_hi dx dy x ylo_a yhi_a ylo_b yhi_b) --\n");
@@ -424,8 +427,10 @@ static void usage(const char* argv0) {
 "                       RUN/STOP is SPACE. Letters are their own names;\n"
 "                       also SHIFT ERASE SPECIAL NEXT PREVIOUS BACK\n"
 "                       SEMI QUOTE QUESTION. Repeatable.\n"
+"  --joy DIR@F[:H]     hold player 1 UP/DOWN/LEFT/RIGHT/FIRE. Repeatable.\n"
 "  --frame-log          one line per frame with size and hash\n"
 "  --probe              per-frame UV201 fetcher/FIFO activity counters\n"
+"  --joy-trace F        log freeze register changes from frame F\n"
 "  --quiet              suppress progress output\n", argv0);
 }
 
@@ -455,12 +460,15 @@ int main(int argc, char** argv) {
     std::string cart, outdir = "out", prefix, dump_path;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
+    long joy_trace_from = -1;
     int  scale = 3, cart_type = 0;
     bool shot_last = false, want_ppm = false, want_ascii = false;
     bool want_ram = false, frame_log = false, quiet = false, probe = false;
     std::set<long> shots, dumps;
     struct Press { int bit; long from, to; };
     std::vector<Press> presses;
+    struct JoyPress { std::string direction; long from, to; };
+    std::vector<JoyPress> joy_presses;
 
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
@@ -502,8 +510,25 @@ int main(int argc, char** argv) {
             if (bit < 0) { fprintf(stderr, "error: unknown key '%s'\n", name.c_str()); return 1; }
             presses.push_back({ bit, from, from + hold });
         }
+        else if (a == "--joy") {
+            std::string v = need("--joy");
+            size_t at = v.find('@');
+            if (at == std::string::npos) { fprintf(stderr, "error: --joy needs DIR@FRAME\n"); return 1; }
+            std::string direction = v.substr(0, at);
+            if (direction != "UP" && direction != "DOWN" && direction != "LEFT" &&
+                direction != "RIGHT" && direction != "FIRE") {
+                fprintf(stderr, "error: unknown joystick direction '%s'\n", direction.c_str());
+                return 1;
+            }
+            long from = atol(v.c_str() + at + 1);
+            long hold = 8;
+            size_t colon = v.find(':', at);
+            if (colon != std::string::npos) hold = atol(v.c_str() + colon + 1);
+            joy_presses.push_back({ direction, from, from + hold });
+        }
         else if (a == "--frame-log")   frame_log = true;
         else if (a == "--probe")       probe = true;
+        else if (a == "--joy-trace")   joy_trace_from = atol(need("--joy-trace"));
         else if (a == "--quiet")       quiet = true;
         else { fprintf(stderr, "error: unknown option %s\n", a.c_str()); usage(argv[0]); return 1; }
     }
@@ -534,6 +559,7 @@ int main(int argc, char** argv) {
     top->ps2_key = 0;
     top->kbd_matrix = 0;   // active high, nothing pressed
     top->joy_fire = 0;
+    top->joy_pots = 0x402D2D2D2D2D2D2DULL;
     top->cart_type = (uint8_t)cart_type;
     top->eval();
 
@@ -546,6 +572,7 @@ int main(int argc, char** argv) {
     int  state_seen = 0;
     bool decide_logged = false;
     long ext_int_n = 0, int_ack_n = 0, int_req_n = 0, io_wr_n = 0, overrun_n = 0;
+    int last_freeze_x = -1, last_freeze_y = -1;
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
 
@@ -555,6 +582,21 @@ int main(int argc, char** argv) {
                 if (fg.frame >= pr.from && fg.frame < pr.to) m |= (uint64_t)1 << pr.bit;
             top->kbd_matrix = m;
         }
+        {
+            bool up = false, down = false, left = false, right = false, fire = false;
+            for (const JoyPress& pr : joy_presses) {
+                if (fg.frame < pr.from || fg.frame >= pr.to) continue;
+                if (pr.direction == "UP") up = true;
+                if (pr.direction == "DOWN") down = true;
+                if (pr.direction == "LEFT") left = true;
+                if (pr.direction == "RIGHT") right = true;
+                if (pr.direction == "FIRE") fire = true;
+            }
+            uint8_t x = left == right ? 45 : (right ? 51 : 39);
+            uint8_t y = up == down ? 45 : (down ? 51 : 39);
+            top->joy_pots = 0x402D2D2D2D2D0000ULL | (uint64_t(y) << 8) | x;
+            top->joy_fire = fire ? 1 : 0;
+        }
 
         io.tick();
         // Hold reset through the downloads, as the FPGA top does.
@@ -562,6 +604,15 @@ int main(int argc, char** argv) {
 
         top->clk_sys = 1;
         top->eval();
+
+        if (joy_trace_from >= 0 && fg.frame >= joy_trace_from &&
+            ((int)UVR(r_freeze_x) != last_freeze_x || (int)UVR(r_freeze_y) != last_freeze_y)) {
+            last_freeze_x = UVR(r_freeze_x);
+            last_freeze_y = UVR(r_freeze_y);
+            printf("[joy] frame=%ld x=%d y=%d latch=%02X cmd=%02X\n", fg.frame,
+                   last_freeze_x, last_freeze_y,
+                   (unsigned)CORE(key_latch_l), (unsigned)UVR(r_cmd));
+        }
 
         // Interrupt path, sampled every clk: these are one-clk pulses.
         if (probe) {

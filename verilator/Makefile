@@ -75,7 +75,7 @@ LDFLAGS   = $(LIBS)
 
 V_OPT = -O3 --x-assign fast --x-initial fast --noassert --public-flat-rw \
 	-Wno-fatal -Wno-PINMISSING -Wno-WIDTH -Wno-UNOPTFLAT -Wno-CASEINCOMPLETE \
-	-Wno-UNSIGNED -Wno-CMPCONST -Wno-ALWNEVER -Wno-DECLFILENAME
+	-Wno-UNSIGNED -Wno-CMPCONST -Wno-DECLFILENAME
 
 EXE = ./obj_dir/Vtop
 C_SRC = \
