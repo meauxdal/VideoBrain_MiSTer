@@ -23,10 +23,12 @@
 --   2. Produces `brclk_ena`: a 1-`clk`-wide enable pulse at BRCLK rate
 --      (MCLK/4), 50% duty cycle equivalent for anything that samples on
 --      brclk_ena rising activity.
---   3. Produces `cpu_ena`: two half-cycle enables per ~2.0MHz CPU clock
---      (nominally MCLK/7, but free-running and NOT phase-locked to the
---      real hardware's broken divider - matches the "external 2MHz osc"
---      behavior, not the UV202 pin 7 behavior).
+--   3. Produces `cpu_ena`: two half-cycle enables per exactly 2.0MHz CPU
+--      clock on average. The real CPU clock comes from a separate 4MHz
+--      oscillator and /2 flip-flop, so it is not an integer divide of MCLK.
+--      The FPGA implementation uses a fractional enable accumulator to
+--      reproduce the 4.0MHz half-cycle rate without creating a second clock
+--      domain.
 --
 -- All of this core's modules are single-clock-domain (`clk` = MCLK-rate
 -- oversampling clock) and use enable pulses rather than separate clock
@@ -52,12 +54,8 @@ ENTITY uv202_clkgen IS
     -- divide down to a single MCLK-rate enable first.
     CLK_DIV_MCLK : positive := 1;
 
-    -- CPU clock divisor, applied to the MCLK-rate enable. Default 7
-    -- matches the real ~2.045MHz rate (14.318181/7); the doc notes real
-    -- consoles actually run 2.0MHz exactly off a separate oscillator, so
-    -- treat this as approximate/tunable rather than load-bearing for any
-    -- cycle-exact CPU timing (there isn't any - see "Wait States" section,
-    -- cycle-counted code is explicitly not possible on this hardware).
+    -- Retained for the existing entity interface. CPU timing is now generated
+    -- from MCLK_HZ and CPU_HALF_HZ below rather than this integer divisor.
     CPU_CLK_DIV  : positive := 7
     );
   PORT (
@@ -93,8 +91,9 @@ ARCHITECTURE rtl OF uv202_clkgen IS
   SIGNAL brclk_ena_l   : std_logic;
   SIGNAL brclk_phase_l : uv2 := (OTHERS => '0');
 
-  SIGNAL cpu_div_cnt : natural RANGE 0 TO CPU_CLK_DIV-1 := 0;
-  SIGNAL cpu_ena_l   : std_logic;
+  CONSTANT CPU_HALF_HZ : natural := 4_000_000;
+  SIGNAL cpu_phase_acc : natural RANGE 0 TO MCLK_HZ-1 := 0;
+  SIGNAL cpu_ena_l     : std_logic;
 
 BEGIN
 
@@ -157,29 +156,30 @@ BEGIN
   brclk_phase <= brclk_phase_l;
 
   ----------------------------------------------------------------------------
-  -- Stage 3: mclk_ena -> cpu_ena (two enables per CPU clock, NOT gated by
-  -- brclk - the real CPU clock is an independent oscillator, not derived
-  -- from UV202's internal BRCLK chain). uv202_arbiter stalls this
-  -- externally by masking the enable it forwards to f8_cpu's `ce`.
+  -- Stage 3: mclk_ena -> cpu_ena. The real CPU clock is an independent
+  -- 4MHz oscillator divided by two, so its 4MHz half-cycle rate cannot be
+  -- represented by an integer MCLK divisor. Use a phase accumulator to emit
+  -- half-cycle enables at exactly 4.0MHz on average. The resulting intervals
+  -- alternate between 3 and 4 MCLK ticks, as required by 14.318181/4.0.
+  -- uv202_arbiter stalls this externally by masking the enable it forwards to
+  -- f8_cpu's `ce`.
   ----------------------------------------------------------------------------
 
   PROCESS(clk, reset_na) IS
+    VARIABLE phase_v : natural;
   BEGIN
     IF reset_na = '0' THEN
-      cpu_div_cnt <= 0;
-      cpu_ena_l   <= '0';
+      cpu_phase_acc <= 0;
+      cpu_ena_l     <= '0';
     ELSIF rising_edge(clk) THEN
       cpu_ena_l <= '0';
       IF mclk_ena_l = '1' THEN
-        IF cpu_div_cnt = CPU_CLK_DIV-1 THEN
-          cpu_div_cnt <= 0;
-          cpu_ena_l   <= '1';
+        phase_v := cpu_phase_acc + CPU_HALF_HZ;
+        IF phase_v >= MCLK_HZ THEN
+          cpu_phase_acc <= phase_v - MCLK_HZ;
+          cpu_ena_l     <= '1';
         ELSE
-          cpu_div_cnt <= cpu_div_cnt + 1;
-        END IF;
-        -- f8_cpu uses 8/12 half-cycles for the F8's 4/6-clock bus cycles.
-        IF cpu_div_cnt = CPU_CLK_DIV / 2 - 1 THEN
-          cpu_ena_l <= '1';
+          cpu_phase_acc <= phase_v;
         END IF;
       END IF;
     END IF;
