@@ -127,6 +127,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL joy_started : std_logic := '0';
   SIGNAL joy_capture_stb : std_logic := '0';
   SIGNAL joy_capture_x : uv8 := (OTHERS => '0');
+  SIGNAL joy_capture_y : unsigned(8 DOWNTO 0) := (OTHERS => '0');
   SIGNAL uv_o_kbd_l : std_logic;
   SIGNAL x_zoom_l, y_zoom_l : std_logic;
   SIGNAL fifo_pop_l   : std_logic;
@@ -294,6 +295,7 @@ BEGIN
       uv_cur_vpos    => vpos_l,
       uv_capture_stb => joy_capture_stb,
       uv_capture_x   => joy_capture_x,
+      uv_capture_y   => joy_capture_y,
       uv_o_x_zm      => x_zoom_l,
       uv_o_frz       => uv_o_frz_l,
       uv_o_enb       => uv_o_enb,
@@ -348,6 +350,7 @@ BEGIN
       joy_started      <= '0';
       joy_capture_stb  <= '0';
       joy_capture_x    <= (OTHERS => '0');
+      joy_capture_y    <= (OTHERS => '0');
 
     ELSIF rising_edge(clk) THEN
       joy_capture_stb <= '0';
@@ -374,6 +377,7 @@ BEGIN
       ELSIF joy_timer_active = '1' THEN
         IF joy_timer = 0 THEN
           joy_capture_x <= hpos_l;
+          joy_capture_y <= vpos_l;
           joy_capture_stb <= '1';
           joy_timer_active <= '0';
         ELSE

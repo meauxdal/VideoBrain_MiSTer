@@ -36,6 +36,7 @@ ENTITY sys_bus IS
     uv_cur_vpos    : IN unsigned(8 DOWNTO 0);
     uv_capture_stb : IN std_logic;
     uv_capture_x   : IN uv8;
+    uv_capture_y   : IN unsigned(8 DOWNTO 0);
 
     -- UV201 controls and object-RAM fetch port.
     uv_o_x_zm   : OUT std_logic;
@@ -139,6 +140,7 @@ BEGIN
       cur_vpos    => uv_cur_vpos,
       capture_stb => uv_capture_stb,
       capture_x   => uv_capture_x,
+      capture_y   => uv_capture_y,
       o_x_zm      => uv_o_x_zm,
       o_frz       => uv_o_frz,
       o_enb       => uv_o_enb,

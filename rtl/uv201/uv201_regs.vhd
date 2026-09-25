@@ -30,6 +30,7 @@ ENTITY uv201_regs IS
     -- Falling EXT INT capture while FRZ is set.
     capture_stb : IN  std_logic;
     capture_x   : IN  uv8;
+    capture_y   : IN  unsigned(8 DOWNTO 0);
 
     -- Decoded command register outputs. o_ avoids clashes with CMD_* constants.
     o_x_zm  : OUT std_logic;  -- X zoom (double width)
@@ -122,7 +123,7 @@ BEGIN
       -- in the renderer's per-scanline counter, not here) and current Y.
       IF capture_stb = '1' AND r_cmd(CMD_FRZ_BIT) = '1' THEN
         r_freeze_x <= capture_x;
-        r_freeze_y <= cur_vpos;
+        r_freeze_y <= capture_y;
       END IF;
 
     END IF;
