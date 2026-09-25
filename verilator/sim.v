@@ -115,7 +115,7 @@ module top(
       .dl_data    (ioctl_dout),
       .dl_wr      (dl_wr),
       .dl_index   (ioctl_index),
-      .cart_type  (cart_type),
+      .unknown_cart_profile (cart_type),
 
       .pc0        (pc0),
       .pc1        (pc1),

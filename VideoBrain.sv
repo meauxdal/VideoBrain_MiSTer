@@ -58,7 +58,7 @@ localparam CONF_STR = {
 	"O[4:3],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",
 	"-;",
 	"O[5],Joystick,Off,On;",
-	"O[7:6],Cartridge,Standard,Timeshare,Money Minder;",
+	"O[7:6],Unknown cart profile,Standard,Timeshare,Money Minder;",
 	"-;",
 	"T[0],Reset;",
 	"R[0],Reset and close OSD;",
@@ -295,7 +295,7 @@ videobrain_core core
 	.dl_data    (ioctl_dout),
 	.dl_wr      (dl_wr),
 	.dl_index   (dl_index),
-	.cart_type  ({6'd0, status[7:6]}),
+	.unknown_cart_profile ({6'd0, status[7:6]}),
 
 	.pc0        (),
 	.pc1        (),

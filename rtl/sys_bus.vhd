@@ -61,12 +61,48 @@ ENTITY sys_bus IS
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
 
-    -- Cartridge mapper, see CART_* in uv202_pack.
-    cart_type : IN uv8
+    -- Used when the downloaded cartridge image is not recognized.
+    unknown_cart_profile : IN uv8
     );
 END ENTITY sys_bus;
 
 ARCHITECTURE rtl OF sys_bus IS
+
+  FUNCTION crc32_byte(crc : uv32; data : uv8) RETURN uv32 IS
+    VARIABLE c : uv32 := crc XOR resize(data, 32);
+  BEGIN
+    FOR i IN 0 TO 7 LOOP
+      IF c(0) = '1' THEN
+        c := shift_right(c, 1) XOR x"EDB88320";
+      ELSE
+        c := shift_right(c, 1);
+      END IF;
+    END LOOP;
+    RETURN c;
+  END FUNCTION;
+
+  FUNCTION is_standard_cart(crc : uv32; size : uv13) RETURN boolean IS
+    VARIABLE hash : uv32 := NOT crc;
+  BEGIN
+    IF size = to_unsigned(16#0800#, size'length) THEN
+      RETURN hash = CART_CRC_MUSICTEACHER1 OR
+             hash = CART_CRC_WORDWISE1 OR
+             hash = CART_CRC_WORDWISE2 OR
+             hash = CART_CRC_VIDEOARTIST OR
+             hash = CART_CRC_PINBALL OR
+             hash = CART_CRC_BLACKJACK;
+    ELSIF size = to_unsigned(16#1000#, size'length) THEN
+      RETURN hash = CART_CRC_MATHTUTOR1 OR
+             hash = CART_CRC_LEMONADE OR
+             hash = CART_CRC_GLADIATOR OR
+             hash = CART_CRC_TENNIS OR
+             hash = CART_CRC_CHECKERS OR
+             hash = CART_CRC_VICE_VERSA OR
+             hash = CART_CRC_FINANCIER OR
+             hash = CART_CRC_DEMONSTRATION;
+    END IF;
+    RETURN false;
+  END FUNCTION;
 
   SIGNAL a_eff : unsigned(13 DOWNTO 0);
 
@@ -113,6 +149,11 @@ ARCHITECTURE rtl OF sys_bus IS
 
   SIGNAL dl_res1, dl_res2, dl_cart : std_logic;
   SIGNAL cs1, cs2, exp : std_logic;
+  SIGNAL cart_dl_prev : std_logic := '0';
+  SIGNAL cart_crc     : uv32 := (OTHERS => '1');
+  SIGNAL cart_size    : uv13 := (OTHERS => '0');
+  SIGNAL cart_auto_type : uv8 := to_unsigned(CART_UNRECOGNIZED, 8);
+  SIGNAL cart_effective_type : uv8;
 
   -- Set when a cartridge download writes above 17FF. A 2K image never does,
   -- and its upper half must mirror the lower rather than read as zero.
@@ -123,6 +164,13 @@ ARCHITECTURE rtl OF sys_bus IS
 BEGIN
 
   a_eff <= cpu_addr_fold(ext_addr);
+  cart_effective_type <= to_unsigned(CART_STD, 8)
+                         WHEN cart_auto_type = to_unsigned(CART_STD, 8)
+                         ELSE to_unsigned(CART_TIMESHARE, 8)
+                         WHEN cart_auto_type = to_unsigned(CART_TIMESHARE, 8)
+                         ELSE to_unsigned(CART_MONEYMINDER, 8)
+                         WHEN cart_auto_type = to_unsigned(CART_MONEYMINDER, 8)
+                         ELSE unknown_cart_profile;
 
   ----------------------------------------------------------------------------
   -- UV201 register file instance
@@ -247,6 +295,40 @@ BEGIN
     END IF;
   END PROCESS;
 
+  -- Identify raw ROM dumps by the CRC-32 values in MAME's software list.
+  -- The selected profile remains available for images without a known hash.
+  PROCESS (clk) IS
+  BEGIN
+    IF rising_edge(clk) THEN
+      IF dl_index = to_unsigned(2, 8) THEN
+        cart_dl_prev <= '1';
+        IF dl_wr = '1' THEN
+          IF dl_addr = to_unsigned(0, 16) THEN
+            cart_crc <= crc32_byte((OTHERS => '1'), dl_data);
+            cart_size <= to_unsigned(1, cart_size'length);
+            cart_auto_type <= to_unsigned(CART_UNRECOGNIZED, 8);
+          ELSE
+            cart_crc <= crc32_byte(cart_crc, dl_data);
+            cart_size <= cart_size + 1;
+          END IF;
+        END IF;
+      ELSIF cart_dl_prev = '1' THEN
+        cart_dl_prev <= '0';
+        IF cart_size = to_unsigned(16#0800#, cart_size'length) AND
+           (NOT cart_crc) = CART_CRC_TIMESHARE THEN
+          cart_auto_type <= to_unsigned(CART_TIMESHARE, 8);
+        ELSIF cart_size = to_unsigned(16#1000#, cart_size'length) AND
+              (NOT cart_crc) = CART_CRC_MONEYMINDER THEN
+          cart_auto_type <= to_unsigned(CART_MONEYMINDER, 8);
+        ELSIF is_standard_cart(cart_crc, cart_size) THEN
+          cart_auto_type <= to_unsigned(CART_STD, 8);
+        END IF;
+      ELSE
+        cart_dl_prev <= '0';
+      END IF;
+    END IF;
+  END PROCESS;
+
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
@@ -336,13 +418,13 @@ BEGIN
   -- ROM address within the cartridge. A 2K image mirrors into the upper half.
   cart_a <= resize(a_eff(11 DOWNTO 0), 12) AND (cart_big & "11111111111");
   cart_cpu_a <= resize(a_eff(10 DOWNTO 0), 12)
-                WHEN cs1 = '1' AND cart_type = CART_TIMESHARE
+                WHEN cs1 = '1' AND cart_effective_type = CART_TIMESHARE
                 ELSE cart_a;
 
   -- RAM lives on CS2 for Timeshare, and at 3800-3FFF for Money Minder. Both
   -- have 1K, so both mirror within their window.
-  cart_ram_rd <= (cs2 AND to_std_logic(cart_type = CART_TIMESHARE)) OR
-                 (exp AND a_eff(11) AND to_std_logic(cart_type = CART_MONEYMINDER));
+  cart_ram_rd <= (cs2 AND to_std_logic(cart_effective_type = CART_TIMESHARE)) OR
+                 (exp AND a_eff(11) AND to_std_logic(cart_effective_type = CART_MONEYMINDER));
   cart_ram_a  <= a_eff(9 DOWNTO 0);
 
 END ARCHITECTURE rtl;

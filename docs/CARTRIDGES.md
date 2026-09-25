@@ -3,17 +3,21 @@
 Every cartridge in the set was run in the headless simulator and the screens
 were inspected, not just hashed. Nothing here has been tested on real hardware.
 
-    verilator/obj_dir_headless/Vtop --cart <file> --cart-type <N> \
-        --frames 150 --shot 149
+    verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
-`--cart-type` is 0 standard, 1 Timeshare, 2 Money Minder, matching the OSD
-option.
+Known raw dumps are identified by CRC-32 and use the matching slot behavior.
+`--cart-type` and the OSD's Unknown cart profile apply only to unrecognized
+images: 0 standard, 1 Timeshare, 2 Money Minder.
+
+Fingerprints for all sixteen released single-image cartridges come from MAME's
+[VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
+CRC-32 is used to identify the loaded image, not to validate its integrity.
 
 ## Summary
 
 **All sixteen boot and render their first screen correctly.** Tennis plays.
 
-| Cartridge | Size | Mapper | First screen | Notes |
+| Cartridge | Size | Slot device | First screen | Notes |
 |---|---|---|---|---|
 | Blackjack | 2K | standard | correct | "1 OR 2 PLAYERS?" over black and red card suits on green. Best colour test in the set. |
 | Checkers | 4K | standard | correct | RUN/STOP advances to "YOU MOVE FIRST ? Y OR N". |
@@ -75,11 +79,14 @@ ask for is unresolved. The way to settle it is to type a valid function name.
 
 ## Not implemented
 
-- **comp_language** (APL): bank register at 1000-100F with a documented bus
-  conflict quirk, six ROM banks. MAME `bus/vidbrain/comp_language.cpp`.
+- **comp_language** (APL): a split-chip dump, bank register at 1000-100F with
+  a documented bus conflict quirk, six ROM banks. MAME
+  `bus/vidbrain/comp_language.cpp`.
 - **info_manager**: 6K ROM, 1K RAM. A prototype; no dump here.
+- The Timeshare image identifies the cartridge board, not the separate
+  Expander modem it expects to communicate with.
 
-## Mapper reference
+## Slot device reference
 
 From MAME `bus/vidbrain/`. `/CS1` is 1000-17FF and `/CS2` is 1800-1FFF.
 

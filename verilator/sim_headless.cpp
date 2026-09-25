@@ -293,12 +293,6 @@ struct IoctlDriver {
             }
             fclose(f);
 
-            // A 2K cartridge occupies 1000-17FF; mirror it into 1800-1FFF so
-            // the upper half is not open bus. 4K images fill the window.
-            if (d.index == 2 && n == 2048) {
-                data.insert(data.end(), data.begin(), data.begin() + 2048);
-            }
-
             pos = 0;
             active = true;
             top->ioctl_index = (uint8_t)d.index;
@@ -402,7 +396,7 @@ static void usage(const char* argv0) {
 "  --res1 FILE          RES1 ROM, ioctl index 0\n"
 "  --res2 FILE          RES2 ROM, ioctl index 1\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
-"  --cart-type N        0 standard, 1 Timeshare, 2 Money Minder\n"
+"  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder\n"
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
 "  --max-cycles N       hard cycle cap (default 2000000000)\n"

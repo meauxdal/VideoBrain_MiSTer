@@ -72,7 +72,7 @@ ENTITY videobrain_core IS
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
-    cart_type: IN uv8;
+    unknown_cart_profile: IN uv8;
 
     pc0 : OUT uv16;
     pc1 : OUT uv16;
@@ -313,7 +313,7 @@ BEGIN
       dl_data        => dl_data,
       dl_wr          => dl_wr,
       dl_index       => dl_index,
-      cart_type      => cart_type
+      unknown_cart_profile => unknown_cart_profile
       );
 
   u_io : ENTITY work.videobrain_io

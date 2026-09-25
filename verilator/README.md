@@ -16,6 +16,9 @@ Run from this directory; the default ROM paths are relative to it.
     ./obj_dir_headless/Vtop --cart "../software/Gladiator ....bin" --frames 300 --shot-last
     ./obj_dir_headless/Vtop --help
 
+Known cartridge ROMs are identified by CRC-32. `--cart-type` selects the slot
+profile only for unrecognized images.
+
 ## selftest.rom
 
 A hand-assembled F8 program that sets up one 16x16 object and halts, so the
