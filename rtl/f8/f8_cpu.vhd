@@ -29,6 +29,7 @@ ENTITY f8_cpu IS
     pi_a_n : IN  uv8;
     po_b_n : OUT uv8;
     pi_b_n : IN  uv8;
+    port1_wr : OUT std_logic;
     
     clk      : IN std_logic;
     ce       : IN std_logic;
@@ -114,6 +115,7 @@ BEGIN
     VARIABLE iozcs_v : uv5;
   BEGIN  
     IF rising_edge(clk) THEN
+      port1_wr <= '0';
       IF ce='1' THEN
         mop<=MICROCODE(madrs);
         sreg_wr<='0';
@@ -192,7 +194,9 @@ BEGIN
               CASE mop.rd IS
                 WHEN RACC   => acc<=alu;
                 WHEN PORT0  => po_a_n<= NOT alu;
-                WHEN PORT1  => po_b_n<= NOT alu;
+                WHEN PORT1  =>
+                  po_b_n<= NOT alu;
+                  port1_wr <= '1';
                 WHEN WREG   => iozcs<=alu(4 DOWNTO 0);
                 WHEN ISARU  => visar(5 DOWNTO 3)<=alu(2 DOWNTO 0);
                 WHEN ISARL  => visar(2 DOWNTO 0)<=alu(2 DOWNTO 0);
@@ -278,6 +282,7 @@ BEGIN
           madrs<=to_integer(OP_RESET)*8;
           phase_l<=0;
           iozcs<="00000";
+          port1_wr<='0';
         END IF;
         
       END IF;

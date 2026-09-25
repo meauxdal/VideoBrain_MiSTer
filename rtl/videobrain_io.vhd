@@ -34,6 +34,7 @@ ENTITY videobrain_io IS
     -- are the active-low pin values.
     port_a_n    : IN  uv8;   -- po_a_n: column latch, and sound data in bits 1:0
     port_b_n    : IN  uv8;   -- po_b_n: sound clock, accessories, joystick enable
+    port_b_wr   : IN  std_logic; -- actual port-01 write event
     port_b_in_n : OUT uv8;   -- pi_b_n: keyboard rows and fire buttons
 
     -- Keyboard matrix, 9 columns x 4 rows, flattened by column:
@@ -87,8 +88,9 @@ BEGIN
 
       key_latch_l <= port_a_v;
 
-      -- Rising edge of the sound clock latches the 2-bit DAC code.
-      IF sound_clk_l = '0' AND port_b_v(4) = '1' THEN
+      -- The F8 write event is the hardware edge. Do not infer it from the
+      -- held output pin; the port latch may retain the clock level.
+      IF port_b_wr = '1' AND sound_clk_l = '0' AND port_b_v(4) = '1' THEN
         audio_code_l <= std_logic_vector(port_a_v(1 DOWNTO 0));
         audio_stb_l  <= '1';
       END IF;

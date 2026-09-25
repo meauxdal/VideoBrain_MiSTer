@@ -119,6 +119,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL fifo_wr_entry : uv201_fifo_entry_t;
 
   SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
+  SIGNAL port1_wr_l : std_logic;
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
   SIGNAL joy_timer : unsigned(13 DOWNTO 0) := (OTHERS => '0');
@@ -167,6 +168,7 @@ BEGIN
       pi_a_n   => x"FF",
       po_b_n   => po_b_n_l,
       pi_b_n   => pi_b_n_l,
+      port1_wr  => port1_wr_l,
       clk      => clk,
       ce       => cpu_ce,
       reset_na => reset_na,
@@ -318,6 +320,7 @@ BEGIN
       reset_na     => reset_na,
       port_a_n     => po_a_n_l,
       port_b_n     => po_b_n_l,
+      port_b_wr    => port1_wr_l,
       port_b_in_n  => pi_b_n_l,
       kbd_matrix   => kbd_matrix,
       joy_fire     => joy_fire,
