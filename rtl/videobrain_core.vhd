@@ -295,6 +295,7 @@ BEGIN
       uv_cur_vpos    => vpos_l,
       uv_capture_stb => ext_int,
       uv_capture_x   => hpos_l,
+      uv_capture_y   => vpos_l,
       uv_o_x_zm      => x_zoom_l,
       uv_o_frz       => uv_o_frz_l,
       uv_o_enb       => uv_o_enb,
