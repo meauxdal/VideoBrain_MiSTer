@@ -21,15 +21,15 @@ run_case() {
         --joy "UP@${up_start}:12" \
         --joy "DOWN@${down_start}:12" \
         --joy-trace "$trace_start" \
-        --dump 130,139,140,150,160,170,179,190,199,200,210,219,230,249,250,261,279,280,291,319 \
+        --dump 130,139,140,150,160,170,179,185,190,195,199,200,210,219,230,249,250,261,279,280,291,319 \
         --dump-file "$out/${name}_state.txt" \
-        --shot 130,139,140,150,160,170,179,190,199,200,210,219,230,249,250,261,279,280,291,319 \
+        --shot 130,139,140,150,160,170,179,185,190,195,199,200,210,219,230,249,250,261,279,280,291,319 \
         --outdir "$out" \
         --prefix "$name" \
         --quiet > "$out/${name}_trace.txt"
 }
 
-run_case tennis "../software/Tennis (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" 195 250 280
+run_case tennis "../software/Tennis (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" 130 250 280
 run_case gladiator "../software/Gladiator (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin" 145 170 200
 
 printf 'Joystick logs and frames: %s\n' "$out"
