@@ -567,7 +567,7 @@ int main(int argc, char** argv) {
     bool decide_logged = false;
     long ext_int_n = 0, int_ack_n = 0, int_req_n = 0, io_wr_n = 0, overrun_n = 0;
     int last_freeze_x = -1, last_freeze_y = -1;
-    int last_joy_enable = -1, last_joy_latch = -1;
+    int last_joy_enable = -1, last_joy_latch = -1, last_joy_out = -1;
     unsigned last_joy_pc = 0xffff;
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
@@ -621,6 +621,25 @@ int main(int argc, char** argv) {
                    (unsigned)top->rootp->top__DOT__pc0, last_joy_enable, last_joy_latch,
                    (int)top->rootp->top__DOT__hpos, (int)top->rootp->top__DOT__vpos,
                    (int)CORE(joy_out), (int)CORE(joy_timer));
+        }
+
+        if (joy_trace_from >= 0 && fg.frame >= joy_trace_from &&
+            (int)CORE(joy_out) != last_joy_out) {
+            last_joy_out = CORE(joy_out);
+            if (CORE(joy_enable_l)) {
+                unsigned pot = 0;
+                for (int i = 0; i < 8; i++)
+                    if ((CORE(key_latch_l) >> i) & 1)
+                        pot |= (unsigned)((top->joy_pots >> (i * 8)) & 0xff);
+                printf("[joy-edge] cycle=%llu frame=%ld pc=%04X enable=%d latch=%02X pot=%u out=%d timer=%d h=%d v=%d freeze_x=%d freeze_y=%d\n",
+                       (unsigned long long)cycles, fg.frame,
+                       (unsigned)top->rootp->top__DOT__pc0,
+                       (int)CORE(joy_enable_l), (unsigned)CORE(key_latch_l), pot,
+                       last_joy_out, (int)CORE(joy_timer),
+                       (int)top->rootp->top__DOT__hpos,
+                       (int)top->rootp->top__DOT__vpos,
+                       (int)UVR(r_freeze_x), (int)UVR(r_freeze_y));
+            }
         }
 
         if (joy_trace_from >= 0 && fg.frame >= joy_trace_from &&
