@@ -377,7 +377,7 @@ BEGIN
             pot_v := pot_v OR unsigned(joy_pots(i * 8 + 7 DOWNTO i * 8));
           END IF;
         END LOOP;
-        joy_timer <= to_unsigned(2304, 14) + pot_v * to_unsigned(18, 5);
+        joy_timer <= to_unsigned(2172, 14) + pot_v * to_unsigned(18, 5);
         joy_armed <= '0';
         out_v := '1';
       ELSIF joy_timer = 0 THEN
