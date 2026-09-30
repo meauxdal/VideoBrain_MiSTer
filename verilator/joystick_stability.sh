@@ -27,6 +27,7 @@ run_case() {
         "${presses[@]}" \
         --joy-trace 205 \
         --dump "$samples" \
+        --ram \
         --dump-file "$out/${name}_state.txt" \
         --shot "$samples" \
         --outdir "$out" \
