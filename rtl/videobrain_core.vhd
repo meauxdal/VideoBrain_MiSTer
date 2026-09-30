@@ -378,7 +378,7 @@ BEGIN
           IF key_latch_l(i) = '1' THEN
             pot_v := pot_v OR unsigned(joy_pots(i * 8 + 7 DOWNTO i * 8));
             IF i MOD 2 = 1 THEN
-              pot_base := to_unsigned(1164, 14);
+              pot_base := to_unsigned(582, 14);
             ELSE
               pot_base := to_unsigned(1080, 14);
             END IF;

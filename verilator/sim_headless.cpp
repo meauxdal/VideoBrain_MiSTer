@@ -631,14 +631,15 @@ int main(int argc, char** argv) {
                 for (int i = 0; i < 8; i++)
                     if ((CORE(key_latch_l) >> i) & 1)
                         pot |= (unsigned)((top->joy_pots >> (i * 8)) & 0xff);
-                printf("[joy-edge] cycle=%llu frame=%ld pc=%04X enable=%d latch=%02X pot=%u out=%d timer=%d h=%d v=%d freeze_x=%d freeze_y=%d\n",
+                printf("[joy-edge] cycle=%llu frame=%ld pc=%04X enable=%d latch=%02X pot=%u out=%d timer=%d h=%d v=%d freeze_x=%d freeze_y=%d cmd=%02X\n",
                        (unsigned long long)cycles, fg.frame,
                        (unsigned)top->rootp->top__DOT__pc0,
                        (int)CORE(joy_enable_l), (unsigned)CORE(key_latch_l), pot,
                        last_joy_out, (int)CORE(joy_timer),
                        (int)top->rootp->top__DOT__hpos,
                        (int)top->rootp->top__DOT__vpos,
-                       (int)UVR(r_freeze_x), (int)UVR(r_freeze_y));
+                       (int)UVR(r_freeze_x), (int)UVR(r_freeze_y),
+                       (unsigned)UVR(r_cmd));
             }
         }
 
