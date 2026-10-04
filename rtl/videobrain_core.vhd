@@ -371,17 +371,12 @@ BEGIN
       IF joy_enable_l = '0' AND hblank_l = '1' THEN
         joy_armed <= '1';
         out_v := '0';
-      ELSIF joy_armed = '1' THEN
+      ELSIF joy_armed = '1' AND hblank_l = '0' THEN
         pot_v := (OTHERS => '0');
         pot_base := to_unsigned(1080, 14);
         FOR i IN 0 TO 7 LOOP
           IF key_latch_l(i) = '1' THEN
             pot_v := pot_v OR unsigned(joy_pots(i * 8 + 7 DOWNTO i * 8));
-            IF i MOD 2 = 1 THEN
-              pot_base := to_unsigned(582, 14);
-            ELSE
-              pot_base := to_unsigned(1080, 14);
-            END IF;
           END IF;
         END LOOP;
         joy_timer <= pot_base + resize(pot_v * to_unsigned(18, 5), joy_timer'length);
