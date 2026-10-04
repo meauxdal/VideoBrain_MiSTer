@@ -180,6 +180,8 @@ int main(int argc, char** argv, char** env) {
     top->kbd_matrix = 0;   // active high, nothing pressed
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
+    top->joy_timer_base = 2580;
+    top->joy_timer_step = 18;
     top->cart_type = (uint8_t)opt_cart_type;
     top->reset = 1;
 

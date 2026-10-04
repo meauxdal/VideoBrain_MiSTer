@@ -425,6 +425,9 @@ static void usage(const char* argv0) {
 "  --frame-log          one line per frame with size and hash\n"
 "  --probe              per-frame UV201 fetcher/FIFO activity counters\n"
 "  --joy-trace F        log joystick control and freeze changes from frame F\n"
+"  --joy-timer-base N   555 pulse base in MCLK ticks (default 2580)\n"
+"  --joy-timer-step N   added MCLK ticks per pot count (default 18)\n"
+"  --joy-timer-sweep LIST  cycle base:step candidates independently per axis\n"
 "  --quiet              suppress progress output\n", argv0);
 }
 
@@ -455,6 +458,9 @@ int main(int argc, char** argv) {
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     long joy_trace_from = -1;
+    long joy_timer_base = 2580, joy_timer_step = 18;
+    struct JoyTimer { long base, step; };
+    std::vector<JoyTimer> joy_timer_sweep;
     int  scale = 3, cart_type = 0;
     bool shot_last = false, want_ppm = false, want_ascii = false;
     bool want_ram = false, frame_log = false, quiet = false, probe = false;
@@ -523,6 +529,26 @@ int main(int argc, char** argv) {
         else if (a == "--frame-log")   frame_log = true;
         else if (a == "--probe")       probe = true;
         else if (a == "--joy-trace")   joy_trace_from = atol(need("--joy-trace"));
+        else if (a == "--joy-timer-base") joy_timer_base = atol(need("--joy-timer-base"));
+        else if (a == "--joy-timer-step") joy_timer_step = atol(need("--joy-timer-step"));
+        else if (a == "--joy-timer-sweep") {
+            std::string list = need("--joy-timer-sweep");
+            size_t pos = 0;
+            while (pos < list.size()) {
+                size_t end = list.find(',', pos);
+                std::string item = list.substr(pos, end == std::string::npos ? end : end - pos);
+                size_t sep = item.find(':');
+                if (sep == std::string::npos) { fprintf(stderr, "error: sweep values need base:step pairs\n"); return 1; }
+                JoyTimer candidate = { atol(item.substr(0, sep).c_str()), atol(item.substr(sep + 1).c_str()) };
+                if (candidate.base < 0 || candidate.step < 0 || candidate.step > 127 ||
+                    candidate.base + candidate.step * 255 > 16383) {
+                    fprintf(stderr, "error: joystick sweep value outside timer range\n"); return 1;
+                }
+                joy_timer_sweep.push_back(candidate);
+                if (end == std::string::npos) break;
+                pos = end + 1;
+            }
+        }
         else if (a == "--quiet")       quiet = true;
         else { fprintf(stderr, "error: unknown option %s\n", a.c_str()); usage(argv[0]); return 1; }
     }
@@ -554,6 +580,13 @@ int main(int argc, char** argv) {
     top->kbd_matrix = 0;   // active high, nothing pressed
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
+    if (joy_timer_base < 0 || joy_timer_step < 0 || joy_timer_step > 127 ||
+        joy_timer_base + joy_timer_step * 255 > 16383) {
+        fprintf(stderr, "error: joystick timer range must fit 0..16383 MCLK ticks\n");
+        return 1;
+    }
+    top->joy_timer_base = (uint16_t)joy_timer_base;
+    top->joy_timer_step = (uint8_t)joy_timer_step;
     top->cart_type = (uint8_t)cart_type;
     top->eval();
 
@@ -569,6 +602,10 @@ int main(int argc, char** argv) {
     int last_freeze_x = -1, last_freeze_y = -1;
     int last_joy_enable = -1, last_joy_latch = -1, last_joy_out = -1;
     unsigned last_joy_pc = 0xffff;
+    long joy_start_cycle = -1;
+    int joy_start_pot = 0, joy_start_latch = 0;
+    JoyTimer joy_start_timer = { joy_timer_base, joy_timer_step };
+    unsigned joy_sweep_index[8] = {};
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
 
@@ -598,6 +635,18 @@ int main(int argc, char** argv) {
         // Hold reset through the downloads, as the FPGA top does.
         top->reset = (io.active || !io.finished) ? 1 : 0;
 
+        if (!joy_timer_sweep.empty() && CORE(joy_armed) && CORE(joy_enable_l) &&
+            CORE(hblank_l) && CORE(key_latch_l)) {
+            unsigned latch = CORE(key_latch_l);
+            if ((latch & (latch - 1)) == 0) {
+                int axis = 0;
+                while (((latch >> axis) & 1) == 0) axis++;
+                JoyTimer candidate = joy_timer_sweep[joy_sweep_index[axis] % joy_timer_sweep.size()];
+                top->joy_timer_base = (uint16_t)candidate.base;
+                top->joy_timer_step = (uint8_t)candidate.step;
+            }
+        }
+
         top->clk_sys = 1;
         top->eval();
 
@@ -605,8 +654,9 @@ int main(int argc, char** argv) {
             unsigned pc = top->rootp->top__DOT__pc0;
             // RES2 joystick routine returns through PK at 0x22BE.
             if (last_joy_pc == 0x22be && pc != last_joy_pc)
-                printf("[joy-result] frame=%ld latch=%02X value=%02X\n", fg.frame,
-                       (unsigned)CORE(key_latch_l), (unsigned)CPU(acc));
+                printf("[joy-result] frame=%ld latch=%02X value=%02X freeze_x=%d freeze_y=%d cmd=%02X\n",
+                       fg.frame, (unsigned)CORE(key_latch_l), (unsigned)CPU(acc),
+                       (int)UVR(r_freeze_x), (int)UVR(r_freeze_y), (unsigned)UVR(r_cmd));
             last_joy_pc = pc;
         }
 
@@ -631,7 +681,26 @@ int main(int argc, char** argv) {
                 for (int i = 0; i < 8; i++)
                     if ((CORE(key_latch_l) >> i) & 1)
                         pot |= (unsigned)((top->joy_pots >> (i * 8)) & 0xff);
-                printf("[joy-edge] cycle=%llu frame=%ld pc=%04X enable=%d latch=%02X pot=%u out=%d timer=%d h=%d v=%d freeze_x=%d freeze_y=%d cmd=%02X\n",
+                if (last_joy_out) {
+                    joy_start_cycle = cycles;
+                    joy_start_pot = (int)pot;
+                    joy_start_latch = (int)CORE(key_latch_l);
+                    joy_start_timer = { (long)top->joy_timer_base, (long)top->joy_timer_step };
+                } else if (joy_start_cycle >= 0) {
+                    printf("[joy-measure] frame=%ld latch=%02X pot=%d base=%ld step=%ld expected_mclk=%ld elapsed_mclk=%ld\n",
+                           fg.frame, joy_start_latch, joy_start_pot,
+                           joy_start_timer.base, joy_start_timer.step,
+                           joy_start_timer.base + joy_start_timer.step * joy_start_pot,
+                           cycles - joy_start_cycle);
+                    if (!joy_timer_sweep.empty() && joy_start_latch &&
+                        (joy_start_latch & (joy_start_latch - 1)) == 0) {
+                        int axis = 0;
+                        while (((joy_start_latch >> axis) & 1) == 0) axis++;
+                        joy_sweep_index[axis]++;
+                    }
+                    joy_start_cycle = -1;
+                }
+                printf("[joy-edge] cycle=%llu frame=%ld pc=%04X enable=%d latch=%02X pot=%u out=%d timer=%d h=%d v=%d freeze_x=%d freeze_y=%d cmd=%02X ext_int=%d joy_int=%d\n",
                        (unsigned long long)cycles, fg.frame,
                        (unsigned)top->rootp->top__DOT__pc0,
                        (int)CORE(joy_enable_l), (unsigned)CORE(key_latch_l), pot,
@@ -639,7 +708,7 @@ int main(int argc, char** argv) {
                        (int)top->rootp->top__DOT__hpos,
                        (int)top->rootp->top__DOT__vpos,
                        (int)UVR(r_freeze_x), (int)UVR(r_freeze_y),
-                       (unsigned)UVR(r_cmd));
+                       (unsigned)UVR(r_cmd), (int)CORE(ext_int), (int)CORE(joy_int));
             }
         }
 

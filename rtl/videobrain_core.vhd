@@ -26,6 +26,9 @@ ENTITY videobrain_core IS
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
     -- Stick positions, byte n selected by port-0 bit n, 128 = centre.
     joy_pots   : IN std_logic_vector(63 DOWNTO 0);
+    -- 555 model in MCLK ticks; externally adjustable by the headless sim.
+    joy_timer_base : IN unsigned(13 DOWNTO 0);
+    joy_timer_step : IN unsigned(6 DOWNTO 0);
 
     audio_code : OUT std_logic_vector(1 DOWNTO 0);
     audio_stb  : OUT std_logic;
@@ -342,19 +345,10 @@ BEGIN
   -- EXT INT is wired-OR: the UV201 Y interrupt and the joystick 555.
   ext_int <= yint_pulse OR joy_int;
 
-  -- Joystick pot timer (U18 LM555, netlist from seanriddle.com).
-  -- TRIGGER and RESET are tied and held low while !EJOY AND HBLANK, so the
-  -- timing starts at HBLANK fall, or at EJOY if it is set during HBLANK.
-  -- Selected pots charge 3.3nF through 39K each. While EJOY is set, EXT INT
-  -- follows the 555 output and its falling edge freezes X/Y.
-  --
-  -- Software reads dY*228 + XFRZ - 38 and keeps a per-pot min/max at $0C00,
-  -- widening it as readings arrive. Tennis seeds it with 640..1792, which
-  -- is 1.1 * (39K + 10K..100K) * 3.3nF; stick position 0..255 spans that.
-  -- TODO: real stick travel is unmeasured.
+  -- The 555 pulse is measured in MCLK ticks. Tennis seeds its calibration at
+  -- 640..1792 BRCLK ticks; MCLK is 4x BRCLK. The sim can sweep base and step.
   PROCESS (clk, reset_na) IS
     VARIABLE pot_v  : unsigned(7 DOWNTO 0);
-    VARIABLE pot_base : unsigned(13 DOWNTO 0);
     VARIABLE out_v  : std_logic;
     VARIABLE line_v : std_logic;
   BEGIN
@@ -371,15 +365,14 @@ BEGIN
       IF joy_enable_l = '0' AND hblank_l = '1' THEN
         joy_armed <= '1';
         out_v := '0';
-      ELSIF joy_armed = '1' AND hblank_l = '0' THEN
+      ELSIF joy_armed = '1' AND hblank_l = '1' THEN
         pot_v := (OTHERS => '0');
-        pot_base := to_unsigned(1080, 14);
         FOR i IN 0 TO 7 LOOP
           IF key_latch_l(i) = '1' THEN
             pot_v := pot_v OR unsigned(joy_pots(i * 8 + 7 DOWNTO i * 8));
           END IF;
         END LOOP;
-        joy_timer <= pot_base + resize(pot_v * to_unsigned(18, 5), joy_timer'length);
+        joy_timer <= joy_timer_base + resize(pot_v * joy_timer_step, joy_timer'length);
         joy_armed <= '0';
         out_v := '1';
       ELSIF joy_timer = 0 THEN

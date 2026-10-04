@@ -249,6 +249,8 @@ videobrain_core core
 	.kbd_matrix (kbd_matrix),
 	.joy_fire   (joy_fire),
 	.joy_pots   (joy_pots),
+	.joy_timer_base (14'd2580),
+	.joy_timer_step (7'd18),
 	.audio_code (audio_code),
 	.audio_stb  (audio_stb),
 	.joy_enable (),

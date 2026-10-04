@@ -19,6 +19,14 @@ Run from this directory; the default ROM paths are relative to it.
 Known cartridge ROMs are identified by CRC-32. `--cart-type` selects the slot
 profile only for unrecognized images.
 
+Joystick pulse timing is runtime-configurable without rebuilding:
+`--joy-timer-base 2580 --joy-timer-step 18`. Values are MCLK ticks. With
+`--joy-trace`, `[joy-measure]` reports the selected axis, pot value, timer
+parameters, and measured pulse length. `bash joystick_sweep.sh [base:step ...]`
+cycles candidates independently on all eight axes in one Gladiator run, with
+neutral and each direction held in turn. The combined log is
+`out/joystick/sweep/gladiator_sweep.txt`.
+
 ## selftest.rom
 
 A hand-assembled F8 program that sets up one 16x16 object and halts, so the
