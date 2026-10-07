@@ -55,10 +55,11 @@ localparam CONF_STR = {
 	"F1,BIN,Load Cartridge;",
 	"-;",
 	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
-	"O[4:3],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",
+	"O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"-;",
 	"O[5],Joystick,Off,On;",
-	"O[7:6],Unknown cart profile,Standard,Timeshare,Money Minder;",
+	"O[8],Stick timing,Curve,Linear;",
+	"O[7:6],Fallback,Standard,Timeshare,Money Minder;",
 	"-;",
 	"T[0],Reset;",
 	"R[0],Reset and close OSD;",
@@ -124,7 +125,9 @@ pll pll
 	.locked(pll_locked)
 );
 
-wire reset = RESET | status[0] | buttons[1] | ioctl_download | ~pll_locked;
+reg master_control = 0;
+wire system_reset = RESET | status[0] | buttons[1] | ioctl_download | ~pll_locked;
+wire reset = system_reset | master_control;
 
 ///////////////////////   ROM LOADING   //////////////////////////
 
@@ -153,6 +156,9 @@ reg        key_toggle  = 0;
 
 always @(posedge clk_sys) begin
 	key_toggle <= ps2_key[10];
+	if (system_reset) master_control <= 0;
+	else if (key_toggle != ps2_key[10] && key_code == 'h076)
+		master_control <= key_pressed;  // ESC = MASTER CONTROL
 	if (reset) kbd_matrix <= 0;
 	else if (key_toggle != ps2_key[10]) begin
 		case (key_code)
@@ -249,6 +255,9 @@ videobrain_core core
 	.kbd_matrix (kbd_matrix),
 	.joy_fire   (joy_fire),
 	.joy_pots   (joy_pots),
+	.joy_timer_base (14'd2580),
+	.joy_timer_step (7'd7),
+	.joy_timer_curve (~status[8]),
 	.audio_code (audio_code),
 	.audio_stb  (audio_stb),
 	.joy_enable (),

@@ -98,6 +98,7 @@ BEGIN
       sound_clk_l    <= port_b_v(4);
       accessory_p5_l <= port_b_v(5);
       accessory_p1_l <= port_b_v(6);
+      -- F3850 inverts outputs: enabled when physical I/O-17 is low.
       joy_enable_l   <= port_b_v(7);
     END IF;
   END PROCESS;

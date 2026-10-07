@@ -255,6 +255,7 @@ static const KeyName KEYS[] = {
     {"W",24},{"D",25},{"C",26},{"NEXT",27},
     {"Q",28},{"S",29},{"X",30},{"PREVIOUS",31},
     {"A",32},{"Z",33},{"QUESTION",34},{"BACK",35},
+    {"ESC",36},
 };
 
 static int key_bit(const std::string& n) {
@@ -418,13 +419,23 @@ static void usage(const char* argv0) {
 "  --trace-cpu N        log the first N CPU memory cycles (PC0, ROMC)\n"
 "  --trace-from F       only start the trace at frame F\n"
 "  --press KEY@F[:H]    hold KEY from frame F for H frames (default 8).\n"
+"                       ESC = MASTER CONTROL; H uses nominal field cycles.\n"
 "                       RUN/STOP is SPACE. Letters are their own names;\n"
 "                       also SHIFT ERASE SPECIAL NEXT PREVIOUS BACK\n"
 "                       SEMI QUOTE QUESTION. Repeatable.\n"
 "  --joy DIR@F[:H]     hold player 1 UP/DOWN/LEFT/RIGHT/FIRE. Repeatable.\n"
+"  --joy2 DIR@F[:H]    hold player 2 UP/DOWN/LEFT/RIGHT/FIRE. Repeatable.\n"
+"  --joy-pot C:V@F:H   override pot channel 0..7 with 0..255 for H frames; last wins.\n"
 "  --frame-log          one line per frame with size and hash\n"
 "  --probe              per-frame UV201 fetcher/FIFO activity counters\n"
 "  --joy-trace F        log joystick control and freeze changes from frame F\n"
+"  --joy-focus F        trace joystick timing and BIOS operands only in frame F\n"
+"  --joy-results F      log BIOS joystick returns and bounds from frame F\n"
+"  --joy-return-pc HEX  joystick return instruction (default 22BE; Tennis 1FCB)\n"
+"  --joy-timer-base N   555 pulse base in MCLK ticks (default 2580)\n"
+"  --joy-timer-step N   added MCLK ticks per pot count (default 7)\n"
+"  --joy-timer-curve    shared 1620:23/53 curve, split at pot128\n"
+"  --joy-timer-sweep LIST  cycle base:step candidates independently per axis\n"
 "  --quiet              suppress progress output\n", argv0);
 }
 
@@ -455,14 +466,23 @@ int main(int argc, char** argv) {
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     long joy_trace_from = -1;
+    long joy_focus_frame = -1;
+    long joy_results_from = -1;
+    unsigned joy_return_pc = 0x22be;
+    long joy_timer_base = 2580, joy_timer_step = 7;
+    bool joy_timer_curve = false;
+    struct JoyTimer { long base, step; };
+    std::vector<JoyTimer> joy_timer_sweep;
     int  scale = 3, cart_type = 0;
     bool shot_last = false, want_ppm = false, want_ascii = false;
     bool want_ram = false, frame_log = false, quiet = false, probe = false;
     std::set<long> shots, dumps;
-    struct Press { int bit; long from, to; };
+    struct Press { int bit; long from, to; long reset_until = -1; };
     std::vector<Press> presses;
-    struct JoyPress { std::string direction; long from, to; };
+    struct JoyPress { std::string direction; long from, to; int player; };
     std::vector<JoyPress> joy_presses;
+    struct JoyPot { int channel, value; long from, to; };
+    std::vector<JoyPot> joy_pots;
 
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
@@ -500,12 +520,13 @@ int main(int argc, char** argv) {
             long hold = 8;
             size_t colon = v.find(':', at);
             if (colon != std::string::npos) hold = atol(v.c_str() + colon + 1);
+            if (from < 0 || hold <= 0) { fprintf(stderr, "error: --press needs F>=0 and H>0\n"); return 1; }
             int bit = key_bit(name);
             if (bit < 0) { fprintf(stderr, "error: unknown key '%s'\n", name.c_str()); return 1; }
             presses.push_back({ bit, from, from + hold });
         }
-        else if (a == "--joy") {
-            std::string v = need("--joy");
+        else if (a == "--joy" || a == "--joy2") {
+            std::string v = need(a.c_str());
             size_t at = v.find('@');
             if (at == std::string::npos) { fprintf(stderr, "error: --joy needs DIR@FRAME\n"); return 1; }
             std::string direction = v.substr(0, at);
@@ -518,15 +539,55 @@ int main(int argc, char** argv) {
             long hold = 8;
             size_t colon = v.find(':', at);
             if (colon != std::string::npos) hold = atol(v.c_str() + colon + 1);
-            joy_presses.push_back({ direction, from, from + hold });
+            joy_presses.push_back({ direction, from, from + hold, a == "--joy2" ? 1 : 0 });
+        }
+        else if (a == "--joy-pot") {
+            std::string v = need("--joy-pot");
+            int channel, value, used = 0;
+            long from, hold;
+            if (sscanf(v.c_str(), "%d:%d@%ld:%ld%n", &channel, &value, &from, &hold, &used) != 4 ||
+                used != int(v.size()) || channel < 0 || channel > 7 ||
+                value < 0 || value > 255 || from < 0 || hold <= 0) {
+                fprintf(stderr, "error: --joy-pot needs C:V@F:H (C=0..7, V=0..255, F>=0, H>0)\n");
+                return 1;
+            }
+            joy_pots.push_back({channel, value, from, from + hold});
         }
         else if (a == "--frame-log")   frame_log = true;
         else if (a == "--probe")       probe = true;
         else if (a == "--joy-trace")   joy_trace_from = atol(need("--joy-trace"));
+        else if (a == "--joy-focus")   joy_focus_frame = atol(need("--joy-focus"));
+        else if (a == "--joy-results") joy_results_from = atol(need("--joy-results"));
+        else if (a == "--joy-return-pc") joy_return_pc = strtoul(need("--joy-return-pc"), nullptr, 16);
+        else if (a == "--joy-timer-base") joy_timer_base = atol(need("--joy-timer-base"));
+        else if (a == "--joy-timer-step") joy_timer_step = atol(need("--joy-timer-step"));
+        else if (a == "--joy-timer-curve") joy_timer_curve = true;
+        else if (a == "--joy-timer-sweep") {
+            std::string list = need("--joy-timer-sweep");
+            size_t pos = 0;
+            while (pos < list.size()) {
+                size_t end = list.find(',', pos);
+                std::string item = list.substr(pos, end == std::string::npos ? end : end - pos);
+                size_t sep = item.find(':');
+                if (sep == std::string::npos) { fprintf(stderr, "error: sweep values need base:step pairs\n"); return 1; }
+                JoyTimer candidate = { atol(item.substr(0, sep).c_str()), atol(item.substr(sep + 1).c_str()) };
+                if (candidate.base < 0 || candidate.step < 0 || candidate.step > 127 ||
+                    candidate.base + candidate.step * 255 > 16383) {
+                    fprintf(stderr, "error: joystick sweep value outside timer range\n"); return 1;
+                }
+                joy_timer_sweep.push_back(candidate);
+                if (end == std::string::npos) break;
+                pos = end + 1;
+            }
+        }
         else if (a == "--quiet")       quiet = true;
         else { fprintf(stderr, "error: unknown option %s\n", a.c_str()); usage(argv[0]); return 1; }
     }
 
+    if (joy_timer_curve && !joy_timer_sweep.empty()) {
+        fprintf(stderr, "error: curve and sweep are mutually exclusive\n");
+        return 1;
+    }
     if (prefix.empty()) prefix = basename_noext(cart.empty() ? res1 : cart);
 
     FILE* df = stdout;
@@ -554,6 +615,14 @@ int main(int argc, char** argv) {
     top->kbd_matrix = 0;   // active high, nothing pressed
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
+    if (joy_timer_base < 0 || joy_timer_step < 0 || joy_timer_step > 127 ||
+        joy_timer_base + joy_timer_step * 255 > 16383) {
+        fprintf(stderr, "error: joystick timer range must fit 0..16383 MCLK ticks\n");
+        return 1;
+    }
+    top->joy_timer_base = (uint16_t)joy_timer_base;
+    top->joy_timer_step = (uint8_t)joy_timer_step;
+    top->joy_timer_curve = joy_timer_curve;
     top->cart_type = (uint8_t)cart_type;
     top->eval();
 
@@ -567,20 +636,41 @@ int main(int argc, char** argv) {
     bool decide_logged = false;
     long ext_int_n = 0, int_ack_n = 0, int_req_n = 0, io_wr_n = 0, overrun_n = 0;
     int last_freeze_x = -1, last_freeze_y = -1;
-    int last_joy_enable = -1, last_joy_latch = -1;
+    int last_joy_enable = -1, last_joy_latch = -1, last_joy_out = -1;
     unsigned last_joy_pc = 0xffff;
+    long joy_start_cycle = -1;
+    int joy_start_pot = 0, joy_start_latch = 0;
+    JoyTimer joy_start_timer = { joy_timer_base, joy_timer_step };
+    unsigned joy_sweep_index[8] = {};
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
 
+        bool master_control = false;
         {
             uint64_t m = 0;
-            for (const Press& pr : presses)
-                if (fg.frame >= pr.from && fg.frame < pr.to) m |= (uint64_t)1 << pr.bit;
+            for (Press& pr : presses) {
+                if (pr.bit == 36) {
+                    // Reset stops video frames; release by elapsed MCLK cycles.
+                    if (pr.reset_until < 0 && fg.frame >= pr.from) {
+                        pr.reset_until = cycles + (pr.to - pr.from) * 228 * 263 * 4;
+                        printf("[master-control] frame=%ld cycle=%ld release_cycle=%ld\n",
+                               fg.frame, cycles, pr.reset_until);
+                    }
+                    if (cycles < pr.reset_until) master_control = true;
+                    if (cycles == pr.reset_until)
+                        printf("[master-control] frame=%ld cycle=%ld released\n", fg.frame, cycles);
+                } else if (fg.frame >= pr.from && fg.frame < pr.to) {
+                    m |= (uint64_t)1 << pr.bit;
+                }
+            }
             top->kbd_matrix = m;
         }
-        {
+        top->joy_pots = 0x8080808080808080ULL;
+        top->joy_fire = 0;
+        for (int player = 0; player < 2; player++) {
             bool up = false, down = false, left = false, right = false, fire = false;
             for (const JoyPress& pr : joy_presses) {
+                if (pr.player != player) continue;
                 if (fg.frame < pr.from || fg.frame >= pr.to) continue;
                 if (pr.direction == "UP") up = true;
                 if (pr.direction == "DOWN") down = true;
@@ -590,27 +680,122 @@ int main(int argc, char** argv) {
             }
             uint8_t x = left == right ? 128 : (right ? 255 : 0);
             uint8_t y = up == down ? 128 : (down ? 255 : 0);
-            top->joy_pots = 0x8080808080800000ULL | (uint64_t(x) << 8) | y;  // byte 0 vertical
-            top->joy_fire = fire ? 1 : 0;
+            unsigned shift = player * 16;
+            top->joy_pots = (top->joy_pots & ~(0xffffULL << shift)) |
+                            ((uint64_t(x) << 8 | y) << shift);
+            top->joy_fire |= (fire ? 1 : 0) << player;
+        }
+
+        for (const JoyPot& pot : joy_pots) {
+            if (fg.frame < pot.from || fg.frame >= pot.to) continue;
+            unsigned shift = pot.channel * 8;
+            top->joy_pots = (top->joy_pots & ~(0xffULL << shift)) | (uint64_t(pot.value) << shift);
         }
 
         io.tick();
         // Hold reset through the downloads, as the FPGA top does.
-        top->reset = (io.active || !io.finished) ? 1 : 0;
+        top->reset = (io.active || !io.finished || master_control) ? 1 : 0;
+
+        if (!joy_timer_sweep.empty() && CORE(joy_armed) && CORE(joy_enable_l) &&
+            CORE(hblank_l) && CORE(key_latch_l)) {
+            unsigned latch = CORE(key_latch_l);
+            if ((latch & (latch - 1)) == 0) {
+                int axis = 0;
+                while (((latch >> axis) & 1) == 0) axis++;
+                JoyTimer candidate = joy_timer_sweep[joy_sweep_index[axis] % joy_timer_sweep.size()];
+                top->joy_timer_base = (uint16_t)candidate.base;
+                top->joy_timer_step = (uint8_t)candidate.step;
+            }
+        }
+
+        bool joy_trace = (joy_trace_from >= 0 && fg.frame >= joy_trace_from) ||
+                         (joy_focus_frame >= 0 && fg.frame == joy_focus_frame);
+        bool joy_focus = joy_focus_frame >= 0 && fg.frame == joy_focus_frame;
+        // UV201 consumes the registered capture request on this clock.
+        bool joy_capture = joy_trace && CORE(joy_capture_stb);
+        unsigned capture_x = CORE(joy_capture_x), capture_y = CORE(joy_capture_y);
+        unsigned capture_cmd = UVR(r_cmd);
 
         top->clk_sys = 1;
         top->eval();
 
-        if (joy_trace_from >= 0 && fg.frame >= joy_trace_from) {
+        if (joy_capture)
+            printf("[joy-capture] cycle=%llu frame=%ld x=%u y=%u cmd=%02X accepted=%u freeze_x=%u freeze_y=%u\n",
+                   (unsigned long long)cycles, fg.frame, capture_x, capture_y,
+                   capture_cmd, (capture_cmd >> 1) & 1,
+                   (unsigned)UVR(r_freeze_x), (unsigned)UVR(r_freeze_y));
+
+        if (joy_trace || (joy_results_from >= 0 && fg.frame >= joy_results_from)) {
             unsigned pc = top->rootp->top__DOT__pc0;
-            // RES2 joystick routine returns through PK at 0x22BE.
-            if (last_joy_pc == 0x22be && pc != last_joy_pc)
-                printf("[joy-result] frame=%ld latch=%02X value=%02X\n", fg.frame,
-                       (unsigned)CORE(key_latch_l), (unsigned)CPU(acc));
+            if (last_joy_pc == joy_return_pc && pc != last_joy_pc) {
+                unsigned latch = CORE(key_latch_l);
+                printf("[joy-result] frame=%ld latch=%02X value=%02X freeze_x=%d freeze_y=%d cmd=%02X",
+                       fg.frame, (unsigned)CORE(key_latch_l), (unsigned)CPU(acc),
+                       (int)UVR(r_freeze_x), (int)UVR(r_freeze_y), (unsigned)UVR(r_cmd));
+                if (latch && (latch & (latch - 1)) == 0) {
+                    unsigned axis = 0;
+                    while ((latch >> axis) != 1) axis++;
+                    printf(" bounds=%02X%02X,%02X%02X",
+                           (unsigned)SYSRAM[axis * 4], (unsigned)SYSRAM[axis * 4 + 1],
+                           (unsigned)SYSRAM[axis * 4 + 2], (unsigned)SYSRAM[axis * 4 + 3]);
+                }
+                printf("\n");
+            }
+            if (joy_trace && pc != last_joy_pc &&
+                ((joy_focus && joy_return_pc == 0x1fcb && pc >= 0x1eed && pc <= 0x1fcb) ||
+                 (joy_focus && pc >= 0x2250 && pc <= 0x22ad) ||
+                 (joy_focus && (pc == 0x21cc || pc == 0x21d1 || pc == 0x21d3 ||
+                               pc == 0x21e7 || pc == 0x21eb || pc == 0x21f0 || pc == 0x21f1 ||
+                               pc == 0x2201 || pc == 0x2211 || pc == 0x221b ||
+                               pc == 0x222e || pc == 0x224d || pc == 0x22ad)) ||
+                 pc == 0x2203 || pc == 0x2205 || pc == 0x2207 ||
+                 pc == 0x220d || pc == 0x2212 || pc == 0x2218 ||
+                 pc == 0x2223 || pc == 0x2227 || pc == 0x2229 ||
+                 pc == 0x222b || pc == 0x2237 || pc == 0x2239 ||
+                 pc == 0x2241 || pc == 0x2244 || pc == 0x2250 ||
+                 pc == 0x225b || pc == 0x2262 || pc == 0x228d ||
+                 pc == 0x2297 || pc == 0x229f || pc == 0x22a7 || pc == 0x22ab ||
+                 (pc >= 0x22bf && pc <= 0x22da))) {
+                unsigned dc = top->rootp->top__DOT__dc0;
+                printf("[joy-bios] frame=%ld pc=%04X acc=%02X a=%02X b=%02X qu=%02X ql=%02X flags=%02X isar=%02X s=%02X dc=%04X freeze_x=%d freeze_y=%d latch=%02X",
+                       fg.frame, pc, (unsigned)CPU(acc),
+                       (unsigned)CPU(scratch_regs)[10], (unsigned)CPU(scratch_regs)[11],
+                       (unsigned)CPU(scratch_regs)[14], (unsigned)CPU(scratch_regs)[15],
+                       (unsigned)CPU(iozcs),
+                       (unsigned)CPU(visar),
+                       (unsigned)CPU(scratch_regs)[CPU(visar) & 63], dc,
+                       (int)UVR(r_freeze_x), (int)UVR(r_freeze_y),
+                       (unsigned)CORE(key_latch_l));
+                if (joy_focus) {
+                    unsigned axis = CPU(scratch_regs)[16];
+                    printf(" cycle=%llu h=%u v=%u cmd=%02X axis_or_gain=%u s17=%02X s18=%02X q=%04X operand=%04X",
+                           (unsigned long long)cycles,
+                           (unsigned)top->rootp->top__DOT__hpos,
+                           (unsigned)top->rootp->top__DOT__vpos, (unsigned)UVR(r_cmd),
+                           axis, (unsigned)CPU(scratch_regs)[17], (unsigned)CPU(scratch_regs)[18],
+                           ((unsigned)CPU(scratch_regs)[14] << 8) | CPU(scratch_regs)[15],
+                           ((unsigned)CPU(scratch_regs)[10] << 8) | CPU(scratch_regs)[11]);
+                    unsigned latch = CORE(key_latch_l);
+                    if (latch && (latch & (latch - 1)) == 0) {
+                        axis = 0;
+                        while ((latch >> axis) != 1) axis++;
+                        printf(" bounds=%02X%02X,%02X%02X",
+                               (unsigned)SYSRAM[axis * 4], (unsigned)SYSRAM[axis * 4 + 1],
+                               (unsigned)SYSRAM[axis * 4 + 2], (unsigned)SYSRAM[axis * 4 + 3]);
+                    }
+                }
+                if (dc >= 0x0c00 && dc <= 0x0ffc) {
+                    unsigned offset = dc - 0x0c00;
+                    printf(" table=%02X%02X%02X%02X",
+                           (unsigned)SYSRAM[offset], (unsigned)SYSRAM[offset + 1],
+                           (unsigned)SYSRAM[offset + 2], (unsigned)SYSRAM[offset + 3]);
+                }
+                printf("\n");
+            }
             last_joy_pc = pc;
         }
 
-        if (joy_trace_from >= 0 && fg.frame >= joy_trace_from &&
+        if (joy_trace &&
             ((int)CORE(joy_enable_l) != last_joy_enable ||
              (int)CORE(key_latch_l) != last_joy_latch)) {
             last_joy_enable = CORE(joy_enable_l);
@@ -623,11 +808,54 @@ int main(int argc, char** argv) {
                    (int)CORE(joy_out), (int)CORE(joy_timer));
         }
 
-        if (joy_trace_from >= 0 && fg.frame >= joy_trace_from &&
+        if (joy_trace &&
+            (int)CORE(joy_out) != last_joy_out) {
+            last_joy_out = CORE(joy_out);
+            unsigned pot = 0;
+            for (int i = 0; i < 8; i++)
+                if ((CORE(key_latch_l) >> i) & 1)
+                    pot |= (unsigned)((top->joy_pots >> (i * 8)) & 0xff);
+            if (last_joy_out) {
+                joy_start_cycle = cycles;
+                joy_start_pot = (int)pot;
+                joy_start_latch = (int)CORE(key_latch_l);
+                joy_start_timer = { (long)top->joy_timer_base, (long)top->joy_timer_step };
+                if (joy_timer_curve)
+                    joy_start_timer = { pot <= 128 ? 1620 + 23 * (long)pot :
+                                        4564 + 53 * ((long)pot - 128), 0 };
+            } else if (joy_start_cycle >= 0 && !CORE(joy_armed)) {
+                printf("[joy-measure] cycle=%llu start_cycle=%ld frame=%ld latch=%02X pot=%d base=%ld step=%ld expected_mclk=%ld elapsed_mclk=%ld\n",
+                       (unsigned long long)cycles, joy_start_cycle,
+                       fg.frame, joy_start_latch, joy_start_pot,
+                       joy_start_timer.base, joy_start_timer.step,
+                       joy_start_timer.base + joy_start_timer.step * joy_start_pot + 1,
+                       cycles - joy_start_cycle);
+                if (!joy_timer_sweep.empty() && joy_start_latch &&
+                    (joy_start_latch & (joy_start_latch - 1)) == 0) {
+                    int axis = 0;
+                    while (((joy_start_latch >> axis) & 1) == 0) axis++;
+                    joy_sweep_index[axis]++;
+                }
+                joy_start_cycle = -1;
+            }
+            if (!last_joy_out) joy_start_cycle = -1;
+            printf("[joy-edge] cycle=%llu frame=%ld pc=%04X enable=%d latch=%02X pot=%u out=%d timer=%d h=%d v=%d freeze_x=%d freeze_y=%d cmd=%02X ext_int=%d joy_int=%d\n",
+                   (unsigned long long)cycles, fg.frame,
+                   (unsigned)top->rootp->top__DOT__pc0,
+                   (int)CORE(joy_enable_l), (unsigned)CORE(key_latch_l), pot,
+                   last_joy_out, (int)CORE(joy_timer),
+                   (int)top->rootp->top__DOT__hpos,
+                   (int)top->rootp->top__DOT__vpos,
+                   (int)UVR(r_freeze_x), (int)UVR(r_freeze_y),
+                   (unsigned)UVR(r_cmd), (int)CORE(ext_int), (int)CORE(joy_int));
+        }
+
+        if (joy_trace &&
             ((int)UVR(r_freeze_x) != last_freeze_x || (int)UVR(r_freeze_y) != last_freeze_y)) {
             last_freeze_x = UVR(r_freeze_x);
             last_freeze_y = UVR(r_freeze_y);
-            printf("[joy] frame=%ld x=%d y=%d latch=%02X cmd=%02X\n", fg.frame,
+            printf("[joy] cycle=%llu frame=%ld x=%d y=%d latch=%02X cmd=%02X\n",
+                   (unsigned long long)cycles, fg.frame,
                    last_freeze_x, last_freeze_y,
                    (unsigned)CORE(key_latch_l), (unsigned)UVR(r_cmd));
         }

@@ -26,6 +26,10 @@ ENTITY videobrain_core IS
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
     -- Stick positions, byte n selected by port-0 bit n, 128 = centre.
     joy_pots   : IN std_logic_vector(63 DOWNTO 0);
+    -- 555 model in MCLK ticks; externally adjustable by the headless sim.
+    joy_timer_base : IN unsigned(13 DOWNTO 0);
+    joy_timer_step : IN unsigned(6 DOWNTO 0);
+    joy_timer_curve : IN std_logic;
 
     audio_code : OUT std_logic_vector(1 DOWNTO 0);
     audio_stb  : OUT std_logic;
@@ -124,6 +128,10 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
   SIGNAL joy_timer : unsigned(13 DOWNTO 0) := (OTHERS => '0');
+  SIGNAL joy_timer_active : std_logic := '0';
+  SIGNAL joy_capture_stb : std_logic := '0';
+  SIGNAL joy_capture_x : uv8 := (OTHERS => '0');
+  SIGNAL joy_capture_y : unsigned(8 DOWNTO 0) := (OTHERS => '0');
   SIGNAL joy_out, joy_int : std_logic := '0';
   SIGNAL joy_armed : std_logic := '1';
   SIGNAL joy_line : std_logic := '1';
@@ -293,8 +301,9 @@ BEGIN
       bb_rdata       => bb_rdata,
       uv_cur_field   => field_l,
       uv_cur_vpos    => vpos_l,
-      uv_capture_stb => ext_int,
-      uv_capture_x   => hpos_l,
+      uv_capture_stb => joy_capture_stb,
+      uv_capture_x   => joy_capture_x,
+      uv_capture_y   => joy_capture_y,
       uv_o_x_zm      => x_zoom_l,
       uv_o_frz       => uv_o_frz_l,
       uv_o_enb       => uv_o_enb,
@@ -341,16 +350,9 @@ BEGIN
   -- EXT INT is wired-OR: the UV201 Y interrupt and the joystick 555.
   ext_int <= yint_pulse OR joy_int;
 
-  -- Joystick pot timer (U18 LM555, netlist from seanriddle.com).
-  -- TRIGGER and RESET are tied and held low while !EJOY AND HBLANK, so the
-  -- timing starts at HBLANK fall, or at EJOY if it is set during HBLANK.
-  -- Selected pots charge 3.3nF through 39K each. While EJOY is set, EXT INT
-  -- follows the 555 output and its falling edge freezes X/Y.
-  --
-  -- Software reads dY*228 + XFRZ - 38 and keeps a per-pot min/max at $0C00,
-  -- widening it as readings arrive. Tennis seeds it with 640..1792, which
-  -- is 1.1 * (39K + 10K..100K) * 3.3nF; stick position 0..255 spans that.
-  -- TODO: real stick travel is unmeasured.
+  -- The 555 pulse is measured in MCLK ticks; MCLK is 4x BRCLK.
+  -- TODO: verify the pot timing range on hardware.
+  -- The 555 is held in reset while EJOY is disabled and HBLANK is high.
   PROCESS (clk, reset_na) IS
     VARIABLE pot_v  : unsigned(7 DOWNTO 0);
     VARIABLE out_v  : std_logic;
@@ -359,15 +361,21 @@ BEGIN
     IF reset_na = '0' THEN
       joy_timer <= (OTHERS => '0');
       joy_armed <= '1';
+      joy_timer_active <= '0';
+      joy_capture_stb <= '0';
+      joy_capture_x <= (OTHERS => '0');
+      joy_capture_y <= (OTHERS => '0');
       joy_out   <= '0';
       joy_line  <= '1';
       joy_int   <= '0';
 
     ELSIF rising_edge(clk) THEN
       out_v := joy_out;
+      joy_capture_stb <= '0';
 
       IF joy_enable_l = '0' AND hblank_l = '1' THEN
         joy_armed <= '1';
+        joy_timer_active <= '0';
         out_v := '0';
       ELSIF joy_armed = '1' THEN
         pot_v := (OTHERS => '0');
@@ -376,16 +384,34 @@ BEGIN
             pot_v := pot_v OR unsigned(joy_pots(i * 8 + 7 DOWNTO i * 8));
           END IF;
         END LOOP;
-        joy_timer <= to_unsigned(2580, 14) + pot_v * to_unsigned(18, 5);
+        IF joy_timer_curve = '1' THEN
+          IF pot_v <= 128 THEN
+            joy_timer <= to_unsigned(1620 + 23 * to_integer(pot_v), joy_timer'length);
+          ELSE
+            joy_timer <= to_unsigned(4564 + 53 * (to_integer(pot_v) - 128), joy_timer'length);
+          END IF;
+        ELSE
+          joy_timer <= joy_timer_base + resize(pot_v * joy_timer_step, joy_timer'length);
+        END IF;
         joy_armed <= '0';
+        joy_timer_active <= '1';
         out_v := '1';
-      ELSIF joy_timer = 0 THEN
-        out_v := '0';
-      ELSE
-        joy_timer <= joy_timer - 1;
+      ELSIF joy_timer_active = '1' THEN
+        IF joy_timer = 0 THEN
+          joy_timer_active <= '0';
+          out_v := '0';
+        ELSE
+          joy_timer <= joy_timer - 1;
+        END IF;
       END IF;
 
       line_v := NOT joy_enable_l OR out_v;
+      -- EJOY and timer expiry both drive falling EXT INT edges.
+      IF joy_line = '1' AND line_v = '0' THEN
+        joy_capture_x <= hpos_l;
+        joy_capture_y <= vpos_l;
+        joy_capture_stb <= '1';
+      END IF;
       joy_int  <= joy_line AND NOT line_v;
       joy_out  <= out_v;
       joy_line <= line_v;

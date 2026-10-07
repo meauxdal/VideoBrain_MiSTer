@@ -5,8 +5,15 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 ## Status
 
 - All tested software boots and plays
-- 15.7kHz analog video works and is stable on 60Hz CRT
-- WIP: Scratchy audio
+- Working joystick
+- 15.7kHz analog video works
+- Known issues: Imperfect audio, Checkers seems to hang after a few turns
+
+## Joystick
+
+Set Joystick=On and Stick timing=Curve in the OSD. Curve is the default.
+In Gladiator, push fully forward, then make a full-extreme circle on each
+controller at first-game start. See [joystick timing and verification](docs/JOYSTICK.md).
 
 ## Installing
 
@@ -28,7 +35,8 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot.rom
 
 VideoBrain SHIFT is a toggle (think CapsLock on a modern keyboard). In the BIOS, the square in the bottom right of the screen changes color to indicate when SHIFT is active.
 
-    SPACE       RUN/STOP                
+    SPACE       RUN/STOP
+    ESC         MASTER CONTROL (reset)
     F1          BACK/TEXT
     F2          PREVIOUS/COLOR
     F3          NEXT/CLOCK

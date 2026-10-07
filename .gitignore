@@ -30,3 +30,4 @@ c5_pin_model_dump.txt
 clean_safe.bat
 jtag.cdf
 VideoBrain.qws
+/verilator/__pycache__

@@ -39,6 +39,9 @@ module top(
    input [35:0]  kbd_matrix /*verilator public_flat*/,
    input [3:0]   joy_fire /*verilator public_flat*/,
    input [63:0]  joy_pots /*verilator public_flat*/,
+   input [13:0]  joy_timer_base /*verilator public_flat*/,
+   input [6:0]   joy_timer_step /*verilator public_flat*/,
+   input         joy_timer_curve /*verilator public_flat*/,
    input [7:0]   cart_type /*verilator public_flat*/
 );
 
@@ -76,6 +79,9 @@ module top(
       .kbd_matrix (kbd_matrix),
       .joy_fire   (joy_fire),
       .joy_pots   (joy_pots),
+      .joy_timer_base (joy_timer_base),
+      .joy_timer_step (joy_timer_step),
+      .joy_timer_curve (joy_timer_curve),
       .audio_code (audio_code),
       .audio_stb  (audio_stb),
       .joy_enable (joy_enable),

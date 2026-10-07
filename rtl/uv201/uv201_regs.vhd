@@ -118,9 +118,7 @@ BEGIN
         END IF;
       END IF;
 
-      -- freeze capture: doc / MAME ext_int_w() - falling EXT INT edge while
-      -- FRZ is set latches current X (from caller, since X position lives
-      -- in the renderer's per-scanline counter, not here) and current Y.
+      -- US4232374A, F8/F9/FA: FRZ=1 captures X/Y on a negative interrupt edge.
       IF capture_stb = '1' AND r_cmd(CMD_FRZ_BIT) = '1' THEN
         r_freeze_x <= capture_x;
         r_freeze_y <= capture_y;
