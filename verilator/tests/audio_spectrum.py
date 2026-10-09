@@ -39,7 +39,10 @@ for note_range in notes:
     frequency = 14318181 / (2 * np.mean(np.diff([int(e["cycle"]) for e in note])))
     print(f"{key},{frequency:.2f},{gain:.3f},{alias_rms[0]:.2f},"
           f"{alias_rms[1]:.2f},{change:.2f},{data[:, 1].min():.0f},{data[:, 1].max():.0f}")
-    assert -1 < gain <= 0.05
+    z = np.exp(-2j * np.pi * frequencies[peak] / 14318181)
+    response = (1 / 1024) / (1 - (1 - 1 / 1024) * z)
+    response *= (1 / 512) / (1 - (1 - 1 / 512) * z)
+    assert abs(gain - 20 * np.log10(abs(response))) < 0.05
     assert change < -20
     assert data[:, 1].min() >= -8194 and data[:, 1].max() <= 4096
     for column, name in [(0, "raw"), (1, "filtered")]:
