@@ -31,3 +31,10 @@ clean_safe.bat
 jtag.cdf
 VideoBrain.qws
 /verilator/__pycache__
+/dse
+*.log
+VideoBrain.dse
+VideoBrain.archive.rpt
+dse1_base.qsf
+dse1_base.qpf
+VideoBrain.dse.rpt
