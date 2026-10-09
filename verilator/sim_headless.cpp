@@ -418,6 +418,7 @@ static void usage(const char* argv0) {
 "\n"
 "  --trace-cpu N        log the first N CPU memory cycles (PC0, ROMC)\n"
 "  --trace-from F       only start the trace at frame F\n"
+"  --audio-log FILE     log DAC latch events and interrupt state as CSV\n"
 "  --press KEY@F[:H]    hold KEY from frame F for H frames (default 8).\n"
 "                       ESC = MASTER CONTROL; H uses nominal field cycles.\n"
 "                       RUN/STOP is SPACE. Letters are their own names;\n"
@@ -462,7 +463,7 @@ static std::string basename_noext(const std::string& p) {
 int main(int argc, char** argv) {
     std::string res1 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
     std::string res2 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
-    std::string cart, outdir = "out", prefix, dump_path;
+    std::string cart, outdir = "out", prefix, dump_path, audio_path;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     long joy_trace_from = -1;
@@ -511,6 +512,7 @@ int main(int argc, char** argv) {
         else if (a == "--dump-file")   dump_path = need("--dump-file");
         else if (a == "--trace-cpu")   trace_cpu = atol(need("--trace-cpu"));
         else if (a == "--trace-from")  trace_from = atol(need("--trace-from"));
+        else if (a == "--audio-log")   audio_path = need("--audio-log");
         else if (a == "--press") {
             std::string v = need("--press");
             size_t at = v.find('@');
@@ -594,6 +596,13 @@ int main(int argc, char** argv) {
     if (!dump_path.empty()) {
         df = fopen(dump_path.c_str(), "w");
         if (!df) { fprintf(stderr, "error: cannot write %s\n", dump_path.c_str()); return 2; }
+    }
+
+    FILE* af = nullptr;
+    if (!audio_path.empty()) {
+        af = fopen(audio_path.c_str(), "w");
+        if (!af) { fprintf(stderr, "error: cannot write %s\n", audio_path.c_str()); return 2; }
+        fprintf(af, "cycle,frame,pc,code,hpos,vpos,cmd,yint,s23,s24,s25,s26\n");
     }
 
     Verilated::commandArgs(argc, argv);
@@ -718,6 +727,14 @@ int main(int argc, char** argv) {
 
         top->clk_sys = 1;
         top->eval();
+
+        if (af && CORE(audio_stb))
+            fprintf(af, "%ld,%ld,%04X,%u,%u,%u,%02X,%u,%02X,%02X,%02X,%02X\n", cycles, fg.frame,
+                    (unsigned)top->rootp->top__DOT__pc0, (unsigned)CORE(audio_code),
+                    (unsigned)top->rootp->top__DOT__hpos, (unsigned)top->rootp->top__DOT__vpos,
+                    (unsigned)UVR(r_cmd), (unsigned)UVR(r_y_int),
+                    (unsigned)CPU(scratch_regs)[0x23], (unsigned)CPU(scratch_regs)[0x24],
+                    (unsigned)CPU(scratch_regs)[0x25], (unsigned)CPU(scratch_regs)[0x26]);
 
         if (joy_capture)
             printf("[joy-capture] cycle=%llu frame=%ld x=%u y=%u cmd=%02X accepted=%u freeze_x=%u freeze_y=%u\n",
@@ -896,7 +913,7 @@ int main(int argc, char** argv) {
                         top->rootp->top__DOT__vpos < y + height &&
                         width != 0 && FET(x_l) >= FET(xdelta_l)) ? "ACCEPT" : "reject");
             }
-            if (CORE(hblank_falling)) lines_started++;
+            if (CORE(u_uv202__DOT__hblank_falling)) lines_started++;
         }
 
         // Trace on the CPU enable only: romc moves in between, so sampling
@@ -995,6 +1012,7 @@ int main(int argc, char** argv) {
 
     top->final();
     if (df != stdout) fclose(df);
+    if (af) fclose(af);
     delete top;
     return 0;
 }

@@ -51,7 +51,7 @@ VHD_SRC = \
 CONVERTED =
 
 CONVERTED_V = $(patsubst %,rtl_v/%.v,$(CONVERTED))
-V_SRC = sim.v $(GEN_V) $(CONVERTED_V)
+V_SRC = sim.v $(GEN_V) $(RTL)/videobrain_audio.sv $(CONVERTED_V)
 
 UNAME_S := $(shell uname -s)
 
@@ -128,7 +128,16 @@ test-cpu-clock: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_cpu_clock.vhd
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_cpu_clock --assert-level=error
 
+test-yint: $(GEN_V)
+	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_yint.vhd
+	$(GHDL) -r --std=08 --workdir=$(WORK) tb_yint --assert-level=error
+
+test-audio:
+	$V -cc --exe --build --top-module videobrain_audio --Mdir out/obj_audio \
+		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio.cpp)
+	./out/obj_audio/Vvideobrain_audio
+
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 
-.PHONY: all headless netlist lint test-cpu-clock clean
+.PHONY: all headless netlist lint test-cpu-clock test-yint test-audio clean

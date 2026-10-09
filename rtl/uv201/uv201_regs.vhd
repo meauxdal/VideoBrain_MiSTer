@@ -25,7 +25,7 @@ ENTITY uv201_regs IS
 
     -- Live raster position for status reads and freeze capture.
     cur_field : IN  std_logic;             -- 0=odd, 1=even (uv202_timing.field)
-    cur_vpos  : IN  unsigned(8 DOWNTO 0);  -- uv202_timing.vpos
+    cur_vpos  : IN  unsigned(8 DOWNTO 0);  -- current Y counter
 
     -- Falling EXT INT capture while FRZ is set.
     capture_stb : IN  std_logic;

@@ -343,19 +343,15 @@ video_mixer #(.GAMMA(0)) video_mixer
 ///////////////////////   AUDIO   ////////////////////////////////
 
 // Two-bit R-2R ladder on port 0 bits 1:0, clocked by port 1 bit 4.
-// Convert the four unipolar ladder codes to signed samples centered on zero.
-reg [15:0] audio_sample = 16'h0000;
-always @(posedge clk_sys) begin
-	if (reset) audio_sample <= 16'h0000;
-	else if (audio_stb) begin
-		case (audio_code)
-			2'd0: audio_sample <= 16'hE000;
-			2'd1: audio_sample <= 16'hF000;
-			2'd2: audio_sample <= 16'h0000;
-			2'd3: audio_sample <= 16'h1000;
-		endcase
-	end
-end
+wire [15:0] audio_sample;
+videobrain_audio audio
+(
+	.clk(clk_sys),
+	.reset(reset),
+	.code(audio_code),
+	.stb(audio_stb),
+	.sample(audio_sample)
+);
 
 assign AUDIO_L = audio_sample;
 assign AUDIO_R = audio_sample;

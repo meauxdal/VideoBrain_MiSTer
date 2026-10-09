@@ -27,3 +27,4 @@ set_global_assignment -name QIP_FILE rtl/pll.qip
 
 set_global_assignment -name SDC_FILE VideoBrain.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE VideoBrain.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_audio.sv

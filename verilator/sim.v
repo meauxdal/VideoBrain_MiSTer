@@ -140,7 +140,15 @@ module top(
    assign VGA_VS = vid_vs;
 
    // 2-bit R-2R DAC on port 0 bits 1:0, clocked by port 1 bit 4.
-   wire signed [15:0] dac = {2'b00, audio_code, 12'b0} - 16'sd6000;
+   wire signed [15:0] dac;
+   videobrain_audio audio
+   (
+      .clk(clk_sys),
+      .reset(reset),
+      .code(audio_code),
+      .stb(audio_stb),
+      .sample(dac)
+   );
    assign AUDIO_L = dac;
    assign AUDIO_R = dac;
 

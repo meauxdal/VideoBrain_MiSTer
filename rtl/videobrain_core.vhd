@@ -156,7 +156,8 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL int_vector : uv16;
   SIGNAL int_ack    : std_logic;
   SIGNAL ext_int    : std_logic;
-  SIGNAL yint_pulse : std_logic;
+  SIGNAL yint_irq : std_logic;
+  SIGNAL uv_current_y : unsigned(8 DOWNTO 0);
 
   SIGNAL uv_o_int_l  : std_logic;
   SIGNAL uv_o_frz_l  : std_logic;
@@ -242,14 +243,12 @@ BEGIN
     PORT MAP (
       clk            => clk,
       reset_na       => reset_na,
-      brclk_ena      => brclk_ena_l,
-      hblank_falling => hblank_falling,
-      cur_vpos       => vpos_l,
+      cur_vpos       => uv_current_y,
       y_int          => uv_y_int_l,
       yint_ho        => uv_yint_ho_l,
       cmd_int        => uv_o_int_l,
       cmd_frz        => uv_o_frz_l,
-      irq_pulse      => yint_pulse
+      irq_level      => yint_irq
       );
 
   u_uv202 : ENTITY work.uv202_top
@@ -300,7 +299,7 @@ BEGIN
       bb_addr        => bb_addr,
       bb_rdata       => bb_rdata,
       uv_cur_field   => field_l,
-      uv_cur_vpos    => vpos_l,
+      uv_cur_vpos    => uv_current_y,
       uv_capture_stb => joy_capture_stb,
       uv_capture_x   => joy_capture_x,
       uv_capture_y   => joy_capture_y,
@@ -348,7 +347,10 @@ BEGIN
   joy_enable <= joy_enable_l;
 
   -- EXT INT is wired-OR: the UV201 Y interrupt and the joystick 555.
-  ext_int <= yint_pulse OR joy_int;
+  ext_int <= yint_irq OR joy_int;
+
+  -- The UV201 Y counter advances at the leading edge of HBLANK.
+  uv_current_y <= vpos_l + 1 WHEN hpos_l >= HBLANK_START ELSE vpos_l;
 
   -- The 555 pulse is measured in MCLK ticks; MCLK is 4x BRCLK.
   -- TODO: verify the pot timing range on hardware.
