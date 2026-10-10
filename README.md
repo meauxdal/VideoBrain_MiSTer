@@ -22,12 +22,13 @@ Place VideoBrain.rbf in e.g. /media/fat/_Computers. A BIOS is required. Verified
 - uvres1.bin: MD5 `CDF2F70F616AB61D7FBF31A3763BFC21`, 2,048 bytes
 - uvres2.bin: MD5 `E4B8B681CCCF4E8ECB09C3FDC206B8B2`, 2,048 bytes
 
-A script to concatenate the circulating dumps is provided.
+A script to concatenate the circulating dumps is provided. Place boot0.rom in
+the VideoBrain games folder. Rename an existing firmware boot.rom to boot0.rom.
 
 ```text
-tools/make_boot_rom.sh uvres1.bin uvres2.bin boot.rom
+tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 ```
-- boot.rom: MD5 `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
+- boot0.rom: MD5 `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
 
 ## Keyboard
 

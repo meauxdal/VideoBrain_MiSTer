@@ -17,7 +17,7 @@ Joystick control now works with the default Stick timing=Curve setting.
 ## Setup
 
 Install VideoBrain_20261007.rbf in the MiSTer Computers folder. Keep the
-existing boot.rom setup. Set Joystick=On and Stick timing=Curve in the OSD.
+existing boot0.rom setup. Set Joystick=On and Stick timing=Curve in the OSD.
 In Gladiator, push fully forward and make a full-extreme circle on each
 controller at first-game start.
 

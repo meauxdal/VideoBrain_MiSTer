@@ -125,7 +125,7 @@ wire system_reset = RESET | status[0] | buttons[1] | ioctl_download | ~pll_locke
 wire reset = system_reset | master_control;
 
 
-// Main_MiSTer uploads boot<N>.rom at ioctl_index N<<6, so boot.rom arrives
+// Main_MiSTer uploads boot<N>.rom at ioctl_index N<<6, so boot0.rom arrives
 // at index 0. It holds RES1 then RES2, 2K each, and address bit 11 selects.
 // The cartridge comes from the OSD at index 1.
 wire boot_dl = ioctl_download && (ioctl_index[7:0] == 8'd0);
