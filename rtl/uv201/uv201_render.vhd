@@ -160,11 +160,9 @@ BEGIN
   obj_bit    <= shift_reg(7) WHEN shift_active = '1' ELSE fifo_entry.payload(7);
   obj_color  <= shift_color  WHEN shift_active = '1' ELSE fifo_entry.color;
 
-  -- A 0 bit inside an object takes the background, and the whole 5-bit
-  -- result is modified. The gaps between objects are not.
-  obj_idx <= obj_color WHEN obj_bit = '1' ELSE background(4 DOWNTO 0);
-  idx_c   <= (obj_idx XOR final_mod(4 DOWNTO 0)) WHEN in_object = '1'
+  obj_idx <= obj_color WHEN in_object = '1' AND obj_bit = '1'
              ELSE background(4 DOWNTO 0);
+  idx_c   <= obj_idx XOR final_mod(4 DOWNTO 0);
 
   off_l <= x"C0" WHEN idx_c(4) = '1' ELSE x"00";
   on_l  <= x"FF" WHEN idx_c(4) = '1' ELSE x"A0";

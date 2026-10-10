@@ -1,5 +1,8 @@
 # MiSTer-devel cleanup
 
+Cleanup paused at user request on October 10, 2026. Fix the Pinball
+background-color RTL defect in a separate chat before resuming phase 4.
+
 ## Rules
 
 Read AGENTS.md each session. Preserve behavior and existing structure.
@@ -34,7 +37,7 @@ Continue safe cleanup without waiting for interim authorship review.
 
 - [x] 1. Audit and remove unnecessary first-party code comments.
 - [x] 2. Verify retained comments against code and hardware evidence.
-- [ ] 3. Reduce docs and reconcile current status claims.
+- [x] 3. Reduce docs and reconcile current status claims.
 - [ ] 4. Clean whitespace and review source/script organization.
 - [ ] 5. Review upstream submission contents and dependency modifications.
 - [ ] 6. Run all local tests, build checks, and human self-review before PR.
@@ -94,7 +97,7 @@ hardware source is explicitly named; it does not certify human authorship.
 | rtl/uv201/uv201_pack.vhd:11-17 | Payload changes meaning with is_gap; colour combines intensity and hue. Fetcher assignments/render consumption and Kevtris rendering section support the contract. |
 | rtl/uv201/uv201_regs.vhd:97 | FRZ capture uses a negative interrupt edge. capture_stb source in core agrees; patent citation retained, patent text not located locally. |
 | rtl/uv201/uv201_yint.vhd:1 | Equality with INT=1/FRZ=0, not a pulse on crossing. Comparator and test-yint agree; patent citation still needs primary-source review. |
-| rtl/uv201/uv201_render.vhd:116,126,163-164 | First pixel is emitted before state advances; modifier affects object background, not gaps. idx_c/fresh_data and shift/gap updates agree. |
+| rtl/uv201/uv201_render.vhd:116,126 | First pixel is emitted before state advances. fresh_data and shift/gap updates agree. |
 | rtl/uv202/f8_busif.vhd:64-65,140,177-180,278-281 | Port source depends on ROMC; grant works while CPU held; dr_l differs from dw; PC1 backs over discarded fetch. Phase branches and f8_cpu dispatch agree. |
 | rtl/f8/f8_cpu.vhd:225-228 | Local addition: discarded opcode must be refetched on interrupt return. Diff from 2233fc3 and f8_busif ROMC_0F pc1 <= pc0-1 agree. |
 | rtl/uv202/uv202_clkgen.vhd:1-11,25-26 | Separate CPU oscillator, not integer /7; CPU_CLK_DIV unused. Kevtris text:96-140 and accumulator agree. Human replacement should explain fractional 4MHz half-cycle enables without history. |
@@ -219,3 +222,82 @@ This tracker is a local coordination artifact; remove from upstream submission.
 Phase 2 comment sweep complete. Uncertain hardware claims, source provenance
 and human authorship remain explicitly queued above. No Quartus/full game
 suite run; no behavior/test edits, refactoring, commits or PR work performed.
+
+## Phase 3 documentation cleanup
+
+Entry HEAD de7f1ca contains phase 2; working tree was clean. No commits or PRs
+made in phase 3. Source and tests unchanged.
+
+- README now distinguishes first-screen coverage from gameplay. Fixed MD5 typo.
+- User confirms Checkers fixed (October 10); removed the stale hang claim.
+- User confirms Pinball input works flawlessly; removed the digit-entry claim.
+  Actual RTL defect: hardware changes the full background color on ball/object
+  collisions; the core keeps it black and changes only small object borders.
+  Four user-supplied real-hardware screenshots preserved locally under
+  verilator/out/pinball/hardware/ (ignored). Separate fix chat requested.
+- Timeshare blanking may be expected without its Expander modem. Cause remains
+  unverified; do not label this a rendering defect or assert a network cause.
+- Trimmed cartridge capture history; kept sampling/input pitfalls, mapper
+  reference and unresolved Financier behavior. OSD setting is Fallback.
+- Consolidated joystick setup/mapping and measurement notes. Removed stale
+  trial plans, repeated status and conversational instructions. Kept arithmetic,
+  phase/model constraints, sampled results, source paths and raw-run locations.
+  Ignored raw evidence untouched; remaining physical uncertainties still open.
+- Corrected release filename and notes link. Recorded source baseline now
+  lives with release artifact metadata. Verified tracked RBF size 3090592 and
+  SHA-256 8a750e791493e3117374b50dd719adf87e66d69c2807121feecf7423defe3dac.
+  Baseline contains the curve; this does not prove reproducible RBF provenance.
+- Harness docs now state Linear 2580:7 default and Curve selector. Removed
+  unusable selftest regeneration instruction; ROM tracked, generator absent.
+  Conversion workflow retained: CONVERTED is empty but Makefile supports it.
+- Relocation candidates reviewed: existing code/docs cover the useful facts.
+  No new register maps, timing interpretation or copied reference material.
+
+Validation: git diff --check; local Markdown links, ASCII and release metadata
+checked. No new runtime tests for documentation-only edits. Phase 6 still
+requires all checks, resolving the stale CPU-clock test and graphical compiler
+failure, Quartus validation and human comment/provenance review.
+
+## Pinball fix
+
+Cleanup remains paused. No commits or PRs requested or made.
+
+`uv201_render` bypassed FINAL MODIFIER for gaps and an empty FIFO. Pinball
+keeps BACKGROUND at zero during gameplay and changes FINAL MODIFIER on
+collisions, leaving only object rectangles colored. Apply XOR after selecting
+object or background for every pixel; preserve blanking and video disable.
+No input, timing, palette or fetcher changes; no code comments added.
+
+[US4232374A](https://patents.google.com/patent/US4232374A/en), F2 and selection
+logic 86/gate 94, specifies XOR on the final output, including background.
+MAME's uv201.cpp applies it only to object rectangles; that implementation
+does not establish hardware behavior. The four local hardware references
+confirm full-background changes.
+
+`make test-render` passes all 32 modifier values, FIFO starvation, gaps,
+object bits, both X zoom modes, video disable and blanking. The same test
+fails with the original renderer at 146ns. Lint, test-yint, test-audio and
+headless build pass. Selftest: 9 frames, hash 6DAC9D6F, unchanged from phase 2.
+
+Pinball before/after runs use game 1 (Z), RUN/STOP and both paddles:
+
+    --frames 600 --press Z@140:8 --press SPACE@160:8 --joy FIRE@220:370 --joy2 FIRE@220:370 --shot-every 20 --dump-every 1
+
+`tests/pinball_background.py` passes: 600 matching CPU/UV201 state dumps,
+17 unchanged captures and 13 modified captures across six visible colors.
+All changed pixels were raw background; object pixels remain identical.
+Both runs complete 601 frames in 143646923 cycles. Frame 280 reproduces the
+original black background with green rectangles and the fixed full green
+background. Frame 340 shows a blue background and score 005.
+
+Quartus 17.0.2 full compilation passes: 0 errors, 33 warnings. Reported timing
+has zero TNS; minimum setup slack 0.322ns, hold 0.246ns. Fit/timing summaries
+are preserved with the ignored evidence. Test RBF:
+`verilator/out/pinball/VideoBrain_pinball_20261010.rbf`, 3159288 bytes, SHA-256
+`8a42ffc44e6fa2c4d3aa76382d35df36104ffc179e5a9db7ef81e8e1a3715177`.
+Tracked release artifacts remain unchanged.
+
+Ignored evidence: `verilator/out/pinball/`, including original `before_Vtop`,
+before/after dumps and captures, test logs and Quartus log. Physical MiSTer
+validation remains pending. The existing CPU-clock and graphical build
+failures remain outside this fix.

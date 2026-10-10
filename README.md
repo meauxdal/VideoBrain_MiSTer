@@ -4,10 +4,10 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 
 ## Status
 
-- All tested software boots and plays
+- Sixteen single-image cartridges boot and render; see [cartridge status](docs/CARTRIDGES.md) for test coverage and limitations
 - Working joystick
 - 15.7kHz analog video works
-- Known issues: Imperfect audio, Checkers seems to hang after a few turns
+- Known issues: Imperfect audio. Pinball background fix awaits MiSTer validation (see [cartridge status](docs/CARTRIDGES.md)).
 
 ## Joystick
 
@@ -27,7 +27,7 @@ A script to concatenate the circulating dumps is provided.
 ```text
 tools/make_boot_rom.sh uvres1.bin uvres2.bin boot.rom
 ```
-- boot.rom: MDS `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
+- boot.rom: MD5 `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
 
 ## Keyboard
 
