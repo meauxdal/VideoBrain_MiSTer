@@ -1,15 +1,3 @@
--- VideoBrain F8 I/O ports 00/01: keyboard, sound, joystick enable
--- Reference: MAME vidbrain.cpp keyboard_w(), keyboard_r(), sound_w(), checked
--- against the VideoBrain keyboard/joystick wiring notes retained in docs/.
---
--- Port 00 write:
---   bits 0..7 = keyboard column latch; bits 0..1 also hold 2-bit sound data.
--- Port 01 read:
---   bits 0..3 = OR of selected keyboard rows and joystick fire buttons.
--- Port 01 write:
---   bit 4 = sound clock; rising edge latches port-00 bits 1..0 to the DAC.
---   bits 5/6 = accessory outputs; bit 7 = joystick scan enable.
---
 -- The ninth keyboard column is selected by UV201 command bit KBD.  MAME's
 -- kbd_r() returns that bit directly, and the machine reads column 8 when it is
 -- LOW; uv_kbd therefore follows that same active-low selection convention.
@@ -29,14 +17,11 @@ ENTITY videobrain_io IS
     -- F8 ports 0 and 1 live inside the CPU, so this hangs off its port pins
     -- rather than the external I/O bus. f8_cpu already inverts them, so these
     -- are the active-low pin values.
-    port_a_n    : IN  uv8;   -- po_a_n: column latch, and sound data in bits 1:0
-    port_b_n    : IN  uv8;   -- po_b_n: sound clock, accessories, joystick enable
-    port_b_wr   : IN  std_logic; -- actual port-01 write event
-    port_b_in_n : OUT uv8;   -- pi_b_n: keyboard rows and fire buttons
+    port_a_n    : IN  uv8;
+    port_b_n    : IN  uv8;
+    port_b_wr   : IN  std_logic;
+    port_b_in_n : OUT uv8;
 
-    -- Keyboard matrix, 9 columns x 4 rows, flattened by column:
-    --   col0 = bits 3..0, col1 = bits 7..4, ... col8 = bits 35..32.
-    -- Inputs are active high, matching the logical level used by MAME.
     kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
     uv_kbd     : IN std_logic;
@@ -46,8 +31,6 @@ ENTITY videobrain_io IS
     accessory_p5  : OUT std_logic;
     accessory_p1  : OUT std_logic;
 
-    -- 2-bit R-2R DAC code. audio_stb pulses for one clk on the rising edge
-    -- of the port-01 sound-clock bit, exactly when hardware clocks the latch.
     audio_code : OUT std_logic_vector(1 DOWNTO 0);
     audio_stb  : OUT std_logic
     );
@@ -112,7 +95,6 @@ BEGIN
       END IF;
     END LOOP;
 
-    -- UV201 KBD = 0 selects the ninth column.
     IF uv_kbd = '0' THEN
       FOR row IN 0 TO 3 LOOP
         rows(row) := rows(row) OR kbd_matrix(32 + row);

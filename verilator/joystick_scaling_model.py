@@ -5,7 +5,6 @@ from joystick_gain_check import gain
 
 
 def raw(ticks):
-    # Fits retained base2580 endpoint and neutral measurements.
     return ticks // 4 - 5
 
 

@@ -1,8 +1,6 @@
--- VideoBrain UV202 - clock generator
 -- Reference: kevtris "Videobrain Unwrapped" V0.05, sections:
 --   "Conventions in this document" (MCLK/CPUCLK/BRCLK definitions)
 --   UV202 pin 4/5 (Xin/Xout), pin 7 (CPUCLK), pin 33 (BRCLK), pin 34 (COLCLK)
---
 -- Real hardware: UV202 is clocked from a 14.318181MHz crystal (Xin/Xout).
 -- Internally it divides by 4 to make BRCLK (3.579545MHz, also mirrored out
 -- as COLCLK for the NTSC encoder) and attempts to divide by 7 to make a
@@ -11,7 +9,6 @@
 -- F8 CPU from a *separate* 4MHz oscillator through a JK flip-flop (/2),
 -- giving a clean external 2.0MHz CPUCLK with no relation to UV202's internal
 -- dividers.
---
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -39,9 +36,6 @@ ENTITY uv202_clkgen IS
 
     cpu_ena    : OUT std_logic;
 
-    -- 2-bit BRCLK sub-phase counter, free-running, used by uv201_fetcher
-    -- for the modulo-4 UV201-register-read stretch behavior documented
-    -- under "UV201 register reads".
     brclk_phase : OUT uv2
     );
 END ENTITY uv202_clkgen;
@@ -86,10 +80,6 @@ BEGIN
 
   mclk_ena <= mclk_ena_l;
 
-  -- Stage 2: mclk_ena -> brclk_ena (divide by 4), plus free-running 2-bit
-  -- phase counter (kept ALWAYS running, independent of HBLANK, so
-  -- uv201_fetcher can read it directly - the real chip's "modulo 4 counter
-  -- that continuously runs" per the doc).
 
   PROCESS(clk, reset_na) IS
   BEGIN
@@ -114,11 +104,6 @@ BEGIN
   brclk_ena   <= brclk_ena_l;
   brclk_phase <= brclk_phase_l;
 
-  -- Stage 3: mclk_ena -> cpu_ena. The real CPU clock is an independent
-  -- 4MHz oscillator divided by two, so its 4MHz half-cycle rate cannot be
-  -- represented by an integer MCLK divisor. Use a phase accumulator to emit
-  -- half-cycle enables at exactly 4.0MHz on average. The resulting intervals
-  -- alternate between 3 and 4 MCLK ticks, as required by 14.318181/4.0.
 
   PROCESS(clk, reset_na) IS
     VARIABLE phase_v : natural;

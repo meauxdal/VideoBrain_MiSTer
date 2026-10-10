@@ -1,4 +1,3 @@
-# Requires: ghdl (VHDL-2008), verilator, sdl2 (graphical target only), zlib.
 
 V     = verilator
 GHDL  = ghdl
@@ -10,7 +9,6 @@ TOP      = --top-module top
 GEN_V    = $(GEN)/videobrain.v
 VHD_TOP  = videobrain_core
 
-# Analysis order matters: packages first, then leaves, then the assembly.
 VHD_SRC = \
 	$(RTL)/f8/base_pack.vhd \
 	$(RTL)/f8/f8_pack.vhd \
@@ -80,7 +78,6 @@ all: $(EXE)
 
 headless: $(HL_EXE)
 
-# VHDL -> Verilog netlist
 $(GEN_V): $(VHD_SRC) $(CONVERTED_V) Makefile
 	@mkdir -p $(GEN) $(WORK)
 	$(GHDL) -a --std=08 --workdir=$(WORK) -Wno-hide $(VHD_SRC)
@@ -90,13 +87,11 @@ $(GEN_V): $(VHD_SRC) $(CONVERTED_V) Makefile
 
 netlist: $(GEN_V)
 
-# Headless: no SDL/ImGui, screenshots and state dumps. Used for regressions.
 $(HL_EXE): $(V_SRC) $(HL_SRC) Makefile
 	$V -cc $(V_OPT) -exe --Mdir ./$(HL_DIR) $(TOP) \
 		-CFLAGS "-O2 -std=c++17" -LDFLAGS "-lz" $(V_SRC) $(HL_SRC)
 	$(MAKE) -C $(HL_DIR) -f Vtop.mk
 
-# Graphical: SDL2 + ImGui
 $(EXE): $(V_SRC) $(C_SRC) Makefile
 	$V -cc $(V_OPT) -LDFLAGS "$(LDFLAGS)" -exe --trace --Mdir ./obj_dir \
 		$(TOP) -CFLAGS "$(CXXFLAGS)" $(V_SRC) $(C_SRC)

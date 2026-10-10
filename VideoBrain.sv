@@ -18,7 +18,6 @@ module emu
 	`include "sys/emu_ports.vh"
 );
 
-///////// Default values for ports not used in this core /////////
 
 assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
@@ -34,16 +33,14 @@ assign HDMI_FREEZE = 0;
 assign HDMI_BLACKOUT = 0;
 assign HDMI_BOB_DEINT = 0;
 
-assign AUDIO_S   = 1;   // signed
+assign AUDIO_S   = 1;
 assign AUDIO_MIX = 0;
 
 assign LED_DISK  = 0;
 assign LED_POWER = 0;
 assign BUTTONS   = 0;
 
-//////////////////////////////////////////////////////////////////
 
-// The UV201 visible area is 189 dots by 242 lines on a 4:3 screen.
 wire [1:0] ar = status[122:121];
 assign VIDEO_ARX = (!ar) ? 12'd4 : (ar - 1'd1);
 assign VIDEO_ARY = (!ar) ? 12'd3 : 12'd0;
@@ -112,9 +109,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.ps2_key(ps2_key)
 );
 
-///////////////////////   CLOCKS   ///////////////////////////////
 
-// 14.318181 MHz is the UV202 master clock; BRCLK, and one pixel, is /4.
 wire clk_sys;
 wire pll_locked;
 pll pll
@@ -129,7 +124,6 @@ reg master_control = 0;
 wire system_reset = RESET | status[0] | buttons[1] | ioctl_download | ~pll_locked;
 wire reset = system_reset | master_control;
 
-///////////////////////   ROM LOADING   //////////////////////////
 
 // Main_MiSTer uploads boot<N>.rom at ioctl_index N<<6, so boot.rom arrives
 // at index 0. It holds RES1 then RES2, 2K each, and address bit 11 selects.
@@ -143,7 +137,6 @@ wire [7:0] dl_index = cart_dl               ? 8'd2 :
 wire [15:0] dl_addr = {4'd0, ioctl_addr[11:0]};
 wire        dl_wr   = (boot_dl | cart_dl) & ioctl_wr;
 
-///////////////////////   KEYBOARD   /////////////////////////////
 
 // 9 columns by 4 rows, bit = col * 4 + row, active high. Columns 0-7 are
 // selected by the CPU's port 0 latch, column 8 by UV201 CMD_KBD.
@@ -212,12 +205,10 @@ always @(posedge clk_sys) begin
 	end
 end
 
-// MiSTer analog axes are signed -127..127; pots take 0..255, 128 = centre.
 function automatic [7:0] axis_to_pot(input [7:0] axis);
 	axis_to_pot = ($signed(axis) >= -8'sd8 && $signed(axis) <= 8'sd8) ? 8'd128 : axis ^ 8'h80;
 endfunction
 
-// Digital overrides analog; up/left = 0, down/right = 255.
 function automatic [7:0] stick_pot(input neg, input pos, input [7:0] axis);
 	stick_pot = (neg == pos) ? axis_to_pot(axis) : (neg ? 8'd0 : 8'd255);
 endfunction
@@ -235,10 +226,8 @@ wire [7:0] joy4_h = stick_pot(joystick_3[1], joystick_3[0], joystick_l_analog_3[
 wire [63:0] joy_pots = status[5] ? {joy4_h, joy4_v, joy3_h, joy3_v, joy2_h, joy2_v, joy1_h, joy1_v}
                                  : {8{8'd128}};
 
-// Fire buttons share the row lines with the keyboard.
 wire [3:0] joy_fire = status[5] ? {joystick_3[4], joystick_2[4], joystick_1[4], joystick_0[4]} : 4'b0000;
 
-///////////////////////   CORE   /////////////////////////////////
 
 wire       ce_pix;
 wire       vid_field;
@@ -305,7 +294,6 @@ videobrain_core core
 	.dc0        ()
 );
 
-///////////////////////   VIDEO   ////////////////////////////////
 
 assign CLK_VIDEO = clk_sys;
 
@@ -340,9 +328,7 @@ video_mixer #(.GAMMA(0)) video_mixer
 	.VGA_DE(VGA_DE)
 );
 
-///////////////////////   AUDIO   ////////////////////////////////
 
-// Two-bit R-2R ladder on port 0 bits 1:0, clocked by port 1 bit 4.
 wire [15:0] audio_sample;
 videobrain_audio audio
 (

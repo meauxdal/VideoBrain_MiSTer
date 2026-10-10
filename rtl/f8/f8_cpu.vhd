@@ -44,9 +44,6 @@ END ENTITY;
 
 ARCHITECTURE rtl OF f8_cpu IS
 
-  -- Interrupts are not taken after these opcodes: each one loads PC1, W or an
-  -- I/O port, and servicing before the following instruction would lose it.
-  -- Same list as MAME f8.cpp execute_run().
   FUNCTION int_inhibited(op : uv8) RETURN boolean IS
   BEGIN
     RETURN op = x"0C" OR op = x"1B" OR op = x"1C" OR op = x"1D" OR

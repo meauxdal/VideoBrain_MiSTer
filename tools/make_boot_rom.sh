@@ -1,9 +1,4 @@
 #!/bin/sh
-# Build boot.rom for the MiSTer core: RES1 then RES2, 2048 bytes each.
-# Main_MiSTer uploads boot.rom at ioctl_index 0 when the core starts; the
-# core splits it on address bit 11.
-#
-#   tools/make_boot_rom.sh RES1.bin RES2.bin boot.rom
 set -e
 [ $# -eq 3 ] || { echo "usage: $0 <res1.bin> <res2.bin> <out>"; exit 1; }
 for f in "$1" "$2"; do

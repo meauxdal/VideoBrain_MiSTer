@@ -1,4 +1,3 @@
--- VideoBrain UV201 - Y interrupt comparator
 -- US4232374A: equality asserts the interrupt while INT=1 and FRZ=0.
 
 LIBRARY ieee;

@@ -1,10 +1,5 @@
--- VideoBrain UV201 - 10-entry render FIFO
 -- Reference: kevtris "Videobrain Unwrapped" V0.05,
 --            "The basics of UV201 rendering".
---
---   * after becoming full, writes remain stopped at occupancy 9 and resume
---     only after occupancy falls to 8 or less (the documented 10->8
---     hysteresis);
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -44,7 +39,6 @@ ARCHITECTURE rtl OF uv201_fifo IS
   SIGNAL rd_ptr : natural RANGE 0 TO UV201_FIFO_DEPTH - 1 := 0;
   SIGNAL count  : natural RANGE 0 TO UV201_FIFO_DEPTH := 0;
 
-  -- Hysteretic write gate: once full, remains low until <=8 entries.
   SIGNAL writable_l : std_logic := '1';
 BEGIN
 

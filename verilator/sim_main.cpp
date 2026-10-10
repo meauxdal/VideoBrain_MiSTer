@@ -1,4 +1,3 @@
-// Graphical Verilator harness for the VideoBrain core: SDL2 + ImGui.
 
 #include <verilated.h>
 #include "Vtop.h"
@@ -55,8 +54,6 @@ MemoryEditor mem_edit;
 SimBus bus(console);
 SimInput input(12, console);
 
-// The UV201 active raster: 228 BRCLK per line less 39 of HBLANK, and the
-// visible lines of one field.
 #define VGA_WIDTH   189
 #define VGA_HEIGHT  246
 #define VGA_ROTATE  0
@@ -101,7 +98,6 @@ int verilate() {
             if (clk_sys.clk) bus.AfterEval();
         }
 
-        // One pixel per BRCLK, marked by ce_pix.
         if (clk_sys.IsRising() && top->ce_pix) {
             uint32_t colour = 0xFF000000 | top->VGA_B << 16 | top->VGA_G << 8 | top->VGA_R;
             video.Clock(top->VGA_HB, top->VGA_VB, top->VGA_HS, top->VGA_VS, colour);
@@ -170,7 +166,7 @@ int main(int argc, char** argv, char** env) {
     bus.ioctl_din = &top->ioctl_din;
     input.ps2_key = &top->ps2_key;
 
-    top->kbd_matrix = 0;   // active high, nothing pressed
+    top->kbd_matrix = 0;
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
     top->joy_timer_base = 2580;
@@ -210,8 +206,6 @@ int main(int argc, char** argv, char** env) {
         video.StartFrame();
         input.Read();
 
-        // Host keys to the 9x4 VideoBrain matrix, bit = col * 4 + row.
-        // Layout from MAME vidbrain.cpp INPUT_PORTS_START.
         {
             static const struct { SDL_Scancode sc; int bit; } KEYMAP[] = {
                 {SDL_SCANCODE_I,0},{SDL_SCANCODE_O,1},{SDL_SCANCODE_P,2},{SDL_SCANCODE_SEMICOLON,3},
@@ -234,7 +228,6 @@ int main(int argc, char** argv, char** env) {
             top->kbd_matrix = m;
         }
 
-        // Arrows drive stick 1 (pot byte 0 vertical, 1 horizontal), LCTRL fires.
         {
             uint8_t v = 128, h = 128, fire = 0;
             if (!ImGui::GetIO().WantCaptureKeyboard) {
@@ -387,7 +380,6 @@ int main(int argc, char** argv, char** env) {
 
         video.UpdateTexture();
 
-        // Hold reset until the images have finished downloading.
         if (!bus.HasQueue() && !*bus.ioctl_download) top->reset = 0;
 
         if (run_enable) {

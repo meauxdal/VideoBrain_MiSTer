@@ -1,4 +1,3 @@
--- VideoBrain machine core assembly
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -19,12 +18,9 @@ ENTITY videobrain_core IS
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
 
-    -- Keyboard matrix, 9 columns x 4 rows, flattened by column, active high.
     kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
-    -- Stick positions, byte n selected by port-0 bit n, 128 = centre.
     joy_pots   : IN std_logic_vector(63 DOWNTO 0);
-    -- 555 model in MCLK ticks; externally adjustable by the headless sim.
     joy_timer_base : IN unsigned(13 DOWNTO 0);
     joy_timer_step : IN unsigned(6 DOWNTO 0);
     joy_timer_curve : IN std_logic;
@@ -215,7 +211,6 @@ BEGIN
       dc0o      => dc0
       );
 
-  -- Only the SMI answers external I/O so far; ports 0/1 are inside the CPU.
   io_rdata <= smi_rdata WHEN smi_sel = '1' ELSE (OTHERS => '1');
 
   u_smi : ENTITY work.f3853
@@ -342,13 +337,11 @@ BEGIN
   f8_po_b_n <= po_b_n_l;
   joy_enable <= joy_enable_l;
 
-  -- EXT INT is wired-OR: the UV201 Y interrupt and the joystick 555.
   ext_int <= yint_irq OR joy_int;
 
   -- The UV201 Y counter advances at the leading edge of HBLANK.
   uv_current_y <= vpos_l + 1 WHEN hpos_l >= HBLANK_START ELSE vpos_l;
 
-  -- The 555 pulse is measured in MCLK ticks; MCLK is 4x BRCLK.
   -- TODO: verify the pot timing range on hardware.
   -- The 555 is held in reset while EJOY is disabled and HBLANK is high.
   PROCESS (clk, reset_na) IS

@@ -1,4 +1,3 @@
--- VideoBrain F8 address/bus interface
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -33,14 +32,12 @@ ENTITY f8_busif IS
     ext_class : OUT bus_access_t;
     ext_grant : IN  std_logic;
 
-    -- F8 external I/O ports (4-15). Ports 0/1 are internal to the CPU.
     io_addr  : OUT uv8;
     io_rd    : OUT std_logic;
     io_wr    : OUT std_logic;
     io_wdata : OUT uv8;
     io_rdata : IN  uv8;
 
-    -- Interrupt vector from the F3853, latched on int_ack.
     int_vector : IN  uv16;
     int_ack    : OUT std_logic;
 
@@ -185,7 +182,7 @@ BEGIN
                   pc0 <= pc0 + sext(dr_l, 16);
                 WHEN ROMC_03 =>
                   pc0 <= pc0 + 1;
-                  port_l <= dr_l;   -- IN/OUT aa: the immediate is the port
+                  port_l <= dr_l;
                 WHEN ROMC_0C =>
                   pc0(7 DOWNTO 0) <= dr_l;
                 WHEN ROMC_0E =>
@@ -295,7 +292,6 @@ BEGIN
               pc0(7 DOWNTO 0) <= int_vector(7 DOWNTO 0);
             END IF;
 
-          -- ROMC 13: high vector byte, and the device drops its request.
           WHEN ROMC_13 =>
             IF phase = 2 THEN
               dr_l <= int_vector(15 DOWNTO 8);
@@ -305,7 +301,6 @@ BEGIN
               pc0(15 DOWNTO 8) <= int_vector(15 DOWNTO 8);
             END IF;
 
-          -- INS/OUTS n drive the port number onto the data bus here.
           WHEN ROMC_1C =>
             IF phase = 6 THEN
               port_l <= dw;

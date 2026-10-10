@@ -1,5 +1,4 @@
 `timescale 1ns/1ns
-// Simulation top for the VideoBrain core.
 
 module top(
    input         clk_sys /*verilator public_flat*/,
@@ -29,7 +28,6 @@ module top(
 
    input [10:0]  ps2_key,
 
-   // Keyboard matrix, 9 columns x 4 rows flattened by column, active high.
    input [35:0]  kbd_matrix /*verilator public_flat*/,
    input [3:0]   joy_fire /*verilator public_flat*/,
    input [63:0]  joy_pots /*verilator public_flat*/,
@@ -131,7 +129,6 @@ module top(
    assign VGA_HS = vid_hs;
    assign VGA_VS = vid_vs;
 
-   // 2-bit R-2R DAC on port 0 bits 1:0, clocked by port 1 bit 4.
    wire signed [15:0] dac;
    videobrain_audio audio
    (

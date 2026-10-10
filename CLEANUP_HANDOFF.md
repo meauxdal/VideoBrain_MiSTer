@@ -20,10 +20,20 @@ Do not infer authorship from style alone. Flag uncertain or necessary generated
 comments for human review; do not silently discard unique technical facts.
 PR descriptions and review comments must be human-written. Do not open a PR.
 
+## User clarification for phase 2
+
+Delete first-party code comments unless they are load-bearing: needed to
+understand a constraint, non-obvious behavior, or avoid a regression.
+Useful navigation alone is insufficient. Preserve licenses and attribution.
+Important explanation that does not belong in code can live in documentation;
+record relocation candidates here for the documentation phase.
+The user will review remaining comments after the repo sweep, not per phase.
+Continue safe cleanup without waiting for interim authorship review.
+
 ## Phases
 
 - [x] 1. Audit and remove unnecessary first-party code comments.
-- [ ] 2. Verify retained comments against code and hardware evidence.
+- [x] 2. Verify retained comments against code and hardware evidence.
 - [ ] 3. Reduce docs and reconcile current status claims.
 - [ ] 4. Clean whitespace and review source/script organization.
 - [ ] 5. Review upstream submission contents and dependency modifications.
@@ -61,76 +71,98 @@ No commits or PR publication requested.
 
 ## Progress
 
-Planning inspection complete. Working tree was clean before this tracker.
-Phase 1 pending in a new local chat.
+Phase 1 is in HEAD c13d54f. Phase 2 preserved that baseline and the incoming
+uncommitted tracker clarification. No commits or PRs made in phase 2.
 
-## Human review queue
+## Phase 2 audit and human review queue
 
-Retained first-party comments have unconfirmed human authorship. Confirm it;
-if generated, a human must replace necessary facts. Do not infer authorship
-from Git author names or style. Navigation labels need authorship review too.
-Locations below use the current working tree.
+First-party RTL, VideoBrain.sv, simulator harnesses, Makefile, tools and test
+scripts swept. Local F8 additions audited against 2233fc3 separately. Original
+F8, sys/, vendor/ImGui, generated PLL and build-directive comments preserved.
+No replacement code comments written. Remaining first-party authorship is
+unconfirmed; a human must replace necessary generated comments after the sweep.
+Locations below refer to the phase 2 working tree. Reference-only comments
+remain as source attribution. Evidence verifies implementation unless a local
+hardware source is explicitly named; it does not certify human authorship.
 
-Evidence for each row: implementation in the named file and its existing
-source references. Hardware/source claims are not yet independently verified;
-that is phase 2. Reason for retention: preserve constraints, non-obvious
-behavior, attribution, or useful navigation until human review.
-
-| File:lines | Retained facts / review topic |
+| File:lines | Load-bearing fact and evidence / human action |
 | --- | --- |
-| rtl/buffered_bus.vhd:1-9,21,25,30,35,40-42,79-80 | DMA visibility, WACK, open bus |
-| rtl/f3853.vhd:1-15,26-27,33,40,42,68,71,78,97,112 | timer/LFSR, vector bit, interrupt priority |
-| rtl/uv201/uv201_fetcher.vhd:1,24-25,202,239-242 | zoom, hardware width/height and zero sizes |
-| rtl/uv201/uv201_fifo.vhd:1-7,21-22,47,65-67,106-108 | 10-to-8 hysteresis, clear enable, reset contents |
-| rtl/uv201/uv201_pack.vhd:1,12-18 | FIFO payload and colour packing |
-| rtl/uv201/uv201_regs.vhd:1-3,18,24-25,27,32-38,40-41,46,54,63-65,103-107,112,130-131,141 | register map, status access, freeze edge, field packing |
-| rtl/uv201/uv201_render.vhd:1-13,28,45,64,90,113,131,141,153,173,180-181,193 | FIFO, zoom, colour modifier, palette |
-| rtl/uv201/uv201_yint.vhd:1-2 | equality and FRZ/INT gating |
-| rtl/uv202/f8_busif.vhd:1,36,43,67-68,143,180-183,188,281-284,298,308 | ROMC data source, PC1 backup, I/O sequencing |
-| rtl/uv202/uv202_arbiter.vhd:1 | module label |
-| rtl/uv202/uv202_clkgen.vhd:1-14,28-29,42-44,89-92,117-121 | CPU oscillator, BRCLK phase, unused CPU_CLK_DIV |
-| rtl/uv202/uv202_pack.vhd:1-3,14-23,26,28,32-33,35-36,38,40-41,44-45,49-51,55,57-59,61,64-66,70,73,76,79,82-85,88,107-108,110,112-114,116,119-120,122-130,132-135,137-140,142-150,152-161,164-167,174-176,182-186,194-196 | clocks, timing, maps, wait classes, CRC attribution |
-| rtl/uv202/uv202_timing.vhd:1-4,18,20-25,27-32,35-36,44,60-61,132-134,143-145,173-174 | field/HBLANK/burst timing, half-line TODO |
-| rtl/uv202/uv202_top.vhd:1,26-27,33-34 | second DMA channel, CPU enables |
-| rtl/videobrain_audio.sv:16 | filter poles |
-| rtl/videobrain_core.vhd:1,22,25,27,52-53,218,345,348,351-353,407 | record boundary, 555, wired-OR interrupt, pot TODO |
-| rtl/videobrain_io.vhd:1-15,29-35,37-39,49-50,87-88,97,115 | port/KBD polarity, matrix, audio write event |
-| tools/make_boot_rom.sh:2-6 | boot layout/index and usage |
-| verilator/joystick_calibration_check.py:59 | pre-game telemetry bounds |
-| verilator/joystick_gain_check.py:67 | PC telemetry vs LIS completion |
-| verilator/joystick_scaling_model.py:8 | base2580 measurement fit |
-| verilator/joystick_sweep.py:66 | search preference vs drift |
-| verilator/Makefile:1,13,36-37,49-50,83,93,99 | analysis order, CONVERTED, SDL includes |
-| verilator/sim_headless.cpp:1-2,33-36,45,75-76,85,110-111,115-116,204,211-212,223-225,245,304,309,342,598,614-615,636,679,697,854,856-857,875,893-894,915 | RAM packing, PNG, sample phases, reset, traces |
-| verilator/sim_main.cpp:1,9,58-59,104,173,185-186,213-214,237,390 | raster, inputs, download/reset order |
-| verilator/sim.v:2,32,134 | matrix layout, DAC |
-| verilator/strip_modules.py:1-2,9 | module splitting contract |
-| verilator/tests/tb_cpu_clock.vhd:40 | LIS short cycle |
-| VideoBrain.sv:21,37,44,46,115,117,132,134-136,146,148-150,161,165-168,170-173,175-179,181-184,186-189,191-194,196-199,201-204,206-209,215,220,225-226,238,241,308,343,345 | aspect, clocks, downloads, keyboard/pot/fire mapping, DAC |
+| rtl/buffered_bus.vhd:1-6,69-70 | DMA cannot see CPU UV201 window; FF is a placeholder. Decoder and local Kevtris text:850-882 agree. Keep open-bus constraint. |
+| rtl/f3853.vhd:1-4 | Single-SMI subset omits memory interface and daisy chain. Entity/core have one instance; MAME attribution retained. Timer equivalence unverified; see below. |
+| rtl/uv201/uv201_fetcher.vhd:23-24,237-240 | Zoom scales X; width/height zero encode maximum size. ST_DY/ST_DECIDE implement this; Kevtris text:1058-1062 confirms height. Archive date/width-zero claim needs source recovery. |
+| rtl/uv201/uv201_fifo.vhd:1-2,16-17,59-61,100-102 | Clear independent of enable; clear storage and 10-to-8 hysteresis. Process branches and Kevtris text:1769-1777 agree. |
+| rtl/uv201/uv201_pack.vhd:11-17 | Payload changes meaning with is_gap; colour combines intensity and hue. Fetcher assignments/render consumption and Kevtris rendering section support the contract. |
+| rtl/uv201/uv201_regs.vhd:97 | FRZ capture uses a negative interrupt edge. capture_stb source in core agrees; patent citation retained, patent text not located locally. |
+| rtl/uv201/uv201_yint.vhd:1 | Equality with INT=1/FRZ=0, not a pulse on crossing. Comparator and test-yint agree; patent citation still needs primary-source review. |
+| rtl/uv201/uv201_render.vhd:116,126,163-164 | First pixel is emitted before state advances; modifier affects object background, not gaps. idx_c/fresh_data and shift/gap updates agree. |
+| rtl/uv202/f8_busif.vhd:64-65,140,177-180,278-281 | Port source depends on ROMC; grant works while CPU held; dr_l differs from dw; PC1 backs over discarded fetch. Phase branches and f8_cpu dispatch agree. |
+| rtl/f8/f8_cpu.vhd:225-228 | Local addition: discarded opcode must be refetched on interrupt return. Diff from 2233fc3 and f8_busif ROMC_0F pc1 <= pc0-1 agree. |
+| rtl/uv202/uv202_clkgen.vhd:1-11,25-26 | Separate CPU oscillator, not integer /7; CPU_CLK_DIV unused. Kevtris text:96-140 and accumulator agree. Human replacement should explain fractional 4MHz half-cycle enables without history. |
+| rtl/uv202/uv202_pack.vhd:1-2,39-41,66,125-128,153-155 | Source/CRC attribution, 14-bit mirror, RES1 bypass, selective 2800 fold. Busif truncation/classify and cpu_addr_fold agree; Kevtris address-space section supports mirror. |
+| rtl/uv202/uv202_timing.vhd:1,26-28,32,56-57,128-130 | Half-line approximation; line_start at hpos 0; registered HBLANK edges align to output count. Wrap/edge logic and fetcher wiring agree. Keep approximation warning; human must resolve timing questions below. |
+| rtl/uv202/uv202_top.vhd:25-26 | Second DMA interface retained for real UV202. Kevtris text:601-613 and arbiter ports agree. |
+| rtl/sys_bus.vhd:98-99,138-139,194-197,206-211,251-252,367-368 | Open CPU cart-device window, 2K mirroring, no RAM reset, synchronous reads and separate memory processes, mapper-only expansion access. Decode/write logic and GHDL RAM-inference output agree. Quartus claims require phase 6 build evidence. |
+| rtl/videobrain_audio.sv:16 | Filter poles depend on MCLK, before resampling. Shifts 10/9 yield approximately 2.23/4.46kHz at 14.318181MHz; not a measured analog response. |
+| rtl/videobrain_core.vhd:48-49,342,345-346,400 | Record boundary, current-Y HBLANK advance, 555 reset/edge behavior. Entity/assignments/process agree; Quartus record restriction and pot calibration need hardware/build review. |
+| rtl/videobrain_io.vhd:1-3,17-19,70-71,80 | KBD active low, inverted F8 pins, sound-clock write event. CPU NOT alu, I/O NOT pins and DAC gate agree; hardware edge description must include both write event AND clock transition. |
+| VideoBrain.sv:128-130,141-143,154-202,216-217 | Boot index translation, packed matrix/scancodes, vertical/horizontal pot ordering. Decode/matrix logic and core I/O agree. External Main_MiSTer boot convention, board netlist/MAME mapping and Tennis source attribution need source recovery. Key labels decode otherwise opaque numeric constants. |
+| verilator/Makefile:34-35,47-48; verilator/strip_modules.py:7 | CONVERTED replacement contract and two SDL include spellings; flat module split assumption. Make rules/includes and generated netlist agree. CONVERTED remains empty. |
+| verilator/sim_headless.cpp:31-34,72-73,82,291,619,679,836,872-873 | Flattened RAM indexing, PNG format bytes, download settling, reset release by cycles, capture before eval and sampling domains. Netlist/get_obj_byte, PNG writer and loop ordering agree. |
+| verilator/sim_main.cpp:8,181-182 | Required global for sim_input; early file check because download failures only log. sim_input extern and QueueDownload agree. |
+| verilator/joystick_calibration_check.py:59; verilator/joystick_gain_check.py:46,56,67 | Pre-game bounds, BIOS stack return, bypass startup, telemetry before LIS completion. Trace parsing/generated ROM and local BIOS disassembly agree. |
+| verilator/sim/sim_video.h:37 | Resize must precede framebuffer allocation. Resize changes size; Initialise mallocs it. No current caller; retained API constraint. Provenance below. |
 
-- rtl/f8/f8_cpu.vhd:47-49,228-231: local interrupt inhibition and discarded
-  opcode/PC1 backup. Evidence: diff from 2233fc3, int_inhibited(), interrupt
-  dispatch, f8_busif ROMC 0F. Human authorship unconfirmed; preserve semantics.
-- rtl/uv202/uv202_clkgen.vhd:6-13,28-29,89-92,117-121: human replacement if
-  generated. Preserve separate 4MHz/2 CPU source, continuous BRCLK phase,
-  fractional half-cycle enables, and unused CPU_CLK_DIV. Evidence: phase
-  accumulator, BRCLK counter, uv202_top enable gate; hardware reference cited
-  in header. Header and stage prose still overlap; human can condense it.
-- rtl/uv202/uv202_pack.vhd:28,40-41 and rtl/f3853.vhd:26-27: phase 2 must
-  check cycle-origin, vsync-width and LFSR-stage claims against implementation
-  and hardware sources before any human replacement.
-- verilator/sim/*.{cpp,h}: preserved as potentially reused support source.
-  Evidence: sim_console.cpp:5-6 resembles the ImGui console example;
-  sim_video.cpp:346-348 credits ElectronAsh; sim_input.cpp:373-605 references
-  ADB/IIgs. Initial import 9c16982 supplies no usable pre-import baseline.
-  Identify provenance and local additions before removing any comments.
-  Includes historical Verilator comments in sim_bus.cpp:7, sim_bus.h:3,
-  sim_input.h:8,40 and raster constraint in sim_video.h:37-39.
-- CPU-clock test expects a fixed 28-MCLK short cycle, while clkgen uses
-  fractional 4MHz half-cycle enables. Untouched HEAD fails identically.
-  Reconcile the test and intended timing in a separate behavior/test task.
+## Queued investigations and documentation candidates
 
-## Validation
+- Clock generator: local Kevtris text (verilator/out/videobrain_unwrapped.txt,
+  ignored) distinguishes the stock 4MHz/2 CPU source from its modified shared
+  oscillator test rig. The accumulator emits 3- or 4-MCLK intervals, not a
+  strict alternation. CPU_CLK_DIV has no use. brclk_phase advances each BRCLK,
+  is exported and OPEN in the core; neither fetcher nor arbiter consumes it.
+  Removed false fetcher-use claim and duplicate stage prose. Human constraint
+  replacement: independent CPU rate and unused generic. Documentation candidate:
+  oscillator wiring and test-rig distinction. No new clock logic requested.
+- Timing origin: Kevtris normal-sync table:535-537 uses CSYNC 0-17 and HBLANK
+  222-227/0-32; rendering tables:1198-1201 explicitly reset cycle 0 at HBLANK
+  falling. RTL hpos 0 is line wrap; HBLANK falls at output hpos 33. Removed
+  claims equating these origins. Human replacement must distinguish the two.
+- Vsync width: Kevtris text:569-571 says 18 clocks but lists 105-113 and
+  219-227 (9 each). RTL uses width 18: comparisons cover old hpos 105-122 and
+  219-227, the latter clipped by wrap; registered csync is one BRCLK later.
+  Burst is also registered from old hpos and suppressed by 21-line vblank,
+  contrary to removed prose claiming first 9 lines. Half-line seams remain
+  unverified. Preserve these contradictions for a separate timing task; do
+  not pick a hardware interpretation or change constants in this phase.
+- F3853: removed 31-stage LFSR claim. timer_val is uv8, decremented to zero;
+  PRESCALE=31 counts brclk_ena, not CPU phi/2. Mode decode makes external and
+  timer enable mutually exclusive, so removed simultaneous-priority claim.
+  No local F3853 primary timer source found. Human replacement needs measured
+  clock source, prescaler and actual timer sequence; separate behavior task
+  must compare the current down-counter to hardware, not bless equivalence.
+- Local F8 inhibition prose wrongly grouped EI/POP/JMP as loading PC1/W/I/O.
+  Removed it; predicate unchanged. Human replacement needs authoritative
+  instruction-inhibition rationale. Keep fetch-discard/PC1 regression warning.
+- Simulator support: compared all non-ImGui sim/* files with local StudioII,
+  MacLC and MacQuadra800 counterparts. StudioII sim_bus.cpp differs only in
+  ioctl_index pointer width; sim_bus.h/sim_input.h historical Verilator
+  comments are shared. sim_video differs by Resize method/declaration/comments.
+  Kept its allocation-order constraint; removed machine-selection prose
+  because raster dimensions are constants and Resize has no caller. Shared
+  comments, ElectronAsh credit, ImGui example and ADB/IIgs material preserved.
+  These copies establish reuse, not the original upstream or human authorship.
+  Unmatched support comments retain uncertain provenance; see comparison log.
+- Relocate to docs only if useful: boot-ROM tool usage/layout, clock pin map,
+  register/command maps, wait-state truth table, mapper memory layout, active
+  raster dimensions, palette explanation, harness launch commands, and
+  joystick fit/search methodology. Existing code/README often suffices.
+  Removed source paths docs/uv201.cpp and docs/videobrain_unwrapped.txt do not
+  exist here; recover citations in documentation phase. Do not copy ignored
+  evidence into source without reviewing provenance.
+- CPU-clock test: fixed 28-MCLK expectation remains unchanged. Phase 1
+  reproduced the same failure on untouched HEAD; user considers it stale.
+  Reconcile with fractional enables in a separate behavior/test task.
+
+## Phase 1 validation
 
 - PASS: diff contains 260 comment-only deletions across 24 files, no source
   additions. Reviewed diff; interfaces, statements and directives unchanged.
@@ -153,3 +185,37 @@ run in this comment-only phase; phase 6 still requires all local checks.
 Human authorship/provenance review and the stale timing test remain open;
 phase 1 safe deletions are complete, not an upstream-readiness certification.
 This tracker is a local coordination artifact; remove from upstream submission.
+
+## Phase 2 validation
+
+- PASS: exact noncomment content preserved in all 30 changed source files,
+  compared with saved entry snapshots. Strings, code indentation, Python
+  tokens and compiler directives unchanged; only comment text and its trailing
+  separator whitespace removed. Entry source snapshots equal HEAD c13d54f.
+- PASS: git diff --check; changes limited to comments and this tracker.
+- PASS: make lint (GHDL analysis/synthesis and Verilator lint), test-yint,
+  test-audio and headless build. Existing warning classes remain, including
+  tick unassigned, PINCONNECTEMPTY, UNUSEDSIGNAL, UNSIGNED, CMPCONST and
+  SYNCASYNCNET. GHDL reports inferred system/cartridge/RES RAMs.
+- PASS: headless selftest.rom smoke, --frames 8: 9 frames, 1919817 cycles;
+  final frame 189x241, hash 6DAC9D6F, has content.
+- PASS: AST syntax check of 8 tracked Python scripts; bash -n of 11 tracked
+  shell scripts in tools/ and verilator/.
+- FAIL, pre-existing: test-cpu-clock at 2725ns, fixed 28-MCLK assertion.
+  Reproduced from untouched current HEAD in isolated GHDL work directory.
+  Comment deletion moves the reported line from 43 to 42; assertion unchanged.
+- FAIL, pre-existing: graphical make all, sim_console.cpp:20 IM_FMTARGS(2),
+  GCC rejects attributes on a function definition. Reproduced with untouched
+  HEAD sim_console.cpp and unchanged support headers. No compiler workaround
+  or source fix in this phase. This blocks graphical build validation, not
+  the comment sweep; resolve before phase 6 completion.
+- Initial overlapping Make invocations raced on gen/videobrain.v.tmp. Final
+  checks ran sequentially and supersede those failed attempts.
+- Ignored evidence: verilator/out/phase2_preservation.log,
+  phase2_checks_final.log, phase2_cpu_clock.log, phase2_baseline.log,
+  phase2_baseline/{cpu_clock,graphical}.log, phase2_smoke.log,
+  phase2_support_provenance.log; entry source snapshots in phase2_comments/.
+
+Phase 2 comment sweep complete. Uncertain hardware claims, source provenance
+and human authorship remain explicitly queued above. No Quartus/full game
+suite run; no behavior/test edits, refactoring, commits or PR work performed.

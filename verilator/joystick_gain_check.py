@@ -28,27 +28,27 @@ def prepare(out):
     def address(op, value):
         emit(op, value >> 8, value & 255)
 
-    address(0x28, 0x40D0)  # PI SETUPSTACK
-    emit(0x1A)  # DI
+    address(0x28, 0x40D0)
+    emit(0x1A)
     calls = []
     for i in range(len(cases)):
         calls.append(len(cart))
         address(0x28, 0)
         address(0x2A, 0xC00 + i * 3)
-        emit(0x17, 0x02, 0x17, 0x03, 0x17)  # Result, QU, QL.
+        emit(0x17, 0x02, 0x17, 0x03, 0x17)
     address(0x2A, 0xC80)
     emit(0x20, 0xA5, 0x17)
     address(0x29, 0x1000 + len(cart))
     for call, (span, delta) in zip(calls, cases):
         target = 0x1000 + len(cart)
         cart[call + 1:call + 3] = target.to_bytes(2, "big")
-        emit(0x08)  # LR K,P
+        emit(0x08)
         address(0x28, 0x40A9)  # PI PUSHK, for the BIOS POPK return.
         emit(0x62, 0x69, 0x20, delta >> 8, 0x5D,
-             0x20, delta & 255, 0x5E)  # Scratch17/18 = delta; ISAR17.
+             0x20, delta & 255, 0x5E)
         address(0x2A, span)
-        emit(0x0E)  # LR Q,DC
-        address(0x29, 0x225E)  # BIOS threshold selection through return.
+        emit(0x0E)
+        address(0x29, 0x225E)
     assert len(cart) <= 2048
     out.mkdir(parents=True, exist_ok=True)
     (out / "cart.bin").write_bytes(cart + bytes(2048 - len(cart)))

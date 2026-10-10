@@ -1,12 +1,9 @@
--- VideoBrain buffered-bus decoder / read mux
 -- Reference: kevtris "Videobrain Unwrapped" V0.05, "Buffered Bus".
---
 -- The UV201 does not see the CPU's full address space.  Its 13-bit graphics
 -- pointer addresses an 8K bus containing only RES2, system RAM, and cartridge
 -- ROM.  0800-0BFF is deliberately open during DMA because WACK is not asserted
 -- for UV201 fetches; UV201 registers and the cartridge-mapped CPU window are
 -- therefore not visible here.
---
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -18,28 +15,21 @@ USE work.uv202_pack.ALL;
 
 ENTITY buffered_bus IS
   PORT (
-    -- UV201 DMA address, BA0-BA12.
     bb_addr  : IN  unsigned(12 DOWNTO 0);
     bb_rdata : OUT uv8;
 
-    -- RES2 backing store: buffered 0000-07FF -> physical RES2 byte 000-7FF.
     res2_sel   : OUT std_logic;
     res2_addr  : OUT unsigned(10 DOWNTO 0);
     res2_rdata : IN  uv8;
 
-    -- System RAM backing store: buffered 0C00-0FFF -> RAM byte 000-3FF.
     ram_sel   : OUT std_logic;
     ram_addr  : OUT unsigned(9 DOWNTO 0);
     ram_rdata : IN  uv8;
 
-    -- Cartridge graphics view: buffered 1000-1FFF -> cartridge byte 000-FFF.
     cart_sel   : OUT std_logic;
     cart_addr  : OUT unsigned(11 DOWNTO 0);
     cart_rdata : IN  uv8;
 
-    -- High when the selected address is the deliberately unmapped
-    -- 0800-0BFF region.  Kept as a debug tap because real hardware returns
-    -- electrically undefined/open-bus data here.
     open_bus : OUT std_logic
     );
 END ENTITY buffered_bus;

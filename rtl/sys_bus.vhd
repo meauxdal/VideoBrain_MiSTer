@@ -1,6 +1,3 @@
--- VideoBrain unified CPU and buffered memory bus
--- CPU map: RES1, UV201, cartridge windows, 1K RAM, RES2.
--- Buffered bus shares RES2/RAM storage with the CPU side.
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -15,7 +12,6 @@ ENTITY sys_bus IS
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
 
-    -- f8_busif side (see f8_busif.vhd ext_* ports)
     ext_addr  : IN  unsigned(13 DOWNTO 0);
     ext_rd    : IN  std_logic;
     ext_wr    : IN  std_logic;
@@ -46,14 +42,11 @@ ENTITY sys_bus IS
     uv_obj_addr  : IN  uv8;
     uv_obj_rdata : OUT uv8;
 
-    -- HPS download port.  dl_index selects the target image:
-    -- 0 = RES1, 1 = RES2, 2 = cartridge.  Writes are ignored otherwise.
     dl_addr  : IN unsigned(15 DOWNTO 0);
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
 
-    -- Used when the downloaded cartridge image is not recognized.
     unknown_cart_profile : IN uv8
     );
 END ENTITY sys_bus;
@@ -98,9 +91,6 @@ ARCHITECTURE rtl OF sys_bus IS
 
   SIGNAL a_eff : unsigned(13 DOWNTO 0);
 
-  -- RES1: 0000-07FF (2K), zero-wait, not gated by ext_rd/ext_wr - always
-  -- driven from address, matching the "RES1 doesn't route through the
-  -- arbiter" decision in f8_busif.classify().
   TYPE rom_t IS ARRAY (0 TO 2047) OF uv8;
   SIGNAL res1_rom : rom_t := (OTHERS => (OTHERS => '0'));
   SIGNAL res2_rom : rom_t := (OTHERS => (OTHERS => '0'));
@@ -110,7 +100,6 @@ ARCHITECTURE rtl OF sys_bus IS
   TYPE cart_t IS ARRAY (0 TO 4095) OF uv8;
   SIGNAL cart_rom : cart_t := (OTHERS => (OTHERS => '0'));
 
-  -- 1K of cartridge RAM: two 2114s on Timeshare and Money Minder alike.
   TYPE cart_ram_t IS ARRAY (0 TO 1023) OF uv8;
   SIGNAL cart_ram : cart_ram_t := (OTHERS => (OTHERS => '0'));
   SIGNAL cart_ram_a  : unsigned(9 DOWNTO 0);
@@ -247,19 +236,17 @@ BEGIN
         IF cart_ram_rd = '1' THEN
           rdata_l <= cart_ram(to_integer(cart_ram_a));
         ELSE
-          rdata_l <= (OTHERS => '1');  -- nothing drives the expansion window
+          rdata_l <= (OTHERS => '1');
         END IF;
 
       ELSE
-        rdata_l <= (OTHERS => '1');  -- 2800-2FFF folds; nothing else is mapped
+        rdata_l <= (OTHERS => '1');
       END IF;
     END IF;
   END PROCESS;
 
   ext_rdata <= rdata_l;
 
-  -- Image download.  Held outside the RAM write process so a download cannot
-  -- race a CPU store to the same array.
 
   -- One process per array: a single process selecting between them defeats
   -- GHDL's RAM inference and the netlist balloons into unrolled muxes.
@@ -276,8 +263,6 @@ BEGIN
     END IF;
   END PROCESS;
 
-  -- Identify raw ROM dumps by the CRC-32 values in MAME's software list.
-  -- The selected profile remains available for images without a known hash.
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
@@ -335,7 +320,7 @@ BEGIN
         IF dl_addr(11) = '1' THEN
           cart_big <= '1';
         ELSIF dl_addr = x"0000" THEN
-          cart_big <= '0';   -- start of a new image
+          cart_big <= '0';
         END IF;
       END IF;
     END IF;
@@ -369,10 +354,6 @@ BEGIN
       open_bus    => bb_open_bus
       );
 
-  -- Registered, same reasoning as the CPU-side read mux above: this is a
-  -- second, independent read port into res2_rom/sys_ram/cart_rom, and must
-  -- be synchronous for Quartus to inline it as a real dual-port block RAM
-  -- read rather than replicated logic.
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
@@ -391,14 +372,11 @@ BEGIN
                       a_eff <= to_unsigned(16#1FFF#, 14));
   exp <= to_std_logic(a_eff >= to_unsigned(ADDR_EXP_LO, 14));
 
-  -- ROM address within the cartridge. A 2K image mirrors into the upper half.
   cart_a <= resize(a_eff(11 DOWNTO 0), 12) AND (cart_big & "11111111111");
   cart_cpu_a <= resize(a_eff(10 DOWNTO 0), 12)
                 WHEN cs1 = '1' AND cart_effective_type = CART_TIMESHARE
                 ELSE cart_a;
 
-  -- RAM lives on CS2 for Timeshare, and at 3800-3FFF for Money Minder. Both
-  -- have 1K, so both mirror within their window.
   cart_ram_rd <= (cs2 AND to_std_logic(cart_effective_type = CART_TIMESHARE)) OR
                  (exp AND a_eff(11) AND to_std_logic(cart_effective_type = CART_MONEYMINDER));
   cart_ram_a  <= a_eff(9 DOWNTO 0);

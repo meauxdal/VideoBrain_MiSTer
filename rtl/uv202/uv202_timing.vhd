@@ -1,6 +1,3 @@
--- VideoBrain UV202 timing generator
--- 228 BRCLK per line, 263/262-line alternating fields.
--- HBLANK/FIFO edge timing follows docs/videobrain_unwrapped.txt.
 -- TODO: verify the exact equalization/vsync half-line seam on hardware.
 
 LIBRARY ieee;
@@ -15,24 +12,23 @@ ENTITY uv202_timing IS
   PORT (
     clk        : IN  std_logic;
     reset_na   : IN  std_logic;
-    brclk_ena  : IN  std_logic;   -- from uv202_clkgen
+    brclk_ena  : IN  std_logic;
 
-    hblank     : OUT std_logic;   -- pin 17, high during hblank
-    vblank     : OUT std_logic;   -- pin 18, high for 21 lines/field
-    burst      : OUT std_logic;   -- pin 19
-    csync      : OUT std_logic;   -- pin 20, composite sync (active high pulses)
-    scanline   : OUT std_logic;   -- pin 23, toggles at start of each line (debug)
-    field      : OUT std_logic;   -- pin 24, 0=odd 1=even
+    hblank     : OUT std_logic;
+    vblank     : OUT std_logic;
+    burst      : OUT std_logic;
+    csync      : OUT std_logic;
+    scanline   : OUT std_logic;
+    field      : OUT std_logic;
 
-    -- internal timing taps for uv202_arbiter / uv201_fetcher
-    hpos       : OUT unsigned(7 DOWNTO 0);  -- 0-227, cycle within line
-    vpos       : OUT unsigned(8 DOWNTO 0);  -- 0-262, line within field
+    hpos       : OUT unsigned(7 DOWNTO 0);
+    vpos       : OUT unsigned(8 DOWNTO 0);
     -- 1-cycle pulse at hpos 0, i.e. the start of the HBLANK tail. vpos has
     -- already advanced, so this is the point to begin fetching the next line:
     -- it leaves the whole 33-cycle tail to fill the FIFO before active video.
     line_start     : OUT std_logic;
 
-    hblank_falling : OUT std_logic;   -- 1-cycle pulse, = "cycle 0" per doc convention
+    hblank_falling : OUT std_logic;
     hblank_rising  : OUT std_logic    -- 1-cycle pulse, FIFO-clear trigger for uv201
     );
 END ENTITY uv202_timing;
@@ -41,7 +37,7 @@ ARCHITECTURE rtl OF uv202_timing IS
 
   SIGNAL hpos_l    : unsigned(7 DOWNTO 0) := (OTHERS => '0');
   SIGNAL vpos_l     : unsigned(8 DOWNTO 0) := (OTHERS => '0');
-  SIGNAL field_l    : std_logic := '0';         -- 0=odd(263 lines), 1=even(262 lines)
+  SIGNAL field_l    : std_logic := '0';
 
   SIGNAL hblank_l   : std_logic := '1';
   SIGNAL vblank_l   : std_logic := '1';
@@ -140,9 +136,6 @@ BEGIN
           hblank_fall_l <= '1';
         END IF;
 
-        -- BURST: high cycles BURST_START..BURST_START+BURST_WIDTH-1,
-        -- except during the first 9 lines where VBLANK is high (per doc:
-        -- "except the first 9 scanlines VBLANK is high" - i.e. vsync+eq)
         IF hpos_l >= to_unsigned(BURST_START, 8) AND
            hpos_l <  to_unsigned(BURST_START + BURST_WIDTH, 8) THEN
           burst_l <= NOT vblank_l;
@@ -170,8 +163,6 @@ BEGIN
                        );
 
           WHEN LK_VSYNC =>
-            -- CSYNC high for the majority of the line, low (inverted)
-            -- pulses of VSYNC_PULSE_WIDTH at the two pulse start points
             csync_l <= NOT (
                          to_std_logic(
                            hpos_l >= to_unsigned(VSYNC_PULSE1_START, 8) AND

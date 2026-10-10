@@ -1,16 +1,3 @@
--- VideoBrain UV201 pixel path
--- Drains the render FIFO into pixels. One entry is consumed per pixel until
--- it is exhausted: a gap entry covers `payload` background pixels, a data
--- entry covers 8 (16 with X zoom). The FIFO is show-ahead, so the head can be
--- used in the same cycle it is popped.
---
--- Colour follows MAME uv201.cpp screen_update(): bytes are MSB first, a 0 bit
--- takes the background register, the 5-bit result is XORed with the final
--- modifier, and the gaps between objects take the background unmodified.
---
--- The palette is initialize_palette(): bit 4 picks the intensity pair and
--- bits 2:0 are blue/green/red. Only two intensity steps are distinct, so a
--- high-intensity black is grey rather than black.
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -25,7 +12,7 @@ ENTITY uv201_render IS
     clk      : IN std_logic;
     reset_na : IN std_logic;
 
-    brclk_ena : IN std_logic;   -- one pixel per BRCLK
+    brclk_ena : IN std_logic;
 
     hblank : IN std_logic;
     vblank : IN std_logic;
@@ -42,7 +29,7 @@ ENTITY uv201_render IS
     video_en   : IN std_logic;
 
     ce_pix : OUT std_logic;
-    idx    : OUT std_logic_vector(4 DOWNTO 0);  -- palette index, for debug
+    idx    : OUT std_logic_vector(4 DOWNTO 0);
     r      : OUT unsigned(7 DOWNTO 0);
     g      : OUT unsigned(7 DOWNTO 0);
     b      : OUT unsigned(7 DOWNTO 0);
@@ -61,7 +48,7 @@ ARCHITECTURE rtl OF uv201_render IS
   SIGNAL shift_color  : std_logic_vector(4 DOWNTO 0) := (OTHERS => '0');
   SIGNAL shift_active : std_logic := '0';
   SIGNAL gap_cnt      : uv8 := (OTHERS => '0');
-  SIGNAL dbl          : std_logic := '0';   -- X zoom: second pixel of a pair
+  SIGNAL dbl          : std_logic := '0';
 
   SIGNAL active     : std_logic;
   SIGNAL need_entry : std_logic;
@@ -87,7 +74,6 @@ BEGIN
   need_entry <= active AND NOT shift_active AND
                 to_std_logic(gap_cnt = 0) AND fifo_valid;
 
-  -- The FIFO only acts on a pop while brclk_ena is high.
   fifo_pop <= need_entry AND brclk_ena;
 
   PROCESS (clk, reset_na) IS
@@ -110,7 +96,6 @@ BEGIN
           dbl          <= '0';
 
         ELSIF shift_active = '1' THEN
-          -- With X zoom each bit covers two pixels; advance on the second.
           IF x_zoom = '1' AND dbl = '0' THEN
             dbl <= '1';
           ELSE
@@ -150,7 +135,6 @@ BEGIN
           END IF;
         END IF;
 
-        -- Latch the pixel this period emitted, plus the sync it belongs to.
         idx_l <= idx_c;
         IF show = '1' THEN
           r_l <= r_c;
@@ -170,7 +154,6 @@ BEGIN
     END IF;
   END PROCESS;
 
-  -- Pixel currently being emitted, chosen the same way as the state update.
   fresh_data <= (NOT shift_active) AND to_std_logic(gap_cnt = 0) AND
                 fifo_valid AND (NOT fifo_entry.is_gap);
   in_object  <= shift_active OR fresh_data;
@@ -190,7 +173,6 @@ BEGIN
   g_c <= on_l WHEN idx_c(1) = '1' ELSE off_l;
   b_c <= on_l WHEN idx_c(2) = '1' ELSE off_l;
 
-  -- COMMAND_ENB clear blanks the screen, as in screen_update().
   show <= active AND video_en;
 
   ce_pix <= ce_pix_l;

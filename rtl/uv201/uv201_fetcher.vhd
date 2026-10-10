@@ -1,4 +1,3 @@
--- VideoBrain UV201 object fetcher
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -199,7 +198,6 @@ BEGIN
           WHEN ST_DY =>
             dy_l <= obj_rdata;
 
-            -- Reject off-line objects before pointer and width reads.
             height_t := to_integer(obj_rdata(5 DOWNTO 0));
             IF height_t = 0 THEN
               height_t := 64;

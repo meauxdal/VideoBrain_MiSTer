@@ -1,4 +1,3 @@
--- VideoBrain UV202 - structural top
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -30,8 +29,6 @@ ENTITY uv202_top IS
     dmareq0 : OUT std_logic;
     dmareq1 : OUT std_logic;
 
-    -- Clock-enable outputs.  cpu_ce is the CPU enable after UV202 wait-state
-    -- gating; cpu_ena_raw is the free-running CPU oscillator enable.
     mclk_ena    : OUT std_logic;
     brclk_ena   : OUT std_logic;
     brclk_phase : OUT uv2;
