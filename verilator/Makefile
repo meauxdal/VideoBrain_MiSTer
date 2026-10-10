@@ -108,6 +108,10 @@ test-yint: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_yint.vhd
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_yint --assert-level=error
 
+test-render: $(GEN_V)
+	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_render.vhd
+	$(GHDL) -r --std=08 --workdir=$(WORK) tb_render --assert-level=error
+
 test-audio:
 	$V -cc --exe --build --top-module videobrain_audio --Mdir out/obj_audio \
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio.cpp)
@@ -116,4 +120,4 @@ test-audio:
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 
-.PHONY: all headless netlist lint test-cpu-clock test-yint test-audio clean
+.PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio clean

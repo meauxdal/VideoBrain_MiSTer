@@ -19,9 +19,10 @@ Run from this directory; the default ROM paths are relative to it.
 Known cartridge ROMs are identified by CRC-32. `--cart-type` selects the slot
 profile only for unrecognized images.
 
-Joystick pulse timing is runtime-configurable without rebuilding:
-`--joy-timer-base 2580 --joy-timer-step 18`. Values are MCLK ticks. With
-`--joy-trace`, `[joy-measure]` reports the selected axis, pot value, timer
+Joystick pulse timing is runtime-configurable without rebuilding. Headless
+defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; use
+`--joy-timer-curve` to match MiSTer's default Curve setting. Values are MCLK
+ticks. With `--joy-trace`, `[joy-measure]` reports the selected axis, pot value, timer
 parameters, and measured pulse length. `bash joystick_sweep.sh [base:step ...]`
 cycles candidates independently on all eight axes in one Gladiator run, with
 neutral and each direction held in turn. The combined log is
@@ -31,9 +32,13 @@ neutral and each direction held in turn. The combined log is
 
 A hand-assembled F8 program that sets up one 16x16 object and halts, so the
 CPU, bus, UV201 registers, fetcher, FIFO and renderer can be exercised without
-the BIOS. Regenerate it with the snippet in git history if the layout changes.
+the BIOS. The 2K ROM is tracked; no regeneration script is provided.
 
     ./obj_dir_headless/Vtop --res1 selftest.rom --frames 8 --shot-last --ascii
+
+`make test-render` checks UV201 background/object modifiers, zoom and blanking.
+`python3 tests/pinball_background.py out/pinball` checks matching before/after
+state dumps and collision captures from the Pinball regression run.
 
 ## Converting VHDL to Verilog one file at a time
 
@@ -47,6 +52,5 @@ Check equivalence by frame hash, before and after:
     ./obj_dir_headless/Vtop --res1 selftest.rom --frames 8 --frame-log
     ./obj_dir_headless/Vtop --frames 60 --frame-log
 
-Convert leaves first (`buffered_bus`, `uv201_fifo`, `uv202_clkgen`), the CPU
-last: `f8_cpu.vhd` and its packages are upstream Channel F blobs, and there is
-no Verilog F8 anywhere to check against.
+`CONVERTED` is currently empty. The F8 CPU and packages derive from the
+Channel F core; preserve attribution when changing them.

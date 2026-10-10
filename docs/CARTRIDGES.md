@@ -1,12 +1,14 @@
 # Cartridge status
 
-Every cartridge in the set was run in the headless simulator and the screens
-were inspected, not just hashed. Nothing here has been tested on real hardware.
+The sixteen single-image cartridges were run in the headless simulator and
+their screens inspected. These first-screen results do not establish gameplay
+coverage. Checkers is confirmed fixed by the user as of October 10, 2026;
+the earlier hang is no longer a known issue.
 
     verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
 Known raw dumps are identified by CRC-32 and use the matching slot behavior.
-`--cart-type` and the OSD's Unknown cart profile apply only to unrecognized
+`--cart-type` and the OSD's Fallback setting apply only to unrecognized
 images: 0 standard, 1 Timeshare, 2 Money Minder.
 
 Fingerprints for all sixteen released single-image cartridges come from MAME's
@@ -28,7 +30,7 @@ CRC-32 is used to identify the loaded image, not to validate its integrity.
 | Math Tutor 1 | 4K | standard | correct | "CHOOSE / TUTOR 1 / PROBLEM 2" on olive. |
 | Money Minder | 4K | money_minder | correct | "MONEY MANAGER" title. RAM at 3800-3FFF is reachable; deeper functions untested. |
 | Music Teacher 1 | 2K | standard | correct | "PLAY/RECORD 1 / LEARN A SONG 2". |
-| Pinball | 2K | standard | correct | Menu fine, but a typed game number is never accepted. See below. |
+| Pinball | 2K | standard | correct | Input works flawlessly. Collision-driven full-background changes fixed in simulation; MiSTer validation pending. |
 | Tennis | 4K | standard | **plays** | RUN/STOP starts the game: court, net, scoreboard, player sprites. |
 | Timeshare | 2K | timeshare | correct | "TIMESHARE" title on cyan, then the screen blanks around frame 130. See below. |
 | Vice Versa | 4K | standard | correct | Advances to "YOU PLAY FIRST ? Y OR N". |
@@ -37,21 +39,12 @@ CRC-32 is used to identify the loaded image, not to validate its integrity.
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
 | APL / Computational Language | - | comp_language | **not loadable** | Dumped as separate .u1-.u11 chip images, and the mapper is not implemented. |
 
-## A note on method
+## Capture method
 
-An earlier version of this table called Financier corrupted, Music Teacher 1
-partial and Timeshare blank. All three were wrong, and for two different
-reasons worth recording.
-
-Timeshare was sampled at frames 150 and 280, both after its title screen had
-already gone. Sampling a moving display at two fixed frames is not enough; the
-frame log (`--frame-log`) shows when a screen actually changes.
-
-Financier and Music Teacher 1 were judged on a capture taken after holding
-SPACE. RUN/STOP is a valid input for Tennis and Checkers but meaningless to a
-cartridge waiting for a typed function name, so those captures showed whatever
-state an invalid keypress produced, not a rendering fault. Judge a cartridge on
-the screen it actually presents.
+Use `--frame-log` to locate screen changes. Timeshare's title disappears
+before frame 150; Lemonade Stand needs about 280 frames to reach its menu.
+Use the input each cartridge requests. Holding SPACE in Financier or Music
+Teacher 1 does not establish a rendering fault.
 
 ## Open questions
 
@@ -59,15 +52,15 @@ the screen it actually presents.
 
 The title renders correctly on cyan, then the screen goes blank around frame
 130 and stays blank. Timeshare is the communications cartridge and expects the
-Expander modem, which does not exist here, so stopping early is plausible. That
-has not been confirmed.
+Expander modem, which is not emulated. Blanking may be expected while waiting
+for it; the cause has not been confirmed.
 
-### Pinball will not take a typed digit
+### Pinball background color
 
-The menu is correct and Tennis proves keyboard input works, so this is specific
-to entering a number. `CMD_KBD` is clear, so keyboard column 8 is being scanned
-and that is not the cause. The BIOS keycode is `row * 9 + column`, which is
-worth checking against what the cartridge expects.
+Input works flawlessly. Collision-driven full-background changes are fixed in
+simulation. The final modifier now applies to gaps and empty-FIFO pixels as
+well as objects. User-supplied VideoBrain screenshots show the expected
+full-background colors. Validation on MiSTer remains pending.
 
 ### Financier after an invalid key
 

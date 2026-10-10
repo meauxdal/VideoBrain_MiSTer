@@ -24,5 +24,6 @@ controller at first-game start.
 ## Artifact
 
 - File: VideoBrain_20261007.rbf
+- Recorded source baseline: `c24e29a5ed053d04da9a91f4cea300535a918994`
 - Size: 3,090,592 bytes
 - SHA-256: `8a750e791493e3117374b50dd719adf87e66d69c2807121feecf7423defe3dac`
