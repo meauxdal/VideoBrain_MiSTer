@@ -134,7 +134,7 @@ wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
 wire [7:0] dl_index = cart_dl               ? 8'd2 :
                       ioctl_addr[11]        ? 8'd1 : 8'd0;
 
-wire [15:0] dl_addr = {4'd0, ioctl_addr[11:0]};
+wire [15:0] dl_addr = cart_dl ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
 wire        dl_wr   = (boot_dl | cart_dl) & ioctl_wr;
 
 

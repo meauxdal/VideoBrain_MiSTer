@@ -117,7 +117,15 @@ test-audio:
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio.cpp)
 	./out/obj_audio/Vvideobrain_audio
 
+test-cartridges:
+	@mkdir -p out/cartridges
+	$(GHDL) -a --std=08 --workdir=out/cartridges $(RTL)/f8/base_pack.vhd \
+		$(RTL)/uv201/uv201_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
+		$(RTL)/uv201/uv201_regs.vhd $(RTL)/buffered_bus.vhd \
+		$(RTL)/sys_bus.vhd tests/tb_cartridges.vhd
+	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error
+
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 
-.PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio clean
+.PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio test-cartridges clean

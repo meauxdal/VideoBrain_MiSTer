@@ -61,6 +61,8 @@ PACKAGE uv202_pack IS
   CONSTANT CART_STD        : natural := 0;
   CONSTANT CART_TIMESHARE  : natural := 1;
   CONSTANT CART_MONEYMINDER: natural := 2;
+  CONSTANT CART_COMPLANG   : natural := 3;
+  CONSTANT CART_INFOMAN    : natural := 4;
   CONSTANT CART_UNRECOGNIZED: natural := 255;
 
   -- CRC-32 fingerprints from MAME's hash/vidbrain.xml software list.
@@ -80,6 +82,8 @@ PACKAGE uv202_pack IS
   CONSTANT CART_CRC_MONEYMINDER   : uv32 := x"4F588081";
   CONSTANT CART_CRC_FINANCIER     : uv32 := x"721A4A14";
   CONSTANT CART_CRC_DEMONSTRATION : uv32 := x"A59EB765";
+  CONSTANT CART_CRC_COMPLANG      : uv32 := x"9106CD4B";
+  CONSTANT CART_CRC_INFOMAN       : uv32 := x"B5CB57CE";
 
 
 

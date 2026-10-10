@@ -66,7 +66,7 @@ ARCHITECTURE rtl OF sys_bus IS
     RETURN c;
   END FUNCTION;
 
-  FUNCTION is_standard_cart(crc : uv32; size : uv13) RETURN boolean IS
+  FUNCTION is_standard_cart(crc : uv32; size : unsigned) RETURN boolean IS
     VARIABLE hash : uv32 := NOT crc;
   BEGIN
     IF size = to_unsigned(16#0800#, size'length) THEN
@@ -95,9 +95,8 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL res1_rom : rom_t := (OTHERS => (OTHERS => '0'));
   SIGNAL res2_rom : rom_t := (OTHERS => (OTHERS => '0'));
 
-  -- cartridge ROM: 1000-1FFF (4K).  The 0900-0BFF cart-mapped window stays
-  -- open bus; it addresses cart-supplied hardware, not this array.
-  TYPE cart_t IS ARRAY (0 TO 4095) OF uv8;
+  -- APL uses seven 2K chips; the final 2K of its image is padding.
+  TYPE cart_t IS ARRAY (0 TO 16383) OF uv8;
   SIGNAL cart_rom : cart_t := (OTHERS => (OTHERS => '0'));
 
   TYPE cart_ram_t IS ARRAY (0 TO 1023) OF uv8;
@@ -131,7 +130,7 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL cs1, cs2, exp : std_logic;
   SIGNAL cart_dl_prev : std_logic := '0';
   SIGNAL cart_crc     : uv32 := (OTHERS => '1');
-  SIGNAL cart_size    : uv13 := (OTHERS => '0');
+  SIGNAL cart_size    : unsigned(16 DOWNTO 0) := (OTHERS => '0');
   SIGNAL cart_auto_type : uv8 := to_unsigned(CART_UNRECOGNIZED, 8);
   SIGNAL cart_effective_type : uv8;
 
@@ -139,17 +138,15 @@ ARCHITECTURE rtl OF sys_bus IS
   -- and its upper half must mirror the lower rather than read as zero.
   SIGNAL cart_big : std_logic := '0';
   SIGNAL cart_a   : unsigned(11 DOWNTO 0);
-  SIGNAL cart_cpu_a : unsigned(11 DOWNTO 0);
+  SIGNAL cart_cpu_a : unsigned(13 DOWNTO 0);
+  SIGNAL cart_bank : natural RANGE 0 TO 2 := 0;
+  SIGNAL cart_exp_rom : std_logic;
 
 BEGIN
 
   a_eff <= cpu_addr_fold(ext_addr);
-  cart_effective_type <= to_unsigned(CART_STD, 8)
-                         WHEN cart_auto_type = to_unsigned(CART_STD, 8)
-                         ELSE to_unsigned(CART_TIMESHARE, 8)
-                         WHEN cart_auto_type = to_unsigned(CART_TIMESHARE, 8)
-                         ELSE to_unsigned(CART_MONEYMINDER, 8)
-                         WHEN cart_auto_type = to_unsigned(CART_MONEYMINDER, 8)
+  cart_effective_type <= cart_auto_type
+                         WHEN cart_auto_type /= to_unsigned(CART_UNRECOGNIZED, 8)
                          ELSE unknown_cart_profile;
 
 
@@ -235,6 +232,8 @@ BEGIN
       ELSIF a_eff >= to_unsigned(ADDR_EXP_LO, 14) THEN
         IF cart_ram_rd = '1' THEN
           rdata_l <= cart_ram(to_integer(cart_ram_a));
+        ELSIF cart_exp_rom = '1' THEN
+          rdata_l <= cart_rom(to_integer(cart_cpu_a));
         ELSE
           rdata_l <= (OTHERS => '1');
         END IF;
@@ -286,6 +285,12 @@ BEGIN
         ELSIF cart_size = to_unsigned(16#1000#, cart_size'length) AND
               (NOT cart_crc) = CART_CRC_MONEYMINDER THEN
           cart_auto_type <= to_unsigned(CART_MONEYMINDER, 8);
+        ELSIF cart_size = to_unsigned(16#4000#, cart_size'length) AND
+              (NOT cart_crc) = CART_CRC_COMPLANG THEN
+          cart_auto_type <= to_unsigned(CART_COMPLANG, 8);
+        ELSIF cart_size = to_unsigned(16#2000#, cart_size'length) AND
+              (NOT cart_crc) = CART_CRC_INFOMAN THEN
+          cart_auto_type <= to_unsigned(CART_INFOMAN, 8);
         ELSIF is_standard_cart(cart_crc, cart_size) THEN
           cart_auto_type <= to_unsigned(CART_STD, 8);
         END IF;
@@ -308,7 +313,7 @@ BEGIN
   BEGIN
     IF rising_edge(clk) THEN
       IF dl_cart = '1' THEN
-        cart_rom(to_integer(dl_addr(11 DOWNTO 0))) <= dl_data;
+        cart_rom(to_integer(dl_addr(13 DOWNTO 0))) <= dl_data;
       END IF;
     END IF;
   END PROCESS;
@@ -359,8 +364,14 @@ BEGIN
     IF rising_edge(clk) THEN
       bb_res2_rdata <= res2_rom(to_integer(bb_res2_addr));
       bb_ram_rdata  <= sys_ram(to_integer(bb_ram_addr));
-      bb_cart_rdata <= cart_rom(to_integer(bb_cart_addr AND
-                                           (cart_big & "11111111111")));
+      IF (cart_effective_type = CART_COMPLANG AND bb_cart_addr >= x"C00") OR
+         (cart_effective_type = CART_INFOMAN AND bb_cart_addr(11) = '1') OR
+         (cart_effective_type = CART_TIMESHARE AND bb_cart_addr(11) = '1') THEN
+        bb_cart_rdata <= cart_ram(to_integer(bb_cart_addr(9 DOWNTO 0)));
+      ELSE
+        bb_cart_rdata <= cart_rom(to_integer(bb_cart_addr AND
+                                             (cart_big & "11111111111")));
+      END IF;
     END IF;
   END PROCESS;
 
@@ -373,11 +384,51 @@ BEGIN
   exp <= to_std_logic(a_eff >= to_unsigned(ADDR_EXP_LO, 14));
 
   cart_a <= resize(a_eff(11 DOWNTO 0), 12) AND (cart_big & "11111111111");
-  cart_cpu_a <= resize(a_eff(10 DOWNTO 0), 12)
-                WHEN cs1 = '1' AND cart_effective_type = CART_TIMESHARE
-                ELSE cart_a;
+  PROCESS (a_eff, cart_a, cart_effective_type, cs1, exp, cart_bank) IS
+    VARIABLE chip : natural RANGE 0 TO 6;
+  BEGIN
+    cart_cpu_a <= resize(cart_a, 14);
+    IF cart_effective_type = CART_TIMESHARE OR cart_effective_type = CART_INFOMAN THEN
+      IF cs1 = '1' THEN
+        cart_cpu_a <= resize(a_eff(10 DOWNTO 0), 14);
+      ELSIF exp = '1' AND cart_effective_type = CART_INFOMAN THEN
+        cart_cpu_a <= '0' & '1' & a_eff(11 DOWNTO 0);
+      END IF;
+    ELSIF cart_effective_type = CART_COMPLANG AND exp = '1' THEN
+      -- C/D, E/G, E/F are the three hardware bank pairs.
+      CASE cart_bank IS
+        WHEN 0 => chip := 2 + to_integer(a_eff(11 DOWNTO 11));
+        WHEN 1 =>
+          IF a_eff(11) = '0' THEN chip := 4; ELSE chip := 6; END IF;
+        WHEN 2 => chip := 4 + to_integer(a_eff(11 DOWNTO 11));
+      END CASE;
+      cart_cpu_a <= to_unsigned(chip * 2048, 14) OR resize(a_eff(10 DOWNTO 0), 14);
+    END IF;
+  END PROCESS;
+
+  PROCESS (clk) IS
+    TYPE bank_lut_t IS ARRAY (0 TO 3, 0 TO 3) OF natural RANGE 0 TO 2;
+    CONSTANT bank_lut : bank_lut_t := ((0, 1, 2, 0), (2, 1, 2, 1),
+                                      (0, 2, 2, 0), (2, 2, 2, 2));
+  BEGIN
+    IF rising_edge(clk) THEN
+      IF dl_cart = '1' AND dl_addr = x"0000" THEN
+        cart_bank <= 0;
+      -- APL's ROM bus conflict makes both data and address select the bank.
+      ELSIF reset_na = '1' AND ext_wr = '1' AND cs1 = '1' AND
+            cart_effective_type = CART_COMPLANG THEN
+        cart_bank <= bank_lut(to_integer(ext_wdata(1 DOWNTO 0)),
+                             to_integer(a_eff(1 DOWNTO 0)));
+      END IF;
+    END IF;
+  END PROCESS;
+
+  cart_exp_rom <= exp AND to_std_logic(cart_effective_type = CART_COMPLANG OR
+                                      cart_effective_type = CART_INFOMAN);
 
   cart_ram_rd <= (cs2 AND to_std_logic(cart_effective_type = CART_TIMESHARE)) OR
+                 (cs2 AND to_std_logic(cart_effective_type = CART_INFOMAN)) OR
+                 (cs2 AND a_eff(10) AND to_std_logic(cart_effective_type = CART_COMPLANG)) OR
                  (exp AND a_eff(11) AND to_std_logic(cart_effective_type = CART_MONEYMINDER));
   cart_ram_a  <= a_eff(9 DOWNTO 0);
 

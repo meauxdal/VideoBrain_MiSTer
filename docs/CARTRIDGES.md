@@ -9,7 +9,8 @@ the earlier hang is no longer a known issue.
 
 Known raw dumps are identified by CRC-32 and use the matching slot behavior.
 `--cart-type` and the OSD's Fallback setting apply only to unrecognized
-images: 0 standard, 1 Timeshare, 2 Money Minder.
+images: 0 standard, 1 Timeshare, 2 Money Minder. APL and Information Manager
+assembled by `tools/convert_software.py` are also identified automatically.
 
 Fingerprints for all sixteen released single-image cartridges come from MAME's
 [VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
@@ -37,7 +38,22 @@ CRC-32 is used to identify the loaded image, not to validate its integrity.
 | VideoArtist | 2K | standard | correct | Design selection menu. |
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
-| APL / Computational Language | - | comp_language | **not loadable** | Dumped as separate .u1-.u11 chip images, and the mapper is not implemented. |
+| APL / Computational Language | 16K | comp_language | untested | Mapper tests pass; first-screen and MiSTer validation pending. |
+| Information Manager | 8K | info_manager | untested | Prototype; mapper tests pass, first-screen and MiSTer validation pending. |
+
+## Split cartridge conversion
+
+Run `python3 tools/convert_software.py` to assemble local MAME archives into
+`software/converted`. Existing matching cartridges are skipped. APL uses
+chips A-G in order with 2K zero padding; Information Manager uses its
+1000, 3000, and 3800 chips at file offsets 0000, 1000, and 1800, with a
+2K zero gap. These images require a core built with the new mappers.
+
+The files in `software/21 games for apl_s` are full memory dumps, not
+cartridge ROMs. Loading them is not supported.
+
+`make -C verilator test-cartridges` checks bank selection, RAM, DMA,
+reset behavior, and the existing cartridge mappings without ROM files.
 
 ## Capture method
 
@@ -72,10 +88,6 @@ ask for is unresolved. The way to settle it is to type a valid function name.
 
 ## Not implemented
 
-- **comp_language** (APL): a split-chip dump, bank register at 1000-100F with
-  a documented bus conflict quirk, six ROM banks. MAME
-  `bus/vidbrain/comp_language.cpp`.
-- **info_manager**: 6K ROM, 1K RAM. A prototype; no dump here.
 - The Timeshare image identifies the cartridge board, not the separate
   Expander modem it expects to communicate with.
 
@@ -89,4 +101,4 @@ From MAME `bus/vidbrain/`. `/CS1` is 1000-17FF and `/CS2` is 1800-1FFF.
 | timeshare | 2K ROM | 1K RAM, mirrored | - |
 | money_minder | 4K ROM | 4K ROM | 1K RAM at 3800, mirrored |
 | info_manager | 2K ROM | 1K RAM | ROM |
-| comp_language | ROM + RAM above 1C00 | same | banked ROM |
+| comp_language | 2K ROM, bank writes | ROM to 1BFF, RAM at 1C00 | banked ROM |
