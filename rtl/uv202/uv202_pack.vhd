@@ -1,9 +1,6 @@
---------------------------------------------------------------------------------
 -- VideoBrain UV202 - shared types and constants
---------------------------------------------------------------------------------
 -- Reference: kevtris "Videobrain Unwrapped" V0.05
 --            MAME src/mame/vidbrain/{vidbrain.cpp,uv201.cpp,uv201.h}
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -14,7 +11,6 @@ USE work.base_pack.ALL;
 
 PACKAGE uv202_pack IS
 
-  ----------------------------------------------------------------------------
   -- Clock relationships
   --
   -- MCLK    : 14.318181 MHz crystal on UV202 Xin/Xout (=NTSC colorburst x4)
@@ -25,14 +21,11 @@ PACKAGE uv202_pack IS
   --
   -- All internal UV202/UV201 timing in this core is expressed in BRCLK
   -- units, matching kevtris's cycle-count tables.
-  ----------------------------------------------------------------------------
 
   CONSTANT MCLK_HZ  : natural := 14_318_181;
   CONSTANT BRCLK_DIV : natural := 4;   -- MCLK -> BRCLK
 
-  ----------------------------------------------------------------------------
   -- Scanline timing (all units = BRCLK cycles, cycle 0 = HBLANK falling edge)
-  ----------------------------------------------------------------------------
 
   CONSTANT BRCLKS_PER_LINE   : natural := 228;
 
@@ -61,11 +54,9 @@ PACKAGE uv202_pack IS
   CONSTANT VSYNC_LINES       : natural := 3;
   CONSTANT EQ_LINES_PRE      : natural := 3;    -- eq lines immediately after vsync
 
-  ----------------------------------------------------------------------------
   -- CPU-side address map (see doc "Address Space" / MAME vidbrain_mem)
   -- All ranges below 0x4000; CPU only drives 14 address bits (BA0-BA13 seen
   -- externally as A0-A13), so 4000-FFFF mirror 0000-3FFF three more times.
-  ----------------------------------------------------------------------------
 
   CONSTANT ADDR_RES1_LO   : natural := 16#0000#;  -- RES1 ROM, 2K, 0 wait
   CONSTANT ADDR_RES1_HI   : natural := 16#07FF#;
@@ -112,12 +103,9 @@ PACKAGE uv202_pack IS
   CONSTANT CART_CRC_FINANCIER     : uv32 := x"721A4A14";
   CONSTANT CART_CRC_DEMONSTRATION : uv32 := x"A59EB765";
 
-  -- 2800-3FFF mirror 0800-1FFF (ASIC/cart/RAM/cart mirror)
 
-  ----------------------------------------------------------------------------
   -- Buffered-bus address map (what the UV201 actually sees during DMA,
   -- 8K deep, BA0-BA12 only - BA13 exists but only routes to cartridge conn.)
-  ----------------------------------------------------------------------------
 
   CONSTANT BBUS_RES2_LO   : natural := 16#0000#;  -- RES2 ROM mirror, 2K
   CONSTANT BBUS_RES2_HI   : natural := 16#07FF#;
@@ -128,10 +116,8 @@ PACKAGE uv202_pack IS
   CONSTANT BBUS_CART_LO   : natural := 16#1000#;  -- cartridge ROM, 4K
   CONSTANT BBUS_CART_HI   : natural := 16#1FFF#;
 
-  ----------------------------------------------------------------------------
   -- UV201 register offsets (0x00-0x8F = object RAM, 0xF0-0xFB = ctl/status)
   -- Confirmed against MAME src/mame/vidbrain/uv201.cpp
-  ----------------------------------------------------------------------------
 
   CONSTANT REG_RP_LO         : natural := 16#00#;  -- 00-0F pointer LSB
   CONSTANT REG_RP_HI_COLOR   : natural := 16#10#;  -- 10-1F pointer MSB + color
@@ -163,7 +149,6 @@ PACKAGE uv202_pack IS
   CONSTANT CMD_A_B       : natural := 6;  -- object list select, 1=A 0=B
   CONSTANT CMD_YINT_HO   : natural := 7;  -- Y-interrupt register high order bit
 
-  ----------------------------------------------------------------------------
   -- Wait-state arbiter types
   --
   -- Access classes per the truth table in "Wait States" section of the doc:
@@ -174,7 +159,6 @@ PACKAGE uv202_pack IS
   -- RAM   Rd      x        1        1         1
   -- Cart  Rd      x        1        1         1
   -- DMA   Rd      1        0        0         0
-  ----------------------------------------------------------------------------
 
   TYPE bus_access_t IS (
     ACC_NONE,        -- idle, AND: RES1 (0000-07FF) specifically - the doc
@@ -192,14 +176,6 @@ PACKAGE uv202_pack IS
     ACC_DMA1_RD       -- secondary UV201 DMA fetch
   );
 
-  ----------------------------------------------------------------------------
-  -- CPU address mirror fold: 2800-3FFF mirrors 0800-1FFF exactly (see doc
-  -- "Address Space"). This is shared between f8_busif.classify() (decides
-  -- the wait class) and sys_bus (decides which physical device answers the
-  -- access) so the two can't drift out of sync with each other. RES2
-  -- (2000-27FF) is NOT a mirror target of anything else in 0000-3FFF, so it
-  -- is left untouched by this fold.
-  ----------------------------------------------------------------------------
 
   FUNCTION cpu_addr_fold(a : unsigned(13 DOWNTO 0)) RETURN unsigned;
 

@@ -1,6 +1,4 @@
---------------------------------------------------------------------------------
 -- VideoBrain F8 I/O ports 00/01: keyboard, sound, joystick enable
---------------------------------------------------------------------------------
 -- Reference: MAME vidbrain.cpp keyboard_w(), keyboard_r(), sound_w(), checked
 -- against the VideoBrain keyboard/joystick wiring notes retained in docs/.
 --
@@ -15,7 +13,6 @@
 -- The ninth keyboard column is selected by UV201 command bit KBD.  MAME's
 -- kbd_r() returns that bit directly, and the machine reads column 8 when it is
 -- LOW; uv_kbd therefore follows that same active-low selection convention.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -44,7 +41,6 @@ ENTITY videobrain_io IS
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
     uv_kbd     : IN std_logic;
 
-    -- Current port-00 latch and decoded control outputs.
     key_latch     : OUT uv8;
     joy_enable    : OUT std_logic;
     accessory_p5  : OUT std_logic;

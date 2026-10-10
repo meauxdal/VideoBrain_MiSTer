@@ -18,7 +18,6 @@ phase() {
     frame=$((frame + 64))
 }
 
-# Vertical channels separately; each other channel remains at 128.
 for channel in 0 2; do
     for pot in 0 32 64 96 128 160 192 224 255 128; do
         phase vertical "$channel" "$pot"

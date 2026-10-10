@@ -1,6 +1,4 @@
---------------------------------------------------------------------------------
 -- VideoBrain machine core assembly
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -40,7 +38,6 @@ ENTITY videobrain_core IS
 
     brclk_ena  : OUT std_logic;
 
-    -- Pixel output from the internal renderer.
     ce_pix : OUT std_logic;
     vid_idx: OUT std_logic_vector(4 DOWNTO 0);
     vid_r  : OUT uv8;
@@ -66,7 +63,6 @@ ENTITY videobrain_core IS
     hpos     : OUT unsigned(7 DOWNTO 0);
     vpos     : OUT unsigned(8 DOWNTO 0);
 
-    -- renderer controls, consumed by whatever drives fifo_pop
     final_mod  : OUT uv8;
     background : OUT uv8;
     x_zoom     : OUT std_logic;

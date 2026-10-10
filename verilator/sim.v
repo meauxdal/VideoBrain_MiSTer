@@ -1,11 +1,5 @@
 `timescale 1ns/1ns
-//
 // Simulation top for the VideoBrain core.
-//
-// The core is supplied as a Verilog netlist produced by "ghdl synth" from
-// rtl/*.vhd -- see the Makefile.  Only the netlist's port names are stable,
-// so everything the harness needs is a real port on videobrain_core.
-//
 
 module top(
    input         clk_sys /*verilator public_flat*/,
@@ -128,8 +122,6 @@ module top(
       .dc0        (dc0)
    );
 
-   // The pixel path lives in rtl/uv201/uv201_render.vhd so the simulator and
-   // the FPGA build share one renderer.
    assign VGA_R  = vid_r;
    assign VGA_G  = vid_g;
    assign VGA_B  = vid_b;

@@ -1,6 +1,4 @@
---------------------------------------------------------------------------------
 -- VideoBrain buffered-bus decoder / read mux
---------------------------------------------------------------------------------
 -- Reference: kevtris "Videobrain Unwrapped" V0.05, "Buffered Bus".
 --
 -- The UV201 does not see the CPU's full address space.  Its 13-bit graphics
@@ -9,12 +7,6 @@
 -- for UV201 fetches; UV201 registers and the cartridge-mapped CPU window are
 -- therefore not visible here.
 --
--- This module intentionally owns NO storage.  It is only the address decoder
--- and data mux for the UV201 view of memories that will be shared with the CPU
--- side.  That avoids creating a second copy of RES2/RAM/cart merely to get the
--- fetcher started.  The eventual machine-level memory/cart modules provide the
--- three *_rdata inputs below.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

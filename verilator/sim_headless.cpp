@@ -1,15 +1,5 @@
-// ---------------------------------------------------------------------------
 // Headless Verilator harness for the VideoBrain core.
-//
-// No SDL / ImGui / OpenGL, so it builds and runs anywhere and is what the
-// regression scripts drive. It can
-//   * load RES1, RES2 and a cartridge over the simulated HPS ioctl bus
-//   * run for a given number of video frames
-//   * write a PNG / PPM / ASCII screenshot at chosen frames
-//   * dump CPU + UV201 + memory state at chosen frames
-//
 // Build:  make headless          Run: ./obj_dir_headless/Vtop --help
-// ---------------------------------------------------------------------------
 
 #include <verilated.h>
 #include "Vtop.h"
@@ -25,11 +15,6 @@
 #include <vector>
 #include <set>
 
-// ---------------------------------------------------------------------------
-// Accessors into the verilated design. The core is a netlist produced by
-// "ghdl synth": module and instance names come straight from the VHDL, and so
-// do RAM names, but intermediate combinational nodes are nNNNN.
-// ---------------------------------------------------------------------------
 #define CORE(sig) (top->rootp->top__DOT__core__DOT__##sig)
 #define CPU(sig)  (top->rootp->top__DOT__core__DOT__u_cpu__DOT__##sig)
 #define BUS(sig)  (top->rootp->top__DOT__core__DOT__u_sys_bus__DOT__##sig)
@@ -57,9 +42,7 @@ static uint8_t obj_byte(int i) {
     return (uint8_t)lo;
 }
 
-// ---------------------------------------------------------------------------
 // PNG writer (zlib, 8-bit RGB, no external image library)
-// ---------------------------------------------------------------------------
 static void put_be32(std::vector<uint8_t>& v, uint32_t x) {
     v.push_back((x >> 24) & 0xff); v.push_back((x >> 16) & 0xff);
     v.push_back((x >> 8) & 0xff);  v.push_back(x & 0xff);
@@ -124,10 +107,8 @@ static bool write_ppm(const std::string& path, int w, int h, const std::vector<u
     return true;
 }
 
-// ---------------------------------------------------------------------------
 // Frame capture. Stores the 5-bit UV201 palette index per pixel so ASCII art
 // and hashes stay independent of the RGB mapping.
-// ---------------------------------------------------------------------------
 static const int MAX_W = 512;
 static const int MAX_H = 512;
 
@@ -239,11 +220,9 @@ struct FrameGrabber {
     }
 };
 
-// ---------------------------------------------------------------------------
 // Keyboard matrix. 9 columns x 4 rows, bit = col * 4 + row, active high.
 // Columns 0-7 are selected by the port-0 latch, column 8 by UV201 CMD_KBD.
 // Layout from MAME vidbrain.cpp INPUT_PORTS_START.
-// ---------------------------------------------------------------------------
 struct KeyName { const char* name; int bit; };
 static const KeyName KEYS[] = {
     {"I",0},{"O",1},{"P",2},{"SEMI",3},
@@ -263,9 +242,7 @@ static int key_bit(const std::string& n) {
     return -1;
 }
 
-// ---------------------------------------------------------------------------
 // ioctl download driver (stands in for the HPS)
-// ---------------------------------------------------------------------------
 struct Download { std::string path; int index; };
 
 struct IoctlDriver {
@@ -329,9 +306,7 @@ struct IoctlDriver {
     }
 };
 
-// ---------------------------------------------------------------------------
 // State dump
-// ---------------------------------------------------------------------------
 static void dump_state(FILE* f, long frame, const FrameGrabber& fg, bool want_ram) {
     fprintf(f, "\n========== frame %ld (t=%llu) ==========\n",
             frame, (unsigned long long)main_time);
@@ -388,7 +363,6 @@ static void dump_state(FILE* f, long frame, const FrameGrabber& fg, bool want_ra
     fflush(f);
 }
 
-// ---------------------------------------------------------------------------
 static void usage(const char* argv0) {
     fprintf(stderr,
 "Headless VideoBrain simulator\n"

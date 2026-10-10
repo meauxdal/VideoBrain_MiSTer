@@ -1,9 +1,4 @@
---------------------------------------------------------------------------------
 -- VideoBrain UV201 shared types
---------------------------------------------------------------------------------
--- Kept separate from uv202_pack so renderer/fetcher/FIFO-specific structures
--- do not leak into the UV202 timing/bus package.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

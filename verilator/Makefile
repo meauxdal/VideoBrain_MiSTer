@@ -1,14 +1,4 @@
-#
-# Verilator harness for the VideoBrain core.
-#
-# The RTL is VHDL and Verilator reads only Verilog, so every build starts by
-# running the design through "ghdl synth", which emits a Verilog netlist.
-# Module and port names survive; internal combinational nodes become nNNNN.
-# Registers, RAMs and ROMs keep their names, which is what the debug views
-# and state dumps reach for.
-#
 # Requires: ghdl (VHDL-2008), verilator, sdl2 (graphical target only), zlib.
-#
 
 V     = verilator
 GHDL  = ghdl
@@ -45,9 +35,6 @@ VHD_SRC = \
 
 # Modules converted from VHDL to Verilog by hand. Each name listed here is
 # deleted from the synthesised netlist and must exist as rtl_v/<name>.v.
-# Convert one at a time and diff the headless frame hash against the all-VHDL
-# run to check equivalence:
-#   make headless && ./obj_dir_headless/Vtop --res1 selftest.rom --frames 8 --frame-log
 CONVERTED =
 
 CONVERTED_V = $(patsubst %,rtl_v/%.v,$(CONVERTED))
@@ -93,9 +80,7 @@ all: $(EXE)
 
 headless: $(HL_EXE)
 
-# ---------------------------------------------------------------------------
 # VHDL -> Verilog netlist
-# ---------------------------------------------------------------------------
 $(GEN_V): $(VHD_SRC) $(CONVERTED_V) Makefile
 	@mkdir -p $(GEN) $(WORK)
 	$(GHDL) -a --std=08 --workdir=$(WORK) -Wno-hide $(VHD_SRC)
@@ -105,17 +90,13 @@ $(GEN_V): $(VHD_SRC) $(CONVERTED_V) Makefile
 
 netlist: $(GEN_V)
 
-# ---------------------------------------------------------------------------
 # Headless: no SDL/ImGui, screenshots and state dumps. Used for regressions.
-# ---------------------------------------------------------------------------
 $(HL_EXE): $(V_SRC) $(HL_SRC) Makefile
 	$V -cc $(V_OPT) -exe --Mdir ./$(HL_DIR) $(TOP) \
 		-CFLAGS "-O2 -std=c++17" -LDFLAGS "-lz" $(V_SRC) $(HL_SRC)
 	$(MAKE) -C $(HL_DIR) -f Vtop.mk
 
-# ---------------------------------------------------------------------------
 # Graphical: SDL2 + ImGui
-# ---------------------------------------------------------------------------
 $(EXE): $(V_SRC) $(C_SRC) Makefile
 	$V -cc $(V_OPT) -LDFLAGS "$(LDFLAGS)" -exe --trace --Mdir ./obj_dir \
 		$(TOP) -CFLAGS "$(CXXFLAGS)" $(V_SRC) $(C_SRC)

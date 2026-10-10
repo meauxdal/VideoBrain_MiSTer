@@ -1,8 +1,6 @@
---------------------------------------------------------------------------------
 -- VideoBrain UV201 register file
 -- UV201 object RAM, control registers, status reads, and freeze capture.
 -- Reference: docs/uv201.cpp and docs/videobrain_unwrapped.txt.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -23,7 +21,6 @@ ENTITY uv201_regs IS
     reg_wdata : IN  uv8;
     reg_rdata : OUT uv8;
 
-    -- Live raster position for status reads and freeze capture.
     cur_field : IN  std_logic;             -- 0=odd, 1=even (uv202_timing.field)
     cur_vpos  : IN  unsigned(8 DOWNTO 0);  -- current Y counter
 
@@ -32,7 +29,6 @@ ENTITY uv201_regs IS
     capture_x   : IN  uv8;
     capture_y   : IN  unsigned(8 DOWNTO 0);
 
-    -- Decoded command register outputs. o_ avoids clashes with CMD_* constants.
     o_x_zm  : OUT std_logic;  -- X zoom (double width)
     o_frz   : OUT std_logic;  -- freeze enable
     o_enb   : OUT std_logic;  -- video enable
@@ -44,7 +40,6 @@ ENTITY uv201_regs IS
     y_int     : OUT uv8;      -- raw Y-interrupt register (low 8 bits)
     o_yint_ho : OUT std_logic;-- Y-interrupt register high order bit (cmd bit 7)
 
-    -- Renderer controls.
     final_mod  : OUT uv8;
     background : OUT uv8;
 
@@ -60,7 +55,6 @@ ARCHITECTURE rtl OF uv201_regs IS
   TYPE obj_ram_t IS ARRAY (0 TO 16#8F#) OF uv8;
   SIGNAL obj_ram : obj_ram_t := (OTHERS => (OTHERS => '0'));
 
-  -- write-only control registers
   SIGNAL r_y_int : uv8 := (OTHERS => '0');
   SIGNAL r_fmod  : uv8 := (OTHERS => '0');
   SIGNAL r_bg    : uv8 := (OTHERS => '0');
@@ -83,9 +77,6 @@ ARCHITECTURE rtl OF uv201_regs IS
 
 BEGIN
 
-  ------------------------------------------------------------------------
-  -- writes + freeze capture
-  ------------------------------------------------------------------------
   PROCESS (clk, reset_na) IS
   BEGIN
     IF reset_na = '0' THEN
@@ -127,9 +118,6 @@ BEGIN
     END IF;
   END PROCESS;
 
-  ------------------------------------------------------------------------
-  -- reads (combinational)
-  ------------------------------------------------------------------------
   PROCESS (reg_addr, r_freeze_x, r_freeze_y, cur_field, cur_vpos, obj_ram) IS
   BEGIN
     IF unsigned(reg_addr) = to_unsigned(REG_X_FREEZE, 8) THEN
@@ -158,9 +146,6 @@ BEGIN
                  WHEN unsigned(obj_addr) <= to_unsigned(16#8F#, 8)
                  ELSE (OTHERS => '1');
 
-  ------------------------------------------------------------------------
-  -- command register bit taps
-  ------------------------------------------------------------------------
   o_x_zm    <= r_cmd(CMD_X_ZM_BIT);
   o_frz     <= r_cmd(CMD_FRZ_BIT);
   o_enb     <= r_cmd(CMD_ENB_BIT);

@@ -1,6 +1,4 @@
---------------------------------------------------------------------------------
 -- Fairchild F3853 SMI - interrupt control and timer
---------------------------------------------------------------------------------
 -- Reference: MAME machine/f3853.cpp.  Only the parts VideoBrain uses are
 -- modelled: the interrupt vector registers, the interrupt control register,
 -- the programmable timer and the request flip-flop.  Memory addressing and the
@@ -15,7 +13,6 @@
 -- The vector bit 7 distinguishes the two sources, as in f3853.h:
 --   timer    -> vector AND NOT x"0080"
 --   external -> vector OR  x"0080"
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -57,7 +54,6 @@ ARCHITECTURE rtl OF f3853 IS
   SIGNAL ext_enable   : std_logic := '0';
   SIGNAL timer_enable : std_logic := '0';
 
-  -- Set by either source, cleared when the CPU acknowledges.
   SIGNAL request : std_logic := '0';
   SIGNAL ext_int_l : std_logic := '0';
 
@@ -137,7 +133,6 @@ BEGIN
         END IF;
       END IF;
 
-      -- The CPU took the vector; drop the request.
       IF int_ack = '1' THEN
         request <= '0';
       END IF;

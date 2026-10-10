@@ -1,9 +1,4 @@
-// ---------------------------------------------------------------------------
 // Graphical Verilator harness for the VideoBrain core: SDL2 + ImGui.
-//
-// Shares sim.v and the sim/ support layer with the headless build. Use
-// "make headless" for batch runs; this one is always interactive.
-// ---------------------------------------------------------------------------
 
 #include <verilated.h>
 #include "Vtop.h"
@@ -34,7 +29,6 @@ bool headless = false;
 #include <verilated_vcd_c.h>
 #include "../imgui/ImGuiFileDialog.h"
 
-// Accessors into the netlist. Names come from the VHDL through ghdl synth.
 #define CORE(sig) (top->rootp->top__DOT__core__DOT__##sig)
 #define CPU(sig)  (top->rootp->top__DOT__core__DOT__u_cpu__DOT__##sig)
 #define BUS(sig)  (top->rootp->top__DOT__core__DOT__u_sys_bus__DOT__##sig)
@@ -43,7 +37,6 @@ bool headless = false;
 #define TOP(sig)  (top->rootp->top__DOT__##sig)
 #define REN(sig)  (top->rootp->top__DOT__core__DOT__u_render__DOT__##sig)
 
-// Simulation control
 int  batchSize = 200000;
 bool run_enable = false;
 bool single_step = false;
@@ -256,7 +249,6 @@ int main(int argc, char** argv, char** env) {
 
         ImGui::NewFrame();
 
-        // ------------------------------------------------------------------
         ImGui::Begin(windowTitle_Control);
         ImGui::SetWindowPos(windowTitle_Control, ImVec2(0, 0), ImGuiCond_Once);
         ImGui::SetWindowSize(windowTitle_Control, ImVec2(500, 170), ImGuiCond_Once);
@@ -286,7 +278,6 @@ int main(int argc, char** argv, char** env) {
         }
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("F8 / bus");
         ImGui::SetWindowPos("F8 / bus", ImVec2(0, 170), ImGuiCond_Once);
         ImGui::SetWindowSize("F8 / bus", ImVec2(500, 180), ImGuiCond_Once);
@@ -302,7 +293,6 @@ int main(int argc, char** argv, char** env) {
                     (unsigned)TOP(po_a_n), (unsigned)TOP(po_b_n));
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("UV201");
         ImGui::SetWindowPos("UV201", ImVec2(0, 350), ImGuiCond_Once);
         ImGui::SetWindowSize("UV201", ImVec2(500, 330), ImGuiCond_Once);
@@ -331,7 +321,6 @@ int main(int argc, char** argv, char** env) {
                     (int)REN(shift_cnt), (int)REN(gap_cnt));
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("RES1 $0000-$07FF");
         mem_edit.DrawContents(&BUS(res1_rom), 2048, 0x0000);
         ImGui::End();
@@ -348,7 +337,6 @@ int main(int argc, char** argv, char** env) {
         mem_edit.DrawContents(&BUS(sys_ram), 1024, 0x0C00);
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("Keyboard");
         ImGui::TextUnformatted(
             "Letters A-Z and , ; / type themselves.\n"
@@ -370,7 +358,6 @@ int main(int argc, char** argv, char** env) {
 
         console.Draw(windowTitle_DebugLog, &showDebugLog, ImVec2(500, 200));
 
-        // ------------------------------------------------------------------
         int windowX = 520;
         int windowWidth = (int)(video.output_width * VGA_SCALE_X) + 24;
         int windowHeight = (int)(video.output_height * VGA_SCALE_Y) + 90;

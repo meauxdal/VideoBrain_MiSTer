@@ -1,6 +1,4 @@
---------------------------------------------------------------------------------
 -- VideoBrain F8 address/bus interface
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -54,8 +52,6 @@ END ENTITY f8_busif;
 
 ARCHITECTURE rtl OF f8_busif IS
 
-  -- DC1 exists only to be swapped with DC0 by XDC (ROMC 1D). Nothing else
-  -- addresses it, which is why upstream Channel F never needed it.
   SIGNAL dc0, dc1, pc0, pc1 : uv16 := (OTHERS => '0');
   SIGNAL dr_l : uv8 := (OTHERS => '0');
   SIGNAL dv_l : std_logic := '0';

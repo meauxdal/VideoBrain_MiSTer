@@ -1,14 +1,4 @@
---------------------------------------------------------------------------------
 -- VideoBrain UV202 - structural top
---------------------------------------------------------------------------------
--- Collects the portions of the UV202 that are already understood well enough
--- to stand on their own: clock enables, raster timing, and bus arbitration.
---
--- Deliberately NOT included here:
---   * f8_busif: CPU/ROMC glue lives at machine level.
---   * memory/data muxing: sys_bus/buffered_bus own address/data routing.
---   * F3853 SMI/interrupt handling: separate device at machine level.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -27,7 +17,6 @@ ENTITY uv202_top IS
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
 
-    -- CPU-side arbitration request from f8_busif.
     cpu_req    : IN  std_logic;
     cpu_class  : IN  bus_access_t;
     cpu_grant  : OUT std_logic;
@@ -49,7 +38,6 @@ ENTITY uv202_top IS
     cpu_ena_raw : OUT std_logic;
     cpu_ce      : OUT std_logic;
 
-    -- Raster/timing outputs.
     hblank  : OUT std_logic;
     vblank  : OUT std_logic;
     burst   : OUT std_logic;
@@ -129,8 +117,6 @@ BEGIN
   cpu_ena_raw <= cpu_ena_l;
   cpu_stall   <= cpu_stall_l;
 
-  -- The F8 CPU receives the independent CPU oscillator enable only when the
-  -- UV202 is not stretching the current external access.
   cpu_ce <= cpu_ena_l AND NOT cpu_stall_l;
 
 END ARCHITECTURE rtl;

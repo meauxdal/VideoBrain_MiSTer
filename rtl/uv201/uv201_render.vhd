@@ -1,6 +1,4 @@
---------------------------------------------------------------------------------
 -- VideoBrain UV201 pixel path
---------------------------------------------------------------------------------
 -- Drains the render FIFO into pixels. One entry is consumed per pixel until
 -- it is exhausted: a gap entry covers `payload` background pixels, a data
 -- entry covers 8 (16 with X zoom). The FIFO is show-ahead, so the head can be
@@ -13,7 +11,6 @@
 -- The palette is initialize_palette(): bit 4 picks the intensity pair and
 -- bits 2:0 are blue/green/red. Only two intensity steps are distinct, so a
 -- high-intensity black is grey rather than black.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

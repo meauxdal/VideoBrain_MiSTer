@@ -1,8 +1,6 @@
---------------------------------------------------------------------------------
 -- VideoBrain unified CPU and buffered memory bus
 -- CPU map: RES1, UV201, cartridge windows, 1K RAM, RES2.
 -- Buffered bus shares RES2/RAM storage with the CPU side.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -24,21 +22,15 @@ ENTITY sys_bus IS
     ext_wdata : IN  uv8;
     ext_rdata : OUT uv8;
 
-    -- UV201 buffered-bus read view.  This shares the same RES2/RAM backing
-    -- arrays as the CPU side; buffered_bus.vhd supplies the narrower 8K
-    -- decode.  Cartridge data remains a stub until the slot module exists.
     bb_addr  : IN  unsigned(12 DOWNTO 0);
     bb_rdata : OUT uv8;
 
-    -- UV201 status-register inputs, passed straight through to
-    -- uv201_regs.vhd (see that entity for why these exist)
     uv_cur_field   : IN std_logic;
     uv_cur_vpos    : IN unsigned(8 DOWNTO 0);
     uv_capture_stb : IN std_logic;
     uv_capture_x   : IN uv8;
     uv_capture_y   : IN unsigned(8 DOWNTO 0);
 
-    -- UV201 controls and object-RAM fetch port.
     uv_o_x_zm   : OUT std_logic;
     uv_o_frz    : OUT std_logic;
     uv_o_enb    : OUT std_logic;
@@ -125,7 +117,6 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL cart_ram_we : std_logic;
   SIGNAL cart_ram_rd : std_logic;
 
-  -- system RAM: 0C00-0FFF (1K)
   TYPE ram_t IS ARRAY (0 TO 1023) OF uv8;
   SIGNAL sys_ram : ram_t := (OTHERS => (OTHERS => '0'));
 
@@ -172,9 +163,6 @@ BEGIN
                          WHEN cart_auto_type = to_unsigned(CART_MONEYMINDER, 8)
                          ELSE unknown_cart_profile;
 
-  ----------------------------------------------------------------------------
-  -- UV201 register file instance
-  ----------------------------------------------------------------------------
 
   u_uv201_regs : ENTITY work.uv201_regs
     PORT MAP (
@@ -210,9 +198,6 @@ BEGIN
                   ELSE '0';
   uv_reg_wdata <= ext_wdata;
 
-  ----------------------------------------------------------------------------
-  -- RAM write. Read is combinational.
-  ----------------------------------------------------------------------------
 
   PROCESS (clk, reset_na) IS
   BEGIN
@@ -229,14 +214,12 @@ BEGIN
     END IF;
   END PROCESS;
 
-  ----------------------------------------------------------------------------
   -- read mux (registered).  Cyclone V M10K/MLAB have no async read port, so
   -- this is the template Quartus needs to infer block RAM for
   -- res1_rom/res2_rom/cart_rom/sys_ram instead of packing them into logic.
   -- Adds 1 clk of read latency on rdata_l/ext_rdata - covered by the
   -- existing arbiter wait states, but worth re-checking against
   -- WAIT_CPU_RDWR in uv202_pack if timing looks off in sim.
-  ----------------------------------------------------------------------------
 
   PROCESS (clk) IS
   BEGIN
@@ -275,10 +258,8 @@ BEGIN
 
   ext_rdata <= rdata_l;
 
-  ----------------------------------------------------------------------------
   -- Image download.  Held outside the RAM write process so a download cannot
   -- race a CPU store to the same array.
-  ----------------------------------------------------------------------------
 
   -- One process per array: a single process selecting between them defeats
   -- GHDL's RAM inference and the netlist balloons into unrolled muxes.
@@ -371,11 +352,6 @@ BEGIN
     END IF;
   END PROCESS;
 
-  ----------------------------------------------------------------------------
-  -- UV201 buffered-bus view.  RES2 and system RAM are the SAME arrays used
-  -- above; this is the architectural point of keeping buffered_bus as a
-  -- decoder/mux rather than giving it its own memories.
-  ----------------------------------------------------------------------------
 
   u_buffered_bus : ENTITY work.buffered_bus
     PORT MAP (
