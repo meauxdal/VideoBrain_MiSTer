@@ -63,7 +63,6 @@ def summarize(trace, state):
     covered = all(len(center[ch]) >= 8 and low[ch] and high[ch] for ch in CHANNELS)
     response = covered and all(max(low[ch]) < min(center[ch]) and
                                max(center[ch]) < min(high[ch]) for ch in CHANNELS)
-    # Search preference only; position checks determine drift.
     centered = covered and all(0x50 <= v <= 0x70 for values in center.values() for v in values)
     fixed = bool(drift) and max(drift) == 0 and all(len(p) >= 4 for p in positions.values())
     calibrated = all(len(bounds[ch]) == 1 and next(iter(bounds[ch]))[0] >

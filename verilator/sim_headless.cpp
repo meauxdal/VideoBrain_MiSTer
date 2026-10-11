@@ -1,15 +1,3 @@
-// ---------------------------------------------------------------------------
-// Headless Verilator harness for the VideoBrain core.
-//
-// No SDL / ImGui / OpenGL, so it builds and runs anywhere and is what the
-// regression scripts drive. It can
-//   * load RES1, RES2 and a cartridge over the simulated HPS ioctl bus
-//   * run for a given number of video frames
-//   * write a PNG / PPM / ASCII screenshot at chosen frames
-//   * dump CPU + UV201 + memory state at chosen frames
-//
-// Build:  make headless          Run: ./obj_dir_headless/Vtop --help
-// ---------------------------------------------------------------------------
 
 #include <verilated.h>
 #include "Vtop.h"
@@ -25,11 +13,6 @@
 #include <vector>
 #include <set>
 
-// ---------------------------------------------------------------------------
-// Accessors into the verilated design. The core is a netlist produced by
-// "ghdl synth": module and instance names come straight from the VHDL, and so
-// do RAM names, but intermediate combinational nodes are nNNNN.
-// ---------------------------------------------------------------------------
 #define CORE(sig) (top->rootp->top__DOT__core__DOT__##sig)
 #define CPU(sig)  (top->rootp->top__DOT__core__DOT__u_cpu__DOT__##sig)
 #define BUS(sig)  (top->rootp->top__DOT__core__DOT__u_sys_bus__DOT__##sig)
@@ -57,9 +40,6 @@ static uint8_t obj_byte(int i) {
     return (uint8_t)lo;
 }
 
-// ---------------------------------------------------------------------------
-// PNG writer (zlib, 8-bit RGB, no external image library)
-// ---------------------------------------------------------------------------
 static void put_be32(std::vector<uint8_t>& v, uint32_t x) {
     v.push_back((x >> 24) & 0xff); v.push_back((x >> 16) & 0xff);
     v.push_back((x >> 8) & 0xff);  v.push_back(x & 0xff);
@@ -124,15 +104,9 @@ static bool write_ppm(const std::string& path, int w, int h, const std::vector<u
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// Frame capture. Stores the 5-bit UV201 palette index per pixel so ASCII art
-// and hashes stay independent of the RGB mapping.
-// ---------------------------------------------------------------------------
 static const int MAX_W = 512;
 static const int MAX_H = 512;
 
-// Index -> character: black is a space, the seven chromatic combinations get
-// their initials, and high intensity is upper case.
 static inline char ascii_for(uint8_t idx) {
     static const char* lo = " rgybmcw";
     static const char* hi = ".RGYBMCW";
@@ -220,15 +194,13 @@ struct FrameGrabber {
     }
 
     uint32_t hash() const {
-        uint32_t h = 2166136261u;   // FNV-1a
+        uint32_t h = 2166136261u;
         for (int y = 0; y < last_height; y++)
             for (int x = 0; x < last_width; x++)
                 h = (h ^ pix[(size_t)y * MAX_W + x]) * 16777619u;
         return h;
     }
 
-    // "Blank" means every pixel is the same index, not necessarily black: a
-    // screen filled with the background register is still nothing drawn.
     bool blank() const {
         if (last_width <= 0 || last_height <= 0) return true;
         uint8_t first = pix[0];
@@ -239,11 +211,6 @@ struct FrameGrabber {
     }
 };
 
-// ---------------------------------------------------------------------------
-// Keyboard matrix. 9 columns x 4 rows, bit = col * 4 + row, active high.
-// Columns 0-7 are selected by the port-0 latch, column 8 by UV201 CMD_KBD.
-// Layout from MAME vidbrain.cpp INPUT_PORTS_START.
-// ---------------------------------------------------------------------------
 struct KeyName { const char* name; int bit; };
 static const KeyName KEYS[] = {
     {"I",0},{"O",1},{"P",2},{"SEMI",3},
@@ -263,9 +230,6 @@ static int key_bit(const std::string& n) {
     return -1;
 }
 
-// ---------------------------------------------------------------------------
-// ioctl download driver (stands in for the HPS)
-// ---------------------------------------------------------------------------
 struct Download { std::string path; int index; };
 
 struct IoctlDriver {
@@ -329,9 +293,6 @@ struct IoctlDriver {
     }
 };
 
-// ---------------------------------------------------------------------------
-// State dump
-// ---------------------------------------------------------------------------
 static void dump_state(FILE* f, long frame, const FrameGrabber& fg, bool want_ram) {
     fprintf(f, "\n========== frame %ld (t=%llu) ==========\n",
             frame, (unsigned long long)main_time);
@@ -364,7 +325,6 @@ static void dump_state(FILE* f, long frame, const FrameGrabber& fg, bool want_ra
             (int)UVR(r_freeze_x), (int)UVR(r_freeze_y),
             (int)CORE(joy_enable_l), (unsigned)CORE(key_latch_l));
 
-    // 16 objects x 9 banks, laid out as the object list the fetcher walks.
     fprintf(f, "-- object list (rp_lo rp_hi dx dy x ylo_a yhi_a ylo_b yhi_b) --\n");
     for (int i = 0; i < 16; i++) {
         fprintf(f, "%2d: %02X %02X %02X %02X %02X  %02X %02X  %02X %02X\n", i,
@@ -388,7 +348,6 @@ static void dump_state(FILE* f, long frame, const FrameGrabber& fg, bool want_ra
     fflush(f);
 }
 
-// ---------------------------------------------------------------------------
 static void usage(const char* argv0) {
     fprintf(stderr,
 "Headless VideoBrain simulator\n"
@@ -396,6 +355,7 @@ static void usage(const char* argv0) {
 "\n"
 "  --res1 FILE          RES1 ROM, ioctl index 0\n"
 "  --res2 FILE          RES2 ROM, ioctl index 1\n"
+"  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
 "  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder\n"
 "\n"
@@ -463,7 +423,7 @@ static std::string basename_noext(const std::string& p) {
 int main(int argc, char** argv) {
     std::string res1 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
     std::string res2 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
-    std::string cart, outdir = "out", prefix, dump_path, audio_path;
+    std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     long joy_trace_from = -1;
@@ -494,6 +454,7 @@ int main(int argc, char** argv) {
         if      (a == "--help" || a == "-h") { usage(argv[0]); return 0; }
         else if (a == "--res1")        res1 = need("--res1");
         else if (a == "--res2")        res2 = need("--res2");
+        else if (a == "--expander1")   expander1 = need("--expander1");
         else if (a == "--cart")        cart = need("--cart");
         else if (a == "--cart-type")   cart_type = atoi(need("--cart-type"));
         else if (a == "--frames")      frames = atol(need("--frames"));
@@ -612,6 +573,7 @@ int main(int argc, char** argv) {
     io.quiet = quiet;
     io.add(res1, 0);
     io.add(res2, 1);
+    if (!expander1.empty()) io.add(expander1, 3);
     if (!cart.empty()) io.add(cart, 2);
 
     FrameGrabber fg;
@@ -621,7 +583,7 @@ int main(int argc, char** argv) {
     top->ioctl_download = 0; top->ioctl_upload = 0; top->ioctl_wr = 0;
     top->ioctl_addr = 0; top->ioctl_dout = 0; top->ioctl_din = 0; top->ioctl_index = 0;
     top->ps2_key = 0;
-    top->kbd_matrix = 0;   // active high, nothing pressed
+    top->kbd_matrix = 0;
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
     if (joy_timer_base < 0 || joy_timer_step < 0 || joy_timer_step > 127 ||
@@ -637,8 +599,6 @@ int main(int argc, char** argv) {
 
     long cycles = 0, last_reported = -1;
 
-    // Per-frame UV201 activity, sampled in the BRCLK phase where the fetcher
-    // and FIFO actually act.
     long pushes = 0, pops = 0, umireq = 0, dmagrant = 0, lines_started = 0;
     int  max_level = 0, max_state = 0;
     int  state_seen = 0;
@@ -702,7 +662,6 @@ int main(int argc, char** argv) {
         }
 
         io.tick();
-        // Hold reset through the downloads, as the FPGA top does.
         top->reset = (io.active || !io.finished || master_control) ? 1 : 0;
 
         if (!joy_timer_sweep.empty() && CORE(joy_armed) && CORE(joy_enable_l) &&
@@ -879,8 +838,6 @@ int main(int argc, char** argv) {
 
         // Interrupt path, sampled every clk: these are one-clk pulses.
         if (probe) {
-            // Fetcher still walking the list when the line ends: it ran out
-            // of time and the rest of the line's objects are lost.
             if (CORE(hblank_rising) && FET(state) != 0) overrun_n++;
             if (CORE(ext_int)) ext_int_n++;
             if (CORE(int_ack)) int_ack_n++;
@@ -898,7 +855,6 @@ int main(int argc, char** argv) {
             int st = FET(state);
             if (st > max_state) max_state = st;
             state_seen |= (1 << st);
-            // ST_DECIDE is state 8: record what the accept test is looking at.
             if (st == 8 && !decide_logged) {
                 decide_logged = true;
                 int y = ((FET(xy_hi_l) >> 7) << 8) | FET(y_lo_l);
@@ -938,7 +894,6 @@ int main(int argc, char** argv) {
             prev_romc = romc; prev_pc = pc;
         }
 
-        // One pixel per BRCLK, not per clk_sys.
         bool boundary = false;
         if (top->ce_pix)
             boundary = fg.clock(top->VGA_VS, top->VGA_HS, top->VGA_DE != 0,

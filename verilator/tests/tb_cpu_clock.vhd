@@ -37,7 +37,6 @@ BEGIN
     VARIABLE checked : natural := 0;
   BEGIN
     WAIT UNTIL rising_edge(clk);
-    -- LIS 0 repeats after reset; each short cycle is four CPU clocks.
     IF now > 2 us AND cpu_ena = '1' AND phase = 0 THEN
       IF previous_cycle /= 0 ns THEN
         ASSERT now - previous_cycle = 280 ns

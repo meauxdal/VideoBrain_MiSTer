@@ -111,7 +111,6 @@ def main():
 
     if args.procedure == "circle":
         hold("forward", 0, 128, 16)
-        # Sixteen rim positions, clockwise from fully forward back to forward.
         for i in range(1, 17):
             angle = 2 * math.pi * i / 16
             hold(f"circle{i}", round(127.5 - 127.5 * math.cos(angle)),

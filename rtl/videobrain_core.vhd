@@ -1,6 +1,3 @@
---------------------------------------------------------------------------------
--- VideoBrain machine core assembly
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -21,12 +18,9 @@ ENTITY videobrain_core IS
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
 
-    -- Keyboard matrix, 9 columns x 4 rows, flattened by column, active high.
     kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
-    -- Stick positions, byte n selected by port-0 bit n, 128 = centre.
     joy_pots   : IN std_logic_vector(63 DOWNTO 0);
-    -- 555 model in MCLK ticks; externally adjustable by the headless sim.
     joy_timer_base : IN unsigned(13 DOWNTO 0);
     joy_timer_step : IN unsigned(6 DOWNTO 0);
     joy_timer_curve : IN std_logic;
@@ -40,7 +34,6 @@ ENTITY videobrain_core IS
 
     brclk_ena  : OUT std_logic;
 
-    -- Pixel output from the internal renderer.
     ce_pix : OUT std_logic;
     vid_idx: OUT std_logic_vector(4 DOWNTO 0);
     vid_r  : OUT uv8;
@@ -66,7 +59,6 @@ ENTITY videobrain_core IS
     hpos     : OUT unsigned(7 DOWNTO 0);
     vpos     : OUT unsigned(8 DOWNTO 0);
 
-    -- renderer controls, consumed by whatever drives fifo_pop
     final_mod  : OUT uv8;
     background : OUT uv8;
     x_zoom     : OUT std_logic;
@@ -124,6 +116,8 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL fifo_wr_entry : uv201_fifo_entry_t;
 
   SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
+  SIGNAL kbd_b_in_n : uv8;
+  SIGNAL expander_data_n, expander_interrupt_n : std_logic;
   SIGNAL port1_wr_l : std_logic;
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
@@ -219,7 +213,6 @@ BEGIN
       dc0o      => dc0
       );
 
-  -- Only the SMI answers external I/O so far; ports 0/1 are inside the CPU.
   io_rdata <= smi_rdata WHEN smi_sel = '1' ELSE (OTHERS => '1');
 
   u_smi : ENTITY work.f3853
@@ -330,7 +323,7 @@ BEGIN
       port_a_n     => po_a_n_l,
       port_b_n     => po_b_n_l,
       port_b_wr    => port1_wr_l,
-      port_b_in_n  => pi_b_n_l,
+      port_b_in_n  => kbd_b_in_n,
       kbd_matrix   => kbd_matrix,
       joy_fire     => joy_fire,
       uv_kbd       => uv_o_kbd_l,
@@ -346,13 +339,24 @@ BEGIN
   f8_po_b_n <= po_b_n_l;
   joy_enable <= joy_enable_l;
 
-  -- EXT INT is wired-OR: the UV201 Y interrupt and the joystick 555.
-  ext_int <= yint_irq OR joy_int;
+  pi_b_n_l <= kbd_b_in_n AND unsigned'("11" &
+                    (po_b_n_l(5) AND expander_data_n) & "11111");
+
+  u_expander1 : ENTITY work.expander1
+    GENERIC MAP (CLK_DIV_MCLK => CLK_DIV_MCLK)
+    PORT MAP (
+      clk => clk, reset_na => reset_na,
+      host_data_n => po_b_n_l(5), host_clock_n => po_b_n_l(6),
+      data_n => expander_data_n, interrupt_n => expander_interrupt_n,
+      dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
+      dl_index => dl_index
+      );
+
+  ext_int <= yint_irq OR joy_int OR NOT expander_interrupt_n;
 
   -- The UV201 Y counter advances at the leading edge of HBLANK.
   uv_current_y <= vpos_l + 1 WHEN hpos_l >= HBLANK_START ELSE vpos_l;
 
-  -- The 555 pulse is measured in MCLK ticks; MCLK is 4x BRCLK.
   -- TODO: verify the pot timing range on hardware.
   -- The 555 is held in reset while EJOY is disabled and HBLANK is high.
   PROCESS (clk, reset_na) IS

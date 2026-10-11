@@ -35,9 +35,6 @@ ENTITY f8_cpu IS
     ce       : IN std_logic;
     reset_na : IN std_logic;
 
-    -- Interrupt request from the F3853.  Upstream Channel F has no interrupt
-    -- source, so this port and the OP_INTERRUPT dispatch below are a
-    -- VideoBrain addition; the microcode for it was already present.
     intreq   : IN std_logic;
     acco     : OUT uv8;
     visaro   : OUT uv6;
@@ -47,9 +44,6 @@ END ENTITY;
 
 ARCHITECTURE rtl OF f8_cpu IS
 
-  -- Interrupts are not taken after these opcodes: each one loads PC1, W or an
-  -- I/O port, and servicing before the following instruction would lose it.
-  -- Same list as MAME f8.cpp execute_run().
   FUNCTION int_inhibited(op : uv8) RETURN boolean IS
   BEGIN
     RETURN op = x"0C" OR op = x"1B" OR op = x"1C" OR op = x"1D" OR
@@ -249,10 +243,6 @@ BEGIN
           WHEN 11 =>
             IF len_v=L THEN
               IF mop.romc=ROMC_00 THEN -- IFETCH
-                -- ICB set and a request pending: run the interrupt sequence
-                -- instead of dispatching the opcode just fetched.  That opcode
-                -- is discarded and re-fetched on return, which is why ROMC 0F
-                -- backs PC1 up by one.
                 IF intreq='1' AND iozcs(4)='1' AND NOT int_inhibited(opcode) THEN
                   opcode<=OP_INTERRUPT;
                   txt<=OPTXT(to_integer(OP_INTERRUPT));

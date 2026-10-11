@@ -1,14 +1,3 @@
-#
-# Verilator harness for the VideoBrain core.
-#
-# The RTL is VHDL and Verilator reads only Verilog, so every build starts by
-# running the design through "ghdl synth", which emits a Verilog netlist.
-# Module and port names survive; internal combinational nodes become nNNNN.
-# Registers, RAMs and ROMs keep their names, which is what the debug views
-# and state dumps reach for.
-#
-# Requires: ghdl (VHDL-2008), verilator, sdl2 (graphical target only), zlib.
-#
 
 V     = verilator
 GHDL  = ghdl
@@ -20,7 +9,6 @@ TOP      = --top-module top
 GEN_V    = $(GEN)/videobrain.v
 VHD_TOP  = videobrain_core
 
-# Analysis order matters: packages first, then leaves, then the assembly.
 VHD_SRC = \
 	$(RTL)/f8/base_pack.vhd \
 	$(RTL)/f8/f8_pack.vhd \
@@ -41,13 +29,11 @@ VHD_SRC = \
 	$(RTL)/buffered_bus.vhd \
 	$(RTL)/sys_bus.vhd \
 	$(RTL)/videobrain_io.vhd \
+	$(RTL)/expander1.vhd \
 	$(RTL)/videobrain_core.vhd
 
 # Modules converted from VHDL to Verilog by hand. Each name listed here is
 # deleted from the synthesised netlist and must exist as rtl_v/<name>.v.
-# Convert one at a time and diff the headless frame hash against the all-VHDL
-# run to check equivalence:
-#   make headless && ./obj_dir_headless/Vtop --res1 selftest.rom --frames 8 --frame-log
 CONVERTED =
 
 CONVERTED_V = $(patsubst %,rtl_v/%.v,$(CONVERTED))
@@ -93,9 +79,6 @@ all: $(EXE)
 
 headless: $(HL_EXE)
 
-# ---------------------------------------------------------------------------
-# VHDL -> Verilog netlist
-# ---------------------------------------------------------------------------
 $(GEN_V): $(VHD_SRC) $(CONVERTED_V) Makefile
 	@mkdir -p $(GEN) $(WORK)
 	$(GHDL) -a --std=08 --workdir=$(WORK) -Wno-hide $(VHD_SRC)
@@ -105,17 +88,11 @@ $(GEN_V): $(VHD_SRC) $(CONVERTED_V) Makefile
 
 netlist: $(GEN_V)
 
-# ---------------------------------------------------------------------------
-# Headless: no SDL/ImGui, screenshots and state dumps. Used for regressions.
-# ---------------------------------------------------------------------------
 $(HL_EXE): $(V_SRC) $(HL_SRC) Makefile
 	$V -cc $(V_OPT) -exe --Mdir ./$(HL_DIR) $(TOP) \
 		-CFLAGS "-O2 -std=c++17" -LDFLAGS "-lz" $(V_SRC) $(HL_SRC)
 	$(MAKE) -C $(HL_DIR) -f Vtop.mk
 
-# ---------------------------------------------------------------------------
-# Graphical: SDL2 + ImGui
-# ---------------------------------------------------------------------------
 $(EXE): $(V_SRC) $(C_SRC) Makefile
 	$V -cc $(V_OPT) -LDFLAGS "$(LDFLAGS)" -exe --trace --Mdir ./obj_dir \
 		$(TOP) -CFLAGS "$(CXXFLAGS)" $(V_SRC) $(C_SRC)
@@ -132,12 +109,32 @@ test-yint: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_yint.vhd
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_yint --assert-level=error
 
+test-render: $(GEN_V)
+	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_render.vhd
+	$(GHDL) -r --std=08 --workdir=$(WORK) tb_render --assert-level=error
+
 test-audio:
 	$V -cc --exe --build --top-module videobrain_audio --Mdir out/obj_audio \
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio.cpp)
 	./out/obj_audio/Vvideobrain_audio
 
+test-expander1:
+	@mkdir -p out/expander1
+	$(GHDL) -a --std=08 --workdir=out/expander1 $(RTL)/f8/base_pack.vhd \
+		$(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
+		$(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd \
+		$(RTL)/expander1.vhd tests/tb_expander1.vhd
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1 --assert-level=error
+
+test-cartridges:
+	@mkdir -p out/cartridges
+	$(GHDL) -a --std=08 --workdir=out/cartridges $(RTL)/f8/base_pack.vhd \
+		$(RTL)/uv201/uv201_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
+		$(RTL)/uv201/uv201_regs.vhd $(RTL)/buffered_bus.vhd \
+		$(RTL)/sys_bus.vhd tests/tb_cartridges.vhd
+	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error
+
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 
-.PHONY: all headless netlist lint test-cpu-clock test-yint test-audio clean
+.PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio test-cartridges clean

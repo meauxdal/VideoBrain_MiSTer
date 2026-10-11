@@ -18,7 +18,6 @@ module emu
 	`include "sys/emu_ports.vh"
 );
 
-///////// Default values for ports not used in this core /////////
 
 assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
@@ -34,32 +33,30 @@ assign HDMI_FREEZE = 0;
 assign HDMI_BLACKOUT = 0;
 assign HDMI_BOB_DEINT = 0;
 
-assign AUDIO_S   = 1;   // signed
+assign AUDIO_S   = 1;
 assign AUDIO_MIX = 0;
 
 assign LED_DISK  = 0;
 assign LED_POWER = 0;
 assign BUTTONS   = 0;
 
-//////////////////////////////////////////////////////////////////
 
-// The UV201 visible area is 189 dots by 242 lines on a 4:3 screen.
 wire [1:0] ar = status[122:121];
-assign VIDEO_ARX = (!ar) ? 12'd4 : (ar - 1'd1);
-assign VIDEO_ARY = (!ar) ? 12'd3 : 12'd0;
 
 `include "build_id.v"
 localparam CONF_STR = {
 	"VideoBrain;;",
 	"-;",
 	"F1,BIN,Load Cartridge;",
+	"F2,BIN,Expander 1 ROM;",
 	"-;",
 	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+	"O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
 	"O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"-;",
 	"O[5],Joystick,Off,On;",
 	"O[8],Stick timing,Curve,Linear;",
-	"O[7:6],Fallback,Standard,Timeshare,Money Minder;",
+	"O[7:6],Cart Fallback,Standard,Timeshare,Money Minder;",
 	"-;",
 	"T[0],Reset;",
 	"R[0],Reset and close OSD;",
@@ -112,9 +109,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.ps2_key(ps2_key)
 );
 
-///////////////////////   CLOCKS   ///////////////////////////////
 
-// 14.318181 MHz is the UV202 master clock; BRCLK, and one pixel, is /4.
 wire clk_sys;
 wire pll_locked;
 pll pll
@@ -129,21 +124,19 @@ reg master_control = 0;
 wire system_reset = RESET | status[0] | buttons[1] | ioctl_download | ~pll_locked;
 wire reset = system_reset | master_control;
 
-///////////////////////   ROM LOADING   //////////////////////////
-
-// Main_MiSTer uploads boot<N>.rom at ioctl_index N<<6, so boot.rom arrives
-// at index 0. It holds RES1 then RES2, 2K each, and address bit 11 selects.
-// The cartridge comes from the OSD at index 1.
-wire boot_dl = ioctl_download && (ioctl_index[7:0] == 8'd0);
+// The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
+wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
+wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
+                                    (ioctl_index[7:0] == 8'd2));
 
-wire [7:0] dl_index = cart_dl               ? 8'd2 :
+wire [7:0] dl_index = expander_dl           ? 8'd3 :
+                      cart_dl               ? 8'd2 :
                       ioctl_addr[11]        ? 8'd1 : 8'd0;
 
-wire [15:0] dl_addr = {4'd0, ioctl_addr[11:0]};
-wire        dl_wr   = (boot_dl | cart_dl) & ioctl_wr;
+wire [15:0] dl_addr = (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
+wire        dl_wr   = (boot_dl | cart_dl | expander_dl) & ioctl_wr;
 
-///////////////////////   KEYBOARD   /////////////////////////////
 
 // 9 columns by 4 rows, bit = col * 4 + row, active high. Columns 0-7 are
 // selected by the CPU's port 0 latch, column 8 by UV201 CMD_KBD.
@@ -212,12 +205,10 @@ always @(posedge clk_sys) begin
 	end
 end
 
-// MiSTer analog axes are signed -127..127; pots take 0..255, 128 = centre.
 function automatic [7:0] axis_to_pot(input [7:0] axis);
 	axis_to_pot = ($signed(axis) >= -8'sd8 && $signed(axis) <= 8'sd8) ? 8'd128 : axis ^ 8'h80;
 endfunction
 
-// Digital overrides analog; up/left = 0, down/right = 255.
 function automatic [7:0] stick_pot(input neg, input pos, input [7:0] axis);
 	stick_pot = (neg == pos) ? axis_to_pot(axis) : (neg ? 8'd0 : 8'd255);
 endfunction
@@ -235,10 +226,8 @@ wire [7:0] joy4_h = stick_pot(joystick_3[1], joystick_3[0], joystick_l_analog_3[
 wire [63:0] joy_pots = status[5] ? {joy4_h, joy4_v, joy3_h, joy3_v, joy2_h, joy2_v, joy1_h, joy1_v}
                                  : {8{8'd128}};
 
-// Fire buttons share the row lines with the keyboard.
 wire [3:0] joy_fire = status[5] ? {joystick_3[4], joystick_2[4], joystick_1[4], joystick_0[4]} : 4'b0000;
 
-///////////////////////   CORE   /////////////////////////////////
 
 wire       ce_pix;
 wire       vid_field;
@@ -305,9 +294,27 @@ videobrain_core core
 	.dc0        ()
 );
 
-///////////////////////   VIDEO   ////////////////////////////////
 
 assign CLK_VIDEO = clk_sys;
+
+// Measure both interlaced fields before scandoubling and HQ2x.
+video_freak video_freak
+(
+	.CLK_VIDEO(CLK_VIDEO),
+	.CE_PIXEL(ce_pix),
+	.VGA_VS(vid_vs & ~vid_field),
+	.HDMI_WIDTH(HDMI_WIDTH),
+	.HDMI_HEIGHT(HDMI_HEIGHT),
+	.VGA_DE(),
+	.VIDEO_ARX(VIDEO_ARX),
+	.VIDEO_ARY(VIDEO_ARY),
+	.VGA_DE_IN(vid_de),
+	.ARX(!ar ? 12'd4 : {10'd0, ar - 2'd1}),
+	.ARY(!ar ? 12'd3 : 12'd0),
+	.CROP_SIZE(12'd0),
+	.CROP_OFF(5'd0),
+	.SCALE(status[125:123])
+);
 
 wire [2:0] scale = status[4:3];
 assign VGA_SL = (scale == 3) ? 2'b10 : (scale == 2) ? 2'b01 : 2'b00;
@@ -340,9 +347,7 @@ video_mixer #(.GAMMA(0)) video_mixer
 	.VGA_DE(VGA_DE)
 );
 
-///////////////////////   AUDIO   ////////////////////////////////
 
-// Two-bit R-2R ladder on port 0 bits 1:0, clocked by port 1 bit 4.
 wire [15:0] audio_sample;
 videobrain_audio audio
 (

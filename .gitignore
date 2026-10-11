@@ -1,6 +1,9 @@
 # reference material; don't redistribute
 /refs
 
+# local planning; not release documentation
+/ROADMAP.md
+
 # ROM and cartridge images
 /software
 

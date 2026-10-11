@@ -35,8 +35,6 @@ public:
 
 	SimVideo(int width, int height, int rotate);
 	// Resize before Initialise(), which is where the frame buffer is allocated.
-	// The raster is machine-dependent, and the machine is not known until the
-	// command line has been parsed.
 	void Resize(int width, int height);
 	~SimVideo();
 	void UpdateTexture();

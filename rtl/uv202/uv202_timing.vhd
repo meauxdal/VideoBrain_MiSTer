@@ -1,9 +1,4 @@
---------------------------------------------------------------------------------
--- VideoBrain UV202 timing generator
--- 228 BRCLK per line, 263/262-line alternating fields.
--- HBLANK/FIFO edge timing follows docs/videobrain_unwrapped.txt.
 -- TODO: verify the exact equalization/vsync half-line seam on hardware.
---------------------------------------------------------------------------------
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -17,25 +12,23 @@ ENTITY uv202_timing IS
   PORT (
     clk        : IN  std_logic;
     reset_na   : IN  std_logic;
-    brclk_ena  : IN  std_logic;   -- from uv202_clkgen
+    brclk_ena  : IN  std_logic;
 
-    -- chip-level outputs (match UV202 pin semantics)
-    hblank     : OUT std_logic;   -- pin 17, high during hblank
-    vblank     : OUT std_logic;   -- pin 18, high for 21 lines/field
-    burst      : OUT std_logic;   -- pin 19
-    csync      : OUT std_logic;   -- pin 20, composite sync (active high pulses)
-    scanline   : OUT std_logic;   -- pin 23, toggles at start of each line (debug)
-    field      : OUT std_logic;   -- pin 24, 0=odd 1=even
+    hblank     : OUT std_logic;
+    vblank     : OUT std_logic;
+    burst      : OUT std_logic;
+    csync      : OUT std_logic;
+    scanline   : OUT std_logic;
+    field      : OUT std_logic;
 
-    -- internal timing taps for uv202_arbiter / uv201_fetcher
-    hpos       : OUT unsigned(7 DOWNTO 0);  -- 0-227, cycle within line
-    vpos       : OUT unsigned(8 DOWNTO 0);  -- 0-262, line within field
+    hpos       : OUT unsigned(7 DOWNTO 0);
+    vpos       : OUT unsigned(8 DOWNTO 0);
     -- 1-cycle pulse at hpos 0, i.e. the start of the HBLANK tail. vpos has
     -- already advanced, so this is the point to begin fetching the next line:
     -- it leaves the whole 33-cycle tail to fill the FIFO before active video.
     line_start     : OUT std_logic;
 
-    hblank_falling : OUT std_logic;   -- 1-cycle pulse, = "cycle 0" per doc convention
+    hblank_falling : OUT std_logic;
     hblank_rising  : OUT std_logic    -- 1-cycle pulse, FIFO-clear trigger for uv201
     );
 END ENTITY uv202_timing;
@@ -44,7 +37,7 @@ ARCHITECTURE rtl OF uv202_timing IS
 
   SIGNAL hpos_l    : unsigned(7 DOWNTO 0) := (OTHERS => '0');
   SIGNAL vpos_l     : unsigned(8 DOWNTO 0) := (OTHERS => '0');
-  SIGNAL field_l    : std_logic := '0';         -- 0=odd(263 lines), 1=even(262 lines)
+  SIGNAL field_l    : std_logic := '0';
 
   SIGNAL hblank_l   : std_logic := '1';
   SIGNAL vblank_l   : std_logic := '1';
@@ -56,10 +49,8 @@ ARCHITECTURE rtl OF uv202_timing IS
   SIGNAL hblank_fall_l : std_logic := '0';
   SIGNAL hblank_rise_l : std_logic := '0';
 
-  -- lines_this_field: 263 for odd, 262 for even
   SIGNAL lines_this_field : unsigned(8 DOWNTO 0);
 
-  -- VBLANK is high for the first 21 lines of each field.
   CONSTANT VBLANK_LINES : natural := 21;
 
   -- Whole-line approximation for CSYNC classification. The half-line seam
@@ -67,7 +58,6 @@ ARCHITECTURE rtl OF uv202_timing IS
   CONSTANT NORMAL_LINES_ODD  : natural := 244;
   CONSTANT NORMAL_LINES_EVEN : natural := 243;
 
-  -- classification of the current line's CSYNC pulse shape
   TYPE line_kind_t IS (LK_VSYNC, LK_EQ, LK_NORMAL);
   SIGNAL line_kind : line_kind_t;
 
@@ -98,9 +88,6 @@ BEGIN
     END IF;
   END PROCESS;
 
-  ----------------------------------------------------------------------------
-  -- Main BRCLK-synchronous counter + output generation
-  ----------------------------------------------------------------------------
 
   PROCESS(clk, reset_na) IS
   BEGIN
@@ -123,7 +110,6 @@ BEGIN
 
       IF brclk_ena = '1' THEN
 
-        -- horizontal position advance / line rollover
         IF hpos_l = BRCLKS_PER_LINE-1 THEN
           hpos_l <= (OTHERS => '0');
           line_start_l <= '1';
@@ -150,9 +136,6 @@ BEGIN
           hblank_fall_l <= '1';
         END IF;
 
-        -- BURST: high cycles BURST_START..BURST_START+BURST_WIDTH-1,
-        -- except during the first 9 lines where VBLANK is high (per doc:
-        -- "except the first 9 scanlines VBLANK is high" - i.e. vsync+eq)
         IF hpos_l >= to_unsigned(BURST_START, 8) AND
            hpos_l <  to_unsigned(BURST_START + BURST_WIDTH, 8) THEN
           burst_l <= NOT vblank_l;
@@ -160,14 +143,12 @@ BEGIN
           burst_l <= '0';
         END IF;
 
-        -- VBLANK: high for first VBLANK_LINES lines of the field
         IF vpos_l < to_unsigned(VBLANK_LINES, 9) THEN
           vblank_l <= '1';
         ELSE
           vblank_l <= '0';
         END IF;
 
-        -- CSYNC: pulse pattern depends on line_kind
         CASE line_kind IS
           WHEN LK_NORMAL =>
             csync_l <= to_std_logic(hpos_l < to_unsigned(CSYNC_WIDTH_NORM, 8));
@@ -182,8 +163,6 @@ BEGIN
                        );
 
           WHEN LK_VSYNC =>
-            -- CSYNC high for the majority of the line, low (inverted)
-            -- pulses of VSYNC_PULSE_WIDTH at the two pulse start points
             csync_l <= NOT (
                          to_std_logic(
                            hpos_l >= to_unsigned(VSYNC_PULSE1_START, 8) AND

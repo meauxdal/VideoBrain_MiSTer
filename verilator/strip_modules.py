@@ -1,5 +1,3 @@
-# Remove modules from the ghdl-synth netlist so a hand-converted Verilog file
-# can take their place. Usage: strip_modules.py netlist.v name [name...]
 import re, sys
 
 path, names = sys.argv[1], set(sys.argv[2:])

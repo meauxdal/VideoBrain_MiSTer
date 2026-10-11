@@ -1,9 +1,3 @@
-// ---------------------------------------------------------------------------
-// Graphical Verilator harness for the VideoBrain core: SDL2 + ImGui.
-//
-// Shares sim.v and the sim/ support layer with the headless build. Use
-// "make headless" for batch runs; this one is always interactive.
-// ---------------------------------------------------------------------------
 
 #include <verilated.h>
 #include "Vtop.h"
@@ -34,7 +28,6 @@ bool headless = false;
 #include <verilated_vcd_c.h>
 #include "../imgui/ImGuiFileDialog.h"
 
-// Accessors into the netlist. Names come from the VHDL through ghdl synth.
 #define CORE(sig) (top->rootp->top__DOT__core__DOT__##sig)
 #define CPU(sig)  (top->rootp->top__DOT__core__DOT__u_cpu__DOT__##sig)
 #define BUS(sig)  (top->rootp->top__DOT__core__DOT__u_sys_bus__DOT__##sig)
@@ -43,7 +36,6 @@ bool headless = false;
 #define TOP(sig)  (top->rootp->top__DOT__##sig)
 #define REN(sig)  (top->rootp->top__DOT__core__DOT__u_render__DOT__##sig)
 
-// Simulation control
 int  batchSize = 200000;
 bool run_enable = false;
 bool single_step = false;
@@ -62,8 +54,6 @@ MemoryEditor mem_edit;
 SimBus bus(console);
 SimInput input(12, console);
 
-// The UV201 active raster: 228 BRCLK per line less 39 of HBLANK, and the
-// visible lines of one field.
 #define VGA_WIDTH   189
 #define VGA_HEIGHT  246
 #define VGA_ROTATE  0
@@ -108,7 +98,6 @@ int verilate() {
             if (clk_sys.clk) bus.AfterEval();
         }
 
-        // One pixel per BRCLK, marked by ce_pix.
         if (clk_sys.IsRising() && top->ce_pix) {
             uint32_t colour = 0xFF000000 | top->VGA_B << 16 | top->VGA_G << 8 | top->VGA_R;
             video.Clock(top->VGA_HB, top->VGA_VB, top->VGA_HS, top->VGA_VS, colour);
@@ -177,7 +166,7 @@ int main(int argc, char** argv, char** env) {
     bus.ioctl_din = &top->ioctl_din;
     input.ps2_key = &top->ps2_key;
 
-    top->kbd_matrix = 0;   // active high, nothing pressed
+    top->kbd_matrix = 0;
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
     top->joy_timer_base = 2580;
@@ -217,8 +206,6 @@ int main(int argc, char** argv, char** env) {
         video.StartFrame();
         input.Read();
 
-        // Host keys to the 9x4 VideoBrain matrix, bit = col * 4 + row.
-        // Layout from MAME vidbrain.cpp INPUT_PORTS_START.
         {
             static const struct { SDL_Scancode sc; int bit; } KEYMAP[] = {
                 {SDL_SCANCODE_I,0},{SDL_SCANCODE_O,1},{SDL_SCANCODE_P,2},{SDL_SCANCODE_SEMICOLON,3},
@@ -241,7 +228,6 @@ int main(int argc, char** argv, char** env) {
             top->kbd_matrix = m;
         }
 
-        // Arrows drive stick 1 (pot byte 0 vertical, 1 horizontal), LCTRL fires.
         {
             uint8_t v = 128, h = 128, fire = 0;
             if (!ImGui::GetIO().WantCaptureKeyboard) {
@@ -256,7 +242,6 @@ int main(int argc, char** argv, char** env) {
 
         ImGui::NewFrame();
 
-        // ------------------------------------------------------------------
         ImGui::Begin(windowTitle_Control);
         ImGui::SetWindowPos(windowTitle_Control, ImVec2(0, 0), ImGuiCond_Once);
         ImGui::SetWindowSize(windowTitle_Control, ImVec2(500, 170), ImGuiCond_Once);
@@ -286,7 +271,6 @@ int main(int argc, char** argv, char** env) {
         }
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("F8 / bus");
         ImGui::SetWindowPos("F8 / bus", ImVec2(0, 170), ImGuiCond_Once);
         ImGui::SetWindowSize("F8 / bus", ImVec2(500, 180), ImGuiCond_Once);
@@ -302,7 +286,6 @@ int main(int argc, char** argv, char** env) {
                     (unsigned)TOP(po_a_n), (unsigned)TOP(po_b_n));
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("UV201");
         ImGui::SetWindowPos("UV201", ImVec2(0, 350), ImGuiCond_Once);
         ImGui::SetWindowSize("UV201", ImVec2(500, 330), ImGuiCond_Once);
@@ -331,7 +314,6 @@ int main(int argc, char** argv, char** env) {
                     (int)REN(shift_cnt), (int)REN(gap_cnt));
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("RES1 $0000-$07FF");
         mem_edit.DrawContents(&BUS(res1_rom), 2048, 0x0000);
         ImGui::End();
@@ -348,7 +330,6 @@ int main(int argc, char** argv, char** env) {
         mem_edit.DrawContents(&BUS(sys_ram), 1024, 0x0C00);
         ImGui::End();
 
-        // ------------------------------------------------------------------
         ImGui::Begin("Keyboard");
         ImGui::TextUnformatted(
             "Letters A-Z and , ; / type themselves.\n"
@@ -370,7 +351,6 @@ int main(int argc, char** argv, char** env) {
 
         console.Draw(windowTitle_DebugLog, &showDebugLog, ImVec2(500, 200));
 
-        // ------------------------------------------------------------------
         int windowX = 520;
         int windowWidth = (int)(video.output_width * VGA_SCALE_X) + 24;
         int windowHeight = (int)(video.output_height * VGA_SCALE_Y) + 90;
@@ -400,7 +380,6 @@ int main(int argc, char** argv, char** env) {
 
         video.UpdateTexture();
 
-        // Hold reset until the images have finished downloading.
         if (!bus.HasQueue() && !*bus.ioctl_download) top->reset = 0;
 
         if (run_enable) {
