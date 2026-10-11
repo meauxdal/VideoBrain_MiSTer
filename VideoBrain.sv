@@ -48,7 +48,7 @@ localparam CONF_STR = {
 	"VideoBrain;;",
 	"-;",
 	"F1,BIN,Load Cartridge;",
-	"F2,BIN,Expander 1 ROM (experimental);",
+	"F2,BIN,Expander 1 ROM;",
 	"-;",
 	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
@@ -124,9 +124,6 @@ reg master_control = 0;
 wire system_reset = RESET | status[0] | buttons[1] | ioctl_download | ~pll_locked;
 wire reset = system_reset | master_control;
 
-
-// Main_MiSTer uploads boot<N>.rom at ioctl_index N<<6, so boot0.rom arrives
-// at index 0. It holds RES1 then RES2, 2K each, and address bit 11 selects.
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
 wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
