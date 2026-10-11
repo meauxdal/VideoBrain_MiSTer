@@ -297,12 +297,12 @@ videobrain_core core
 
 assign CLK_VIDEO = clk_sys;
 
-// Measure native pixels before scandoubling and HQ2x.
+// Measure both interlaced fields before scandoubling and HQ2x.
 video_freak video_freak
 (
 	.CLK_VIDEO(CLK_VIDEO),
 	.CE_PIXEL(ce_pix),
-	.VGA_VS(vid_vs),
+	.VGA_VS(vid_vs & ~vid_field),
 	.HDMI_WIDTH(HDMI_WIDTH),
 	.HDMI_HEIGHT(HDMI_HEIGHT),
 	.VGA_DE(),
