@@ -1,7 +1,8 @@
 # MiSTer-devel cleanup
 
-Cleanup paused at user request on October 10, 2026. Fix the Pinball
-background-color RTL defect in a separate chat before resuming phase 4.
+The MiSTer-devel core audit is deferred until additional fundamentals are in
+place. New software targets have widened its scope. Resume phase 4 only after
+that work; the existing review queue and validation requirements remain open.
 
 ## Rules
 

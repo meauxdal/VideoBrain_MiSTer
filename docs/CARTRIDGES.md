@@ -1,9 +1,9 @@
 # Cartridge status
 
-The sixteen single-image cartridges were run in the headless simulator and
-their screens inspected. These first-screen results do not establish gameplay
-coverage. Checkers is confirmed fixed by the user as of October 10, 2026;
-the earlier hang is no longer a known issue.
+All eighteen cartridges reach their correct first screen, including APL/S and
+Information Manager, confirmed by the user on October 11, 2026. The sixteen
+single-image cartridges also have headless simulator screen coverage.
+First-screen results do not establish full gameplay or peripheral coverage.
 
     verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
@@ -18,7 +18,7 @@ CRC-32 is used to identify the loaded image, not to validate its integrity.
 
 ## Summary
 
-**All sixteen boot and render their first screen correctly.** Tennis plays.
+**All eighteen reach their correct first screen.** Tennis plays.
 
 | Cartridge | Size | Slot device | First screen | Notes |
 |---|---|---|---|---|
@@ -38,19 +38,65 @@ CRC-32 is used to identify the loaded image, not to validate its integrity.
 | VideoArtist | 2K | standard | correct | Design selection menu. |
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
-| APL / Computational Language | 16K | comp_language | untested | Mapper tests pass; first-screen and MiSTer validation pending. |
-| Information Manager | 8K | info_manager | I/O ERR without Expander 1 | Prototype; experimental Expander 1 processor support added, real-firmware startup and MiSTer validation pending. |
+| APL / Computational Language | 16K | comp_language | correct | Assembled MAME image; full program execution coverage pending. |
+| Information Manager | 8K | info_manager | correct | Prototype; with Expander 1 firmware, reaches PROGRAM / ENTER / REVIEW / EDIT without I/O ERR. Tape and serial operations need investigation. |
 
 ## Split cartridge conversion
 
-Run `python3 tools/convert_software.py` to assemble local MAME archives into
-`software/converted`. Existing matching cartridges are skipped. APL uses
-chips A-G in order with 2K zero padding; Information Manager uses its
-1000, 3000, and 3800 chips at file offsets 0000, 1000, and 1800, with a
-2K zero gap. These images require a core built with the new mappers.
+Use the chip names from MAME's
+[VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
+Every chip below is 2,048 bytes. Offsets are hexadecimal positions in the
+output file, not CPU addresses. Padding must contain zero bytes.
 
-The files in `software/21 games for apl_s` are full memory dumps, not
-cartridge ROMs. Loading them is not supported.
+### Computational Language (`complang.zip`)
+
+Concatenate A, B, C, D, E, F, G, then 2,048 zero bytes:
+
+| File offset | Dump |
+|---|---|
+| 0000 | `0310_apls-a.u1` |
+| 0800 | `0311_apls-b.u4` |
+| 1000 | `0312_apls-c.u3` |
+| 1800 | `0313_apls-d.u6` |
+| 2000 | `0314_apls-e.u2` |
+| 2800 | `0315_apls-f.u5` |
+| 3000 | `0316_apls-g.u11` |
+| 3800 | 2,048 zero bytes |
+
+Output: `The Computational Language (APL-S).bin`, 16,384 bytes.
+
+### Information Manager (`infoman.zip`, also known as `infomgr`)
+
+Concatenate the 1000 chip, 2,048 zero bytes, the 3000 chip, then the 3800 chip:
+
+| File offset | Dump |
+|---|---|
+| 0000 | `vb1200a_1000-17ff_9_25_78_51` |
+| 0800 | 2,048 zero bytes |
+| 1000 | `vb1200c_3000-37ff_9_25_78_51` |
+| 1800 | `vb-1200_3800-3fff_9_26_78` |
+
+Output: `Information Manager (prototype).bin`, 8,192 bytes. Load the separate
+Expander 1 firmware as described in [Expander 1 setup](EXPANDER1.md).
+
+### Converter
+
+Place both archives in `software/vidbrain (MAME)`, then run
+`python3 tools/convert_software.py` from the repository root. Alternatively,
+pass a software directory containing a `vidbrain (MAME)` subdirectory:
+
+```sh
+python3 tools/convert_software.py /path/to/software
+```
+
+The converter checks chip sizes and CRC-32, writes the assembled images and
+`checksums.tsv` into `software/converted` (or the supplied directory's
+`converted` subdirectory), and skips other cartridges matching existing images.
+Copy the assembled `.bin` files to the VideoBrain games folder and load through
+the OSD. Use a current core with the APL/S and Information Manager mappers;
+these assembled images are identified automatically.
+
+## Mapper tests
 
 `make -C verilator test-cartridges` checks bank selection, RAM, DMA,
 reset behavior, and the existing cartridge mappings without ROM files.
@@ -68,8 +114,8 @@ Teacher 1 does not establish a rendering fault.
 
 The title renders correctly on cyan, then the screen goes blank around frame
 130 and stays blank. Timeshare is the communications cartridge and expects the
-Expander modem, which is not emulated. Blanking may be expected while waiting
-for it; the cause has not been confirmed.
+Expander 2 and modem, which are not implemented. Blanking may be expected
+while waiting for them; the cause has not been confirmed.
 
 ### Pinball background color
 
@@ -88,8 +134,8 @@ ask for is unresolved. The way to settle it is to type a valid function name.
 
 ## Not implemented
 
-- The Timeshare image identifies the cartridge board, not the separate
-  Expander modem it expects to communicate with.
+- Expander 1 support is preliminary; tape and serial operations need investigation.
+- Expander 2 and modem support for Timeshare are absent.
 
 ## Slot device reference
 

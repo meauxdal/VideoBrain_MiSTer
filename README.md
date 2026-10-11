@@ -4,10 +4,17 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 
 ## Status
 
-- Sixteen single-image cartridges boot and render; see [cartridge status](docs/CARTRIDGES.md) for test coverage and limitations
-- Working joystick
+- All eighteen cartridges reach the correct first screen, including APL/S and Information Manager; see [cartridge status](docs/CARTRIDGES.md) for coverage
+- Integer scaling through the OSD's Scale setting
+- Working joystick, with known imperfections
 - 15.7kHz analog video works
-- Known issues: Imperfect audio. Pinball background fix awaits MiSTer validation (see [cartridge status](docs/CARTRIDGES.md)).
+- Preliminary Expander 1 support: Information Manager reaches its PROGRAM / ENTER / REVIEW / EDIT menu without I/O ERR
+
+Known defects: joystick behavior and audio remain imperfect. Pinball's background
+fix awaits MiSTer validation; see [cartridge status](docs/CARTRIDGES.md).
+
+Limitations: Expander 1 support is preliminary; serial and tape operations need
+further investigation. Expander 2 and modem support for Timeshare are absent.
 
 ## Joystick
 
@@ -30,9 +37,25 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 ```
 - boot0.rom: MD5 `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
 
-Experimental [Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K
-firmware as `boot1.rom` or through the OSD. Information Manager startup and
-peripheral operations remain unverified.
+Preliminary [Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K
+firmware as `boot1.rom` or through the OSD. Load this firmware for Information
+Manager to reach its first menu.
+
+### Split cartridge dumps
+
+Information Manager (`infoman` in MAME) and The
+Computational Language (`complang`, APL/S) need assembled ROM images. Place
+`infoman.zip` and `complang.zip` in `software/vidbrain (MAME)` and run from
+the repository root:
+
+```sh
+python3 tools/convert_software.py
+```
+
+Copy the resulting `.bin` files from `software/converted` to the VideoBrain
+games folder and load them through the OSD. The core selects their mappers
+automatically. See [chip order and padding](docs/CARTRIDGES.md#split-cartridge-conversion)
+to assemble them manually.
 
 ## Keyboard
 

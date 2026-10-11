@@ -1,8 +1,21 @@
 # Expander 1
 
-Experimental processor and host interface support. Information Manager's
-real-firmware startup has not been validated. The 3870 timer/interrupt ports,
-cassette paths and serial peripherals are not implemented.
+Preliminary processor and host interface support. With the real Expander 1
+firmware, Information Manager now reaches its expected first menu without
+I/O ERR:
+
+```text
+PROGRAM
+ENTER
+REVIEW
+EDIT
+: _
+```
+
+Further investigation is needed for serial, tape and other peripheral
+operations. The 3870 timer/interrupt ports, cassette paths and serial
+peripherals are not implemented. Expander 2 and the Timeshare modem are
+not supported.
 
 The 2K firmware dump has CRC-32 `dac31abc`. Load it from the OSD's
 Expander 1 ROM entry, or put it in the VideoBrain games folder as `boot1.rom`.
@@ -31,7 +44,8 @@ corrects its pins to receive 4, transmit 2, and signal ground 1.
 
 `make -C verilator test-expander1` uses synthetic firmware to check download,
 execution, clock input, output polarity, reset and oversize rejection.
-It does not establish Information Manager compatibility.
+It does not establish tape or serial compatibility. Information Manager's
+first menu is confirmed by the user as of October 11, 2026.
 
 After rebuilding the headless simulator, test the actual firmware:
 
@@ -44,5 +58,5 @@ make headless
   --frames 300 --shot-last --outdir out/expander1
 ```
 
-Expected first menu: ENTER, REVIEW, EDIT. Cassette and serial operations remain
-unsupported even if startup succeeds.
+Expected first menu: PROGRAM, ENTER, REVIEW, EDIT and the `: _` prompt.
+Cassette and serial operations remain unsupported.
