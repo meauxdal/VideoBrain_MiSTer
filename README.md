@@ -30,6 +30,10 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 ```
 - boot0.rom: MD5 `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
 
+Experimental [Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K
+firmware as `boot1.rom` or through the OSD. Information Manager startup and
+peripheral operations remain unverified.
+
 ## Keyboard
 
 ![VideoBrain keyboard manual](/docs/VB_Keyboard.gif)

@@ -29,6 +29,7 @@ VHD_SRC = \
 	$(RTL)/buffered_bus.vhd \
 	$(RTL)/sys_bus.vhd \
 	$(RTL)/videobrain_io.vhd \
+	$(RTL)/expander1.vhd \
 	$(RTL)/videobrain_core.vhd
 
 # Modules converted from VHDL to Verilog by hand. Each name listed here is
@@ -116,6 +117,14 @@ test-audio:
 	$V -cc --exe --build --top-module videobrain_audio --Mdir out/obj_audio \
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio.cpp)
 	./out/obj_audio/Vvideobrain_audio
+
+test-expander1:
+	@mkdir -p out/expander1
+	$(GHDL) -a --std=08 --workdir=out/expander1 $(RTL)/f8/base_pack.vhd \
+		$(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
+		$(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd \
+		$(RTL)/expander1.vhd tests/tb_expander1.vhd
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1 --assert-level=error
 
 test-cartridges:
 	@mkdir -p out/cartridges

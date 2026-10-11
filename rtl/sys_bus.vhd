@@ -114,6 +114,8 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL uv_reg_rdata : uv8;
 
   SIGNAL rdata_l : uv8;
+  SIGNAL cart_cpu_rdata : uv8;
+  SIGNAL cart_cpu_sel : std_logic;
 
   SIGNAL bb_res2_sel   : std_logic;
   SIGNAL bb_res2_addr  : unsigned(10 DOWNTO 0);
@@ -124,6 +126,9 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL bb_cart_sel   : std_logic;
   SIGNAL bb_cart_addr  : unsigned(11 DOWNTO 0);
   SIGNAL bb_cart_rdata : uv8;
+  SIGNAL bb_cart_rom_rdata : uv8;
+  SIGNAL bb_cart_ram_rdata : uv8;
+  SIGNAL bb_cart_ram_sel : std_logic;
   SIGNAL bb_open_bus   : std_logic;
 
   SIGNAL dl_res1, dl_res2, dl_cart : std_logic;
@@ -210,6 +215,7 @@ BEGIN
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
+      cart_cpu_sel <= '0';
       IF a_eff <= to_unsigned(ADDR_RES1_HI, 14) THEN
         rdata_l <= res1_rom(to_integer(a_eff));
 
@@ -223,7 +229,7 @@ BEGIN
         IF cart_ram_rd = '1' THEN
           rdata_l <= cart_ram(to_integer(cart_ram_a));
         ELSE
-          rdata_l <= cart_rom(to_integer(cart_cpu_a));
+          cart_cpu_sel <= '1';
         END IF;
 
       ELSIF a_eff <= to_unsigned(ADDR_RES2_HI, 14) THEN
@@ -233,7 +239,7 @@ BEGIN
         IF cart_ram_rd = '1' THEN
           rdata_l <= cart_ram(to_integer(cart_ram_a));
         ELSIF cart_exp_rom = '1' THEN
-          rdata_l <= cart_rom(to_integer(cart_cpu_a));
+          cart_cpu_sel <= '1';
         ELSE
           rdata_l <= (OTHERS => '1');
         END IF;
@@ -244,7 +250,19 @@ BEGIN
     END IF;
   END PROCESS;
 
-  ext_rdata <= rdata_l;
+  -- Register ROM reads before selecting data to preserve block RAM inference.
+  PROCESS (clk) IS
+  BEGIN
+    IF rising_edge(clk) THEN
+      cart_cpu_rdata <= cart_rom(to_integer(cart_cpu_a));
+      bb_cart_rom_rdata <= cart_rom(to_integer(bb_cart_addr AND
+                                              (cart_big & "11111111111")));
+    END IF;
+  END PROCESS;
+
+  ext_rdata <= cart_cpu_rdata WHEN cart_cpu_sel = '1' ELSE rdata_l;
+  bb_cart_rdata <= bb_cart_ram_rdata WHEN bb_cart_ram_sel = '1'
+                  ELSE bb_cart_rom_rdata;
 
 
   -- One process per array: a single process selecting between them defeats
@@ -364,13 +382,13 @@ BEGIN
     IF rising_edge(clk) THEN
       bb_res2_rdata <= res2_rom(to_integer(bb_res2_addr));
       bb_ram_rdata  <= sys_ram(to_integer(bb_ram_addr));
+      bb_cart_ram_rdata <= cart_ram(to_integer(bb_cart_addr(9 DOWNTO 0)));
       IF (cart_effective_type = CART_COMPLANG AND bb_cart_addr >= x"C00") OR
          (cart_effective_type = CART_INFOMAN AND bb_cart_addr(11) = '1') OR
          (cart_effective_type = CART_TIMESHARE AND bb_cart_addr(11) = '1') THEN
-        bb_cart_rdata <= cart_ram(to_integer(bb_cart_addr(9 DOWNTO 0)));
+        bb_cart_ram_sel <= '1';
       ELSE
-        bb_cart_rdata <= cart_rom(to_integer(bb_cart_addr AND
-                                             (cart_big & "11111111111")));
+        bb_cart_ram_sel <= '0';
       END IF;
     END IF;
   END PROCESS;

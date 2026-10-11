@@ -42,21 +42,21 @@ assign BUTTONS   = 0;
 
 
 wire [1:0] ar = status[122:121];
-assign VIDEO_ARX = (!ar) ? 12'd4 : (ar - 1'd1);
-assign VIDEO_ARY = (!ar) ? 12'd3 : 12'd0;
 
 `include "build_id.v"
 localparam CONF_STR = {
 	"VideoBrain;;",
 	"-;",
 	"F1,BIN,Load Cartridge;",
+	"F2,BIN,Expander 1 ROM (experimental);",
 	"-;",
 	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+	"O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
 	"O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"-;",
 	"O[5],Joystick,Off,On;",
 	"O[8],Stick timing,Curve,Linear;",
-	"O[7:6],Fallback,Standard,Timeshare,Money Minder;",
+	"O[7:6],Cart Fallback,Standard,Timeshare,Money Minder;",
 	"-;",
 	"T[0],Reset;",
 	"R[0],Reset and close OSD;",
@@ -127,15 +127,18 @@ wire reset = system_reset | master_control;
 
 // Main_MiSTer uploads boot<N>.rom at ioctl_index N<<6, so boot0.rom arrives
 // at index 0. It holds RES1 then RES2, 2K each, and address bit 11 selects.
-// The cartridge comes from the OSD at index 1.
-wire boot_dl = ioctl_download && (ioctl_index[7:0] == 8'd0);
+// The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
+wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
+wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
+                                    (ioctl_index[7:0] == 8'd2));
 
-wire [7:0] dl_index = cart_dl               ? 8'd2 :
+wire [7:0] dl_index = expander_dl           ? 8'd3 :
+                      cart_dl               ? 8'd2 :
                       ioctl_addr[11]        ? 8'd1 : 8'd0;
 
-wire [15:0] dl_addr = cart_dl ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
-wire        dl_wr   = (boot_dl | cart_dl) & ioctl_wr;
+wire [15:0] dl_addr = (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
+wire        dl_wr   = (boot_dl | cart_dl | expander_dl) & ioctl_wr;
 
 
 // 9 columns by 4 rows, bit = col * 4 + row, active high. Columns 0-7 are
@@ -296,6 +299,25 @@ videobrain_core core
 
 
 assign CLK_VIDEO = clk_sys;
+
+// Measure native pixels before scandoubling and HQ2x.
+video_freak video_freak
+(
+	.CLK_VIDEO(CLK_VIDEO),
+	.CE_PIXEL(ce_pix),
+	.VGA_VS(vid_vs),
+	.HDMI_WIDTH(HDMI_WIDTH),
+	.HDMI_HEIGHT(HDMI_HEIGHT),
+	.VGA_DE(),
+	.VIDEO_ARX(VIDEO_ARX),
+	.VIDEO_ARY(VIDEO_ARY),
+	.VGA_DE_IN(vid_de),
+	.ARX(!ar ? 12'd4 : {10'd0, ar - 2'd1}),
+	.ARY(!ar ? 12'd3 : 12'd0),
+	.CROP_SIZE(12'd0),
+	.CROP_OFF(5'd0),
+	.SCALE(status[125:123])
+);
 
 wire [2:0] scale = status[4:3];
 assign VGA_SL = (scale == 3) ? 2'b10 : (scale == 2) ? 2'b01 : 2'b00;

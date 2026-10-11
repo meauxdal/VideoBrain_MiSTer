@@ -116,6 +116,8 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL fifo_wr_entry : uv201_fifo_entry_t;
 
   SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
+  SIGNAL kbd_b_in_n : uv8;
+  SIGNAL expander_data_n, expander_interrupt_n : std_logic;
   SIGNAL port1_wr_l : std_logic;
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
@@ -321,7 +323,7 @@ BEGIN
       port_a_n     => po_a_n_l,
       port_b_n     => po_b_n_l,
       port_b_wr    => port1_wr_l,
-      port_b_in_n  => pi_b_n_l,
+      port_b_in_n  => kbd_b_in_n,
       kbd_matrix   => kbd_matrix,
       joy_fire     => joy_fire,
       uv_kbd       => uv_o_kbd_l,
@@ -337,7 +339,20 @@ BEGIN
   f8_po_b_n <= po_b_n_l;
   joy_enable <= joy_enable_l;
 
-  ext_int <= yint_irq OR joy_int;
+  pi_b_n_l <= kbd_b_in_n AND unsigned'("11" &
+                    (po_b_n_l(5) AND expander_data_n) & "11111");
+
+  u_expander1 : ENTITY work.expander1
+    GENERIC MAP (CLK_DIV_MCLK => CLK_DIV_MCLK)
+    PORT MAP (
+      clk => clk, reset_na => reset_na,
+      host_data_n => po_b_n_l(5), host_clock_n => po_b_n_l(6),
+      data_n => expander_data_n, interrupt_n => expander_interrupt_n,
+      dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
+      dl_index => dl_index
+      );
+
+  ext_int <= yint_irq OR joy_int OR NOT expander_interrupt_n;
 
   -- The UV201 Y counter advances at the leading edge of HBLANK.
   uv_current_y <= vpos_l + 1 WHEN hpos_l >= HBLANK_START ELSE vpos_l;

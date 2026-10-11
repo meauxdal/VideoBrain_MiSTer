@@ -39,7 +39,7 @@ CRC-32 is used to identify the loaded image, not to validate its integrity.
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
 | APL / Computational Language | 16K | comp_language | untested | Mapper tests pass; first-screen and MiSTer validation pending. |
-| Information Manager | 8K | info_manager | untested | Prototype; mapper tests pass, first-screen and MiSTer validation pending. |
+| Information Manager | 8K | info_manager | I/O ERR without Expander 1 | Prototype; experimental Expander 1 processor support added, real-firmware startup and MiSTer validation pending. |
 
 ## Split cartridge conversion
 

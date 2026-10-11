@@ -19,6 +19,10 @@ Run from this directory; the default ROM paths are relative to it.
 Known cartridge ROMs are identified by CRC-32. `--cart-type` selects the slot
 profile only for unrecognized images.
 
+`--expander1 <file>` loads the separate 2K Expander 1 firmware. This support is
+experimental; see [limits and hardware evidence](../docs/EXPANDER1.md).
+`make test-expander1` tests its ROM loading, processor and host clock wiring.
+
 Joystick pulse timing is runtime-configurable without rebuilding. Headless
 defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; use
 `--joy-timer-curve` to match MiSTer's default Curve setting. Values are MCLK

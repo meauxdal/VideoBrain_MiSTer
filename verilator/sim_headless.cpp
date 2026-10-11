@@ -355,6 +355,7 @@ static void usage(const char* argv0) {
 "\n"
 "  --res1 FILE          RES1 ROM, ioctl index 0\n"
 "  --res2 FILE          RES2 ROM, ioctl index 1\n"
+"  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
 "  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder\n"
 "\n"
@@ -422,7 +423,7 @@ static std::string basename_noext(const std::string& p) {
 int main(int argc, char** argv) {
     std::string res1 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
     std::string res2 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
-    std::string cart, outdir = "out", prefix, dump_path, audio_path;
+    std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     long joy_trace_from = -1;
@@ -453,6 +454,7 @@ int main(int argc, char** argv) {
         if      (a == "--help" || a == "-h") { usage(argv[0]); return 0; }
         else if (a == "--res1")        res1 = need("--res1");
         else if (a == "--res2")        res2 = need("--res2");
+        else if (a == "--expander1")   expander1 = need("--expander1");
         else if (a == "--cart")        cart = need("--cart");
         else if (a == "--cart-type")   cart_type = atoi(need("--cart-type"));
         else if (a == "--frames")      frames = atol(need("--frames"));
@@ -571,6 +573,7 @@ int main(int argc, char** argv) {
     io.quiet = quiet;
     io.add(res1, 0);
     io.add(res2, 1);
+    if (!expander1.empty()) io.add(expander1, 3);
     if (!cart.empty()) io.add(cart, 2);
 
     FrameGrabber fg;
