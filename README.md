@@ -4,11 +4,11 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 
 ## Status
 
-- All eighteen cartridges reach the correct first screen, including APL/S and Information Manager; see [cartridge status](docs/CARTRIDGES.md) for coverage
-- Integer scaling through the OSD's Scale setting
-- Working joystick, with known imperfections
+- All cartridges behave as expected given the current hardware setup (Information Manager detects Expander 1 and reaches the Program menu, Timeshare shows the title and then a black screen)
+- Integer scaling
+- Joystick works but is known to be imperfect
 - 15.7kHz analog video works
-- Preliminary Expander 1 support: Information Manager reaches its PROGRAM / ENTER / REVIEW / EDIT menu without I/O ERR
+- Preliminary Expander 1 support (no Expander 2 / modem / tape support currently)
 
 Known defects: joystick behavior and audio remain imperfect. Pinball's background
 fix awaits MiSTer validation; see [cartridge status](docs/CARTRIDGES.md).

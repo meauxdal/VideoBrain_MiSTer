@@ -56,7 +56,7 @@ localparam CONF_STR = {
 	"-;",
 	"O[5],Joystick,Off,On;",
 	"O[8],Stick timing,Curve,Linear;",
-	"O[7:6],Cart Fallback,Standard,Timeshare,Money Minder;",
+	"O[7:6],Cart fallback,Standard,Timeshare,Money Minder;",
 	"-;",
 	"T[0],Reset;",
 	"R[0],Reset and close OSD;",
