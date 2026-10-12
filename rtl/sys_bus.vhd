@@ -193,10 +193,7 @@ BEGIN
   PROCESS (clk, reset_na) IS
   BEGIN
     IF reset_na = '0' THEN
-      NULL;  -- RAM contents undefined on real hardware after reset too
-              -- (see doc: signature-byte-guarded clear routine runs at
-              -- boot); not resetting the array avoids a large synth-time
-              -- reset fan-out for no behavioral benefit.
+      NULL;  -- Hardware reset leaves RAM undefined; BIOS initializes it.
     ELSIF rising_edge(clk) THEN
       IF ext_wr = '1' AND a_eff >= to_unsigned(ADDR_RAM_LO, 14)
                        AND a_eff <= to_unsigned(ADDR_RAM_HI, 14) THEN
@@ -205,12 +202,8 @@ BEGIN
     END IF;
   END PROCESS;
 
-  -- read mux (registered).  Cyclone V M10K/MLAB have no async read port, so
-  -- this is the template Quartus needs to infer block RAM for
-  -- res1_rom/res2_rom/cart_rom/sys_ram instead of packing them into logic.
-  -- Adds 1 clk of read latency on rdata_l/ext_rdata - covered by the
-  -- existing arbiter wait states, but worth re-checking against
-  -- WAIT_CPU_RDWR in uv202_pack if timing looks off in sim.
+  -- Cyclone V block RAM requires synchronous reads. The arbiter wait states
+  -- cover the added clock of latency on rdata_l/ext_rdata.
 
   PROCESS (clk) IS
   BEGIN
@@ -265,8 +258,7 @@ BEGIN
                   ELSE bb_cart_rom_rdata;
 
 
-  -- One process per array: a single process selecting between them defeats
-  -- GHDL's RAM inference and the netlist balloons into unrolled muxes.
+  -- One process per array preserves GHDL RAM inference.
   dl_res1 <= dl_wr WHEN dl_index = to_unsigned(0, 8) ELSE '0';
   dl_res2 <= dl_wr WHEN dl_index = to_unsigned(1, 8) ELSE '0';
   dl_cart <= dl_wr WHEN dl_index = to_unsigned(2, 8) ELSE '0';

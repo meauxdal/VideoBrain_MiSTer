@@ -1,6 +1,4 @@
--- The ninth keyboard column is selected by UV201 command bit KBD.  MAME's
--- kbd_r() returns that bit directly, and the machine reads column 8 when it is
--- LOW; uv_kbd therefore follows that same active-low selection convention.
+-- UV201 KBD selects keyboard column 8 when low.
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -14,9 +12,7 @@ ENTITY videobrain_io IS
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
 
-    -- F8 ports 0 and 1 live inside the CPU, so this hangs off its port pins
-    -- rather than the external I/O bus. f8_cpu already inverts them, so these
-    -- are the active-low pin values.
+    -- Internal F8 ports 0/1 expose active-low pins, already inverted by f8_cpu.
     port_a_n    : IN  uv8;
     port_b_n    : IN  uv8;
     port_b_wr   : IN  std_logic;

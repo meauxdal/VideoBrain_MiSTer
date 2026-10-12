@@ -357,6 +357,7 @@ static void usage(const char* argv0) {
 "  --res2 FILE          RES2 ROM, ioctl index 1\n"
 "  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
+"  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
 "  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder\n"
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
@@ -423,7 +424,9 @@ static std::string basename_noext(const std::string& p) {
 int main(int argc, char** argv) {
     std::string res1 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
     std::string res2 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
-    std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
+    std::string cart, expander1, apl_path, outdir = "out", prefix, dump_path, audio_path;
+    long apl_frame = -1;
+    std::vector<uint8_t> apl_data;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     long joy_trace_from = -1;
@@ -456,6 +459,17 @@ int main(int argc, char** argv) {
         else if (a == "--res2")        res2 = need("--res2");
         else if (a == "--expander1")   expander1 = need("--expander1");
         else if (a == "--cart")        cart = need("--cart");
+        else if (a == "--apl") {
+            std::string v = need("--apl");
+            size_t at = v.find_last_of('@');
+            char* end = nullptr;
+            if (at != std::string::npos) apl_frame = strtol(v.c_str() + at + 1, &end, 10);
+            if (at == std::string::npos || at == 0 || !end || end == v.c_str() + at + 1 ||
+                *end || apl_frame < 1) {
+                fprintf(stderr, "error: --apl needs FILE@F with F>0\n"); return 1;
+            }
+            apl_path = v.substr(0, at);
+        }
         else if (a == "--cart-type")   cart_type = atoi(need("--cart-type"));
         else if (a == "--frames")      frames = atol(need("--frames"));
         else if (a == "--max-cycles")  max_cycles = atol(need("--max-cycles"));
@@ -551,7 +565,21 @@ int main(int argc, char** argv) {
         fprintf(stderr, "error: curve and sweep are mutually exclusive\n");
         return 1;
     }
-    if (prefix.empty()) prefix = basename_noext(cart.empty() ? res1 : cart);
+    if (!apl_path.empty()) {
+        FILE* f = fopen(apl_path.c_str(), "rb");
+        if (!f) { fprintf(stderr, "error: cannot open %s\n", apl_path.c_str()); return 2; }
+        apl_data.resize(16384);
+        bool valid = fread(apl_data.data(), 1, apl_data.size(), f) == apl_data.size();
+        valid = valid && fgetc(f) == EOF;
+        fclose(f);
+        if (!valid || memcmp(&apl_data[0xc00], &apl_data[0x2c00], 1024)) {
+            fprintf(stderr, "error: --apl needs a 16K dump with matching RAM mirrors\n"); return 1;
+        }
+        if (cart.empty() || apl_frame >= frames) {
+            fprintf(stderr, "error: --apl needs --cart and a load frame below --frames\n"); return 1;
+        }
+    }
+    if (prefix.empty()) prefix = basename_noext(!apl_path.empty() ? apl_path : (cart.empty() ? res1 : cart));
 
     FILE* df = stdout;
     if (!dump_path.empty()) {
@@ -613,6 +641,23 @@ int main(int argc, char** argv) {
     unsigned joy_sweep_index[8] = {};
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
+
+        if (!apl_data.empty() && fg.frame >= apl_frame && io.finished) {
+            if (BUS(cart_effective_type) != 3) {
+                fprintf(stderr, "error: --apl requires the Computational Language cartridge\n"); return 1;
+            }
+            for (int i = 0; i < 0xc00; i++) {
+                if (CART[i] != apl_data[0x1000 + i]) {
+                    fprintf(stderr, "error: APL/S dump does not match cartridge ROM\n"); return 1;
+                }
+            }
+            for (int i = 0; i < 1024; i++) {
+                SYSRAM[i] = apl_data[0xc00 + i];
+                BUS(cart_ram)[i] = apl_data[0x1c00 + i];
+            }
+            printf("[apl] frame=%ld loaded %s\n", fg.frame, apl_path.c_str());
+            apl_data.clear();
+        }
 
         bool master_control = false;
         {

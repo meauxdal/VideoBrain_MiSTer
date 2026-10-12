@@ -23,6 +23,40 @@ profile only for unrecognized images.
 experimental; see [limits and hardware evidence](../docs/EXPANDER1.md).
 `make test-expander1` tests its ROM loading, processor and host clock wiring.
 
+## APL/S memory dumps
+
+The `.bin` files in `software/21 games for apl_s` are 16K MAME CPU memory
+dumps, not cartridge ROMs. Load the Computational Language cartridge first.
+`--apl FILE@F` restores system RAM at 0C00-0FFF and cartridge RAM at
+1C00-1FFF at frame F. Load while the interpreter is idle at its input prompt.
+ROM, CPU registers, mapper bank and video registers are not restored.
+
+```sh
+mkdir -p out/apl
+./obj_dir_headless/Vtop \
+  --cart "../software/converted/The Computational Language (APL-S).bin" \
+  --apl "../software/21 games for apl_s/guess.bin@300" \
+  --frames 330 --shot-last --outdir out/apl
+```
+
+The loader checks dump size, system RAM mirrors, cartridge type and fixed ROM
+contents. Use `--press` to enter the program name and NEXT after loading;
+Guess's program name is `GUES`. APL/S uses RUN/STOP as Space and SHIFT as a
+letter/symbol toggle. Guess reaches its limit input prompt after RAM loading.
+Full gameplay coverage is pending.
+`bash apl_guess_check.sh` captures startup, RAM loading and the submitted
+`GUES` command, then enters a limit and guess of 1. Inspect its PNGs in
+`out/apl/guess_check` for the completed score of `1 1`.
+
+`python3 apl_check.py --all` captures the 23 numbered reference entries and
+four variants. This is a long run. Use `--case 04-guess` for one case or
+`--all --dry-run` to list the schedule without simulation. Captures, logs and
+`summary.tsv` go to `out/apl/suite`. A completed capture is not a verified pass.
+Cases without stored programs are entered from the reference listings.
+For diagnostic retries, `--normalize` attempts to clear pending snapshot input
+and leave edit mode; `--settle N` extends the wait after each line. Use
+`--outdir out/apl/retry` to keep the original captures.
+
 Joystick pulse timing is runtime-configurable without rebuilding. Headless
 defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; use
 `--joy-timer-curve` to match MiSTer's default Curve setting. Values are MCLK

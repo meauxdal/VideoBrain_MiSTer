@@ -66,8 +66,7 @@ BEGIN
     ELSIF cart_sel_l = '1' THEN
       bb_rdata <= cart_rdata;
     ELSE
-      -- Real hardware is genuinely open here.  0xFF is a deterministic
-      -- simulation/FPGA placeholder; nothing should rely on this value.
+      -- Open bus on hardware; 0xFF is an FPGA placeholder.
       bb_rdata <= (OTHERS => '1');
     END IF;
   END PROCESS;

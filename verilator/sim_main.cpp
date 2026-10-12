@@ -178,8 +178,7 @@ int main(int argc, char** argv, char** env) {
     input.Initialise();
     if (video.Initialise(windowTitle) == 1) return 1;
 
-    // QueueDownload only logs failures into the debug pane, which is easy to
-    // miss, so check the files up front.
+    // QueueDownload only logs failures; reject missing files before starting.
     auto check = [](const char* p, const char* what) {
         if (FILE* f = fopen(p, "rb")) { fclose(f); return true; }
         fprintf(stderr, "error: cannot open %s '%s' (cwd must be verilator/)\n", what, p);

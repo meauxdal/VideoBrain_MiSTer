@@ -30,12 +30,11 @@ UV201 counter phase remain unmeasured.
 
 The timer follows EJOY/HBLANK reset and release. Falling joystick interrupt
 edges latch X/Y together; a registered strobe delivers the pair to the UV201
-freeze registers when FRZ is set. Preserve this capture behavior with the curve.
+freeze registers when FRZ is set.
 
 ## Verification
 
-Curve was confirmed working on MiSTer on October 7, 2026. The hardware report
-did not enumerate games, controller models or controller count. See the
+Curve was tested on MiSTer on October 7, 2026. See the
 [release notes](VideoBrain_20261007.md) for the artifact hash.
 
 | Simulator run | Result after forward/full-circle calibration |
@@ -43,9 +42,9 @@ did not enumerate games, controller models or controller count. See the
 | Gladiator, 461 frames | All four axes reach bounds 2819/400, span 2419, gain 2. Neutral returns 92; pots 112/128/144 return 80/92/118. |
 | Tennis, 551 frames | Both vertical channels span 70..214; neutral 139. Pots 112/128/144 return 130/139/157. |
 
-All planned state samples are present. Settled holds have 24 fixed position
-samples each. First and final neutral holds agree. Gladiator P1 is near a
-vertical boundary, limiting that axis's stability evidence. Simulator pots
+Settled holds have 24 fixed position samples each. First and final neutral
+holds agree. Gladiator P1 is near a vertical boundary, limiting that axis's
+stability evidence. Simulator pots
 bypass MiSTer analog reports and deadband.
 
 Run from WSL in verilator/, using new output directories to preserve evidence:
@@ -56,7 +55,6 @@ python3 joystick_calibration_check.py gladiator --curve --focus 342 --out out/jo
 python3 joystick_calibration_check.py tennis --curve --focus 432 --out out/joystick/tennis_shared_curve_repeat
 ```
 
-Calibration commands rebuild headless and write plans, traces, state,
-screenshots and summary.json. Original runs remain ignored under
-verilator/out/joystick/. See [measurement notes](../verilator/joystick_verification.md)
+Calibration commands rebuild headless and write results to the output directory.
+See [measurement notes](../verilator/joystick_verification.md)
 for arithmetic, timing constraints and earlier linear results.

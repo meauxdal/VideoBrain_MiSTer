@@ -56,9 +56,7 @@ BEGIN
 
     ELSIF rising_edge(clk) THEN
       IF hblank_rising = '1' THEN
-        -- Pointer/count reset is sufficient functionally.  Zeroing the array
-        -- as well mirrors the documented hardware observation and keeps
-        -- simulation/debug waveforms deterministic.
+        -- Hardware clears the FIFO storage as well as its pointers.
         mem        <= (OTHERS => UV201_FIFO_ENTRY_ZERO);
         wr_ptr     <= 0;
         rd_ptr     <= 0;
@@ -97,9 +95,7 @@ BEGIN
           writable_l <= '0';
         ELSIF next_count <= 8 THEN
           writable_l <= '1';
-        -- At level 9 retain the previous state: writable while filling,
-        -- unwritable while draining from full.  That is the documented
-        -- hysteresis rather than a simple count<10 test.
+        -- Level 9 retains the previous state (10-to-8 hysteresis).
         END IF;
       END IF;
     END IF;

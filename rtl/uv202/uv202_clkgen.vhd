@@ -1,14 +1,6 @@
--- Reference: kevtris "Videobrain Unwrapped" V0.05, sections:
---   "Conventions in this document" (MCLK/CPUCLK/BRCLK definitions)
---   UV202 pin 4/5 (Xin/Xout), pin 7 (CPUCLK), pin 33 (BRCLK), pin 34 (COLCLK)
--- Real hardware: UV202 is clocked from a 14.318181MHz crystal (Xin/Xout).
--- Internally it divides by 4 to make BRCLK (3.579545MHz, also mirrored out
--- as COLCLK for the NTSC encoder) and attempts to divide by 7 to make a
--- 2.045MHz CPUCLK - but that /7 output stops one cycle too late and glitches
--- the CPU during wait states, so real consoles ignore it and instead run the
--- F8 CPU from a *separate* 4MHz oscillator through a JK flip-flop (/2),
--- giving a clean external 2.0MHz CPUCLK with no relation to UV202's internal
--- dividers.
+-- Reference: kevtris "Videobrain Unwrapped" V0.05.
+-- UV202 divides 14.318181 MHz by four for BRCLK/COLCLK. Its /7 CPU output
+-- glitches during waits; consoles use a separate 4 MHz oscillator /2.
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -22,8 +14,7 @@ ENTITY uv202_clkgen IS
   GENERIC (
     CLK_DIV_MCLK : positive := 1;
 
-    -- Retained for the existing entity interface. CPU timing is now generated
-    -- from MCLK_HZ and CPU_HALF_HZ below rather than this integer divisor.
+    -- Unused; CPU timing uses MCLK_HZ and CPU_HALF_HZ.
     CPU_CLK_DIV  : positive := 7
     );
   PORT (

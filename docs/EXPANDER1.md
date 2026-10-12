@@ -1,7 +1,7 @@
 # Expander 1
 
-Preliminary processor and host interface support. With the real Expander 1
-firmware, Information Manager now reaches its expected first menu without
+Preliminary processor and host interface support. With Expander 1
+firmware, Information Manager reaches its first menu without
 I/O ERR:
 
 ```text
@@ -12,8 +12,7 @@ EDIT
 : _
 ```
 
-Further investigation is needed for serial, tape and other peripheral
-operations. The 3870 timer/interrupt ports, cassette paths and serial
+The 3870 timer/interrupt ports, cassette paths and serial
 peripherals are not implemented. Expander 2 and the Timeshare modem are
 not supported.
 
@@ -34,8 +33,8 @@ outputs remain released. Reset restarts both processors and retains the ROM.
 | Reset | 2 | Reset |
 
 `Set 1/Image (31).jpg` identifies the MK3870 and labels its crystal 3.58.
-The implementation uses a 3.579545 MHz oscillator rate and the existing F8
-CPU's half-cycle enables. Confirm the exact crystal specification if available.
+The implementation uses the NTSC colorburst rate (3.579545 MHz) and the
+existing F8 CPU's half-cycle enables.
 
 The modem connector is separate from the host cable. `Set 2/Image (73).jpg`
 corrects its pins to receive 4, transmit 2, and signal ground 1.
@@ -44,8 +43,6 @@ corrects its pins to receive 4, transmit 2, and signal ground 1.
 
 `make -C verilator test-expander1` uses synthetic firmware to check download,
 execution, clock input, output polarity, reset and oversize rejection.
-It does not establish tape or serial compatibility. Information Manager's
-first menu is confirmed by the user as of October 11, 2026.
 
 After rebuilding the headless simulator, test the actual firmware:
 
@@ -57,6 +54,3 @@ make headless
   --expander1 "../software/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin" \
   --frames 300 --shot-last --outdir out/expander1
 ```
-
-Expected first menu: PROGRAM, ENTER, REVIEW, EDIT and the `: _` prompt.
-Cassette and serial operations remain unsupported.

@@ -112,7 +112,7 @@ module top(
       .dl_addr    (ioctl_addr[15:0]),
       .dl_data    (ioctl_dout),
       .dl_wr      (dl_wr),
-      .dl_index   (ioctl_index),
+      .dl_index   (ioctl_download ? ioctl_index : 8'hff),
       .unknown_cart_profile (cart_type),
 
       .pc0        (pc0),

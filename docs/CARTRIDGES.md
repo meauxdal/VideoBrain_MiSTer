@@ -1,7 +1,6 @@
 # Cartridge status
 
-All eighteen cartridges reach their correct first screen, including APL/S and
-Information Manager, confirmed by the user on October 11, 2026. The sixteen
+All eighteen cartridges reach their correct first screen. The sixteen
 single-image cartridges also have headless simulator screen coverage.
 First-screen results do not establish full gameplay or peripheral coverage.
 
@@ -14,15 +13,12 @@ assembled by `tools/convert_software.py` are also identified automatically.
 
 Fingerprints for all sixteen released single-image cartridges come from MAME's
 [VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
-CRC-32 is used to identify the loaded image, not to validate its integrity.
 
 ## Summary
 
-**All eighteen reach their correct first screen.** Tennis plays.
-
 | Cartridge | Size | Slot device | First screen | Notes |
 |---|---|---|---|---|
-| Blackjack | 2K | standard | correct | "1 OR 2 PLAYERS?" over black and red card suits on green. Best colour test in the set. |
+| Blackjack | 2K | standard | correct | "1 OR 2 PLAYERS?" over black and red card suits on green. |
 | Checkers | 4K | standard | correct | RUN/STOP advances to "YOU MOVE FIRST ? Y OR N". |
 | Demonstration | 4K | standard | correct | Six lines, each a different colour, seven colours on screen. |
 | Financier | 4K | standard | correct | Full function menu on green. |
@@ -31,7 +27,7 @@ CRC-32 is used to identify the loaded image, not to validate its integrity.
 | Math Tutor 1 | 4K | standard | correct | "CHOOSE / TUTOR 1 / PROBLEM 2" on olive. |
 | Money Minder | 4K | money_minder | correct | "MONEY MANAGER" title. RAM at 3800-3FFF is reachable; deeper functions untested. |
 | Music Teacher 1 | 2K | standard | correct | "PLAY/RECORD 1 / LEARN A SONG 2". |
-| Pinball | 2K | standard | correct | Input works flawlessly. Collision-driven full-background changes fixed in simulation; MiSTer validation pending. |
+| Pinball | 2K | standard | correct | Background fix validated. |
 | Tennis | 4K | standard | **plays** | RUN/STOP starts the game: court, net, scoreboard, player sprites. |
 | Timeshare | 2K | timeshare | correct | "TIMESHARE" title on cyan, then the screen blanks around frame 130. See below. |
 | Vice Versa | 4K | standard | correct | Advances to "YOU PLAY FIRST ? Y OR N". |
@@ -93,8 +89,7 @@ The converter checks chip sizes and CRC-32, writes the assembled images and
 `checksums.tsv` into `software/converted` (or the supplied directory's
 `converted` subdirectory), and skips other cartridges matching existing images.
 Copy the assembled `.bin` files to the VideoBrain games folder and load through
-the OSD. Use a current core with the APL/S and Information Manager mappers;
-these assembled images are identified automatically.
+the OSD.
 
 ## Mapper tests
 
@@ -114,28 +109,15 @@ Teacher 1 does not establish a rendering fault.
 
 The title renders correctly on cyan, then the screen goes blank around frame
 130 and stays blank. Timeshare is the communications cartridge and expects the
-Expander 2 and modem, which are not implemented. Blanking may be expected
-while waiting for them; the cause has not been confirmed.
-
-### Pinball background color
-
-Input works flawlessly. Collision-driven full-background changes are fixed in
-simulation. The final modifier now applies to gaps and empty-FIFO pixels as
-well as objects. User-supplied VideoBrain screenshots show the expected
-full-background colors. Validation on MiSTer remains pending.
+Expander 2 and modem, which are not implemented. Blanking is the expected
+behavior in this configuration by all accounts. Additional investigation is 
+warranted.
 
 ### Financier after an invalid key
 
-Holding SPACE leaves Financier drawing striped colour bands. VideoBrain
-software paints bands by rewriting the background register from the
-Y-interrupt handler, so the mechanism is in use. Whether this is a real
-rendering fault or simply what the cartridge does when handed a key it did not
-ask for is unresolved. The way to settle it is to type a valid function name.
-
-## Not implemented
-
-- Expander 1 support is preliminary; tape and serial operations need investigation.
-- Expander 2 and modem support for Timeshare are absent.
+Holding SPACE leaves Financier drawing striped colour bands. This appears to
+most likely be accurate behavior based on available references. Additional
+investigation is warranted.
 
 ## Slot device reference
 

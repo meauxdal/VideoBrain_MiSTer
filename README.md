@@ -16,14 +16,14 @@ Set Joystick=On and Stick timing=Curve in the OSD. Curve is the default. In Glad
 
 ## Installing
 
-Place the latest .rbf froms /releases in this repo in /media/fat/_Computers. 
+Place the latest .rbf from `releases` in `/media/fat/_Computers`.
 
 The core folder is /media/fat/games/VideoBrain. A BIOS is required. Verified BIOS ROMs are circulated split:
 
 - uvres1.bin: MD5 `CDF2F70F616AB61D7FBF31A3763BFC21`, 2,048 bytes
 - uvres2.bin: MD5 `E4B8B681CCCF4E8ECB09C3FDC206B8B2`, 2,048 bytes
 
-A script to concatenate the circulating dumps is provided. Place boot0.rom in the VideoBrain games folder. Rename an existing firmware boot.rom to boot0.rom.
+Place boot0.rom in the VideoBrain games folder. Rename an existing firmware boot.rom to boot0.rom.
 
 ```text
 tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom

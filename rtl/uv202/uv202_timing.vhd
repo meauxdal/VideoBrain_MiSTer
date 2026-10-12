@@ -23,9 +23,7 @@ ENTITY uv202_timing IS
 
     hpos       : OUT unsigned(7 DOWNTO 0);
     vpos       : OUT unsigned(8 DOWNTO 0);
-    -- 1-cycle pulse at hpos 0, i.e. the start of the HBLANK tail. vpos has
-    -- already advanced, so this is the point to begin fetching the next line:
-    -- it leaves the whole 33-cycle tail to fill the FIFO before active video.
+    -- Pulse at hpos 0 after vpos advances; 33 HBLANK cycles remain for fetch.
     line_start     : OUT std_logic;
 
     hblank_falling : OUT std_logic;
@@ -53,8 +51,7 @@ ARCHITECTURE rtl OF uv202_timing IS
 
   CONSTANT VBLANK_LINES : natural := 21;
 
-  -- Whole-line approximation for CSYNC classification. The half-line seam
-  -- remains a hardware-validation item; HBLANK and field lengths are separate.
+  -- Whole-line approximation for CSYNC; HBLANK and field lengths are separate.
   CONSTANT NORMAL_LINES_ODD  : natural := 244;
   CONSTANT NORMAL_LINES_EVEN : natural := 243;
 

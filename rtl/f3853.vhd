@@ -1,7 +1,5 @@
--- Reference: MAME machine/f3853.cpp.  Only the parts VideoBrain uses are
--- modelled: the interrupt vector registers, the interrupt control register,
--- the programmable timer and the request flip-flop.  Memory addressing and the
--- priority daisy chain are not present; the machine has a single SMI.
+-- Reference: MAME machine/f3853.cpp.
+-- Memory addressing and priority daisy chaining are omitted (single SMI).
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

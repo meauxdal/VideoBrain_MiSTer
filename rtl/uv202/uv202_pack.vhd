@@ -126,10 +126,7 @@ PACKAGE uv202_pack IS
 
 
   TYPE bus_access_t IS (
-    ACC_NONE,        -- idle, AND: RES1 (0000-07FF) specifically - the doc
-                      -- lists RES1 as the one genuinely 0-wait CPU region,
-                      -- so it is the only region that legitimately bypasses
-                      -- uv202_arbiter's wait-stating path entirely.
+    ACC_NONE,        -- Idle or RES1 (0000-07FF), the only zero-wait CPU region.
     ACC_UV201_RD,
     ACC_UV201_WR,
     ACC_RAM_RD,
