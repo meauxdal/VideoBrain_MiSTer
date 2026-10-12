@@ -138,3 +138,13 @@ clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 
 .PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio test-cartridges clean
+
+test-apl-ram: test-cartridges
+	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \
+		"-gapl_image=../software/converted/The Computational Language (APL-S).bin" \
+		"-gapl_dump=../software/21 games for apl_s/guess.bin"
+	@mkdir -p $(WORK)
+	$(GHDL) -a --std=08 --workdir=$(WORK) -Wno-hide $(VHD_SRC) tests/tb_apl_loader.vhd
+	$(GHDL) -r --std=08 --workdir=$(WORK) tb_apl_loader --assert-level=error
+
+.PHONY: test-apl-ram

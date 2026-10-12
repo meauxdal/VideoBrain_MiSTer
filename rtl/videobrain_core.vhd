@@ -70,6 +70,8 @@ ENTITY videobrain_core IS
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
     unknown_cart_profile: IN uv8;
+    apl_available : OUT std_logic;
+    apl_load_error : OUT std_logic;
 
     pc0 : OUT uv16;
     pc1 : OUT uv16;
@@ -85,6 +87,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL tick : std_logic;
   SIGNAL phase : uint4;
   SIGNAL cpu_ce : std_logic;
+  SIGNAL cpu_ce_raw, apl_hold, apl_paused : std_logic;
 
   SIGNAL ext_addr  : unsigned(13 DOWNTO 0);
   SIGNAL ext_rd    : std_logic;
@@ -159,6 +162,11 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL uv_yint_ho_l : std_logic;
 
 BEGIN
+
+  -- Stop between ROMC cycles after the arbiter has drained CPU writes.
+  apl_paused <= apl_hold WHEN phase = 0 AND ext_req = '0' AND
+                             ext_wr = '0' AND io_wr = '0' ELSE '0';
+  cpu_ce <= cpu_ce_raw AND NOT apl_paused;
 
   u_cpu : ENTITY work.f8_cpu
     PORT MAP (
@@ -265,7 +273,7 @@ BEGIN
       brclk_ena      => brclk_ena_l,
       brclk_phase    => OPEN,
       cpu_ena_raw    => OPEN,
-      cpu_ce         => cpu_ce,
+      cpu_ce         => cpu_ce_raw,
       hblank         => hblank_l,
       vblank         => vblank_l,
       burst          => burst,
@@ -313,6 +321,10 @@ BEGIN
       dl_data        => dl_data,
       dl_wr          => dl_wr,
       dl_index       => dl_index,
+      apl_hold       => apl_hold,
+      apl_paused     => apl_paused,
+      apl_available  => apl_available,
+      apl_load_error => apl_load_error,
       unknown_cart_profile => unknown_cart_profile
       );
 

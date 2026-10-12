@@ -358,7 +358,7 @@ static void usage(const char* argv0) {
 "  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
 "  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
-"  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder\n"
+"  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman\n"
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
 "  --max-cycles N       hard cycle cap (default 2000000000)\n"

@@ -129,7 +129,7 @@ static void usage(const char* a0) {
 "  --res2 FILE   RES2 ROM (ioctl index 1)\n"
 "  --cart FILE   cartridge image (ioctl index 2)\n"
 "  --run         start running immediately\n"
-"  --cart-type N fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder\n", a0);
+"  --cart-type N fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman\n", a0);
 }
 
 int main(int argc, char** argv, char** env) {
@@ -260,8 +260,8 @@ int main(int argc, char** argv, char** env) {
         ImGui::Text("main_time %llu  frame %d  sim FPS %.1f",
                     (unsigned long long)main_time, video.count_frame, video.stats_fps);
         {
-            static const char* types[] = { "Standard", "Timeshare", "Money Minder" };
-            if (ImGui::Combo("Unknown cart profile", &opt_cart_type, types, 3))
+            static const char* types[] = { "Standard", "Timeshare", "Money Minder", "CompLang", "Infoman" };
+            if (ImGui::Combo("Unknown cart profile", &opt_cart_type, types, 5))
                 top->cart_type = (uint8_t)opt_cart_type;
         }
         if (ImGui::Button("Load cartridge...")) {

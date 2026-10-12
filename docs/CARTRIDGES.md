@@ -8,7 +8,8 @@ First-screen results do not establish full gameplay or peripheral coverage.
 
 Known raw dumps are identified by CRC-32 and use the matching slot behavior.
 `--cart-type` and the OSD's Fallback setting apply only to unrecognized
-images: 0 standard, 1 Timeshare, 2 Money Minder. APL and Information Manager
+images: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman.
+APL and Information Manager
 assembled by `tools/convert_software.py` are also identified automatically.
 
 Fingerprints for all sixteen released single-image cartridges come from MAME's

@@ -44,7 +44,7 @@ SYMBOLS.update({
 })
 
 
-def schedule(lines, settle=64, normalize=False):
+def schedule(lines, settle=64, normalize=False, leave_edit=False):
     frame, symbols = 224, False
     presses, shots = [], []
 
@@ -54,10 +54,13 @@ def schedule(lines, settle=64, normalize=False):
         frame += 16
 
     if normalize:
-        press("SPECIAL")
+        if leave_edit:
+            press("SPECIAL")
         press("ERASE")
         frame += 64
-        lines = ["ENDE", *lines]
+        shots.append(frame - 1)
+        if leave_edit:
+            lines = ["ENDE", *lines]
     for index, line in enumerate(lines):
         for token in re.findall(r"\{[A-Z]+\}|.", line):
             if token == " ":
@@ -71,11 +74,12 @@ def schedule(lines, settle=64, normalize=False):
                 symbols = upper
             press(SYMBOLS[token] if upper else token)
         press("NEXT")
-        frame += 64 if normalize and index == 0 else settle
+        frame += 64 if leave_edit and index == 0 else settle
         shots.append(frame - 1)
-        if normalize and index == 0:
+        if leave_edit and index == 0:
             press("ERASE")
             frame += 64
+            shots.append(frame - 1)
     return presses, shots, frame
 
 
@@ -86,11 +90,17 @@ def main():
     selection.add_argument("--case", choices=CASES, action="append")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--settle", type=int, default=64, help="Frames to wait after each submitted line")
-    parser.add_argument("--normalize", action="store_true", help="Clear pending snapshot input and attempt to leave edit mode")
+    parser.add_argument("--normalize", action="store_true", help="Clear pending snapshot input")
+    parser.add_argument("--leave-edit", action="store_true", help="Also leave edit mode; use only for snapshots in edit mode")
+    parser.add_argument("--trace-final", type=int, default=0, help="Trace this many CPU memory cycles starting in the final frame")
     parser.add_argument("--outdir", default="out/apl/suite", help="Capture directory relative to verilator")
     args = parser.parse_args()
     if args.settle < 1:
         parser.error("--settle must be positive")
+    if args.leave_edit and not args.normalize:
+        parser.error("--leave-edit requires --normalize")
+    if args.trace_final < 0:
+        parser.error("--trace-final must be nonnegative")
     selected = list(CASES) if args.all else args.case or []
     if not selected:
         for name, (_, _, expected) in CASES.items():
@@ -104,7 +114,8 @@ def main():
     planned = []
     for name in selected:
         snapshot, lines, expected = CASES[name]
-        presses, shots, frames = schedule(lines, args.settle, args.normalize and bool(snapshot))
+        normalize = args.normalize and bool(snapshot)
+        presses, shots, frames = schedule(lines, args.settle, normalize, normalize and args.leave_edit)
         outdir = simdir / args.outdir / name
         command = [str(executable), "--cart", str(cartridge)]
         if snapshot:
@@ -116,6 +127,8 @@ def main():
         command += presses + ["--frames", str(frames), "--shot", captures,
                               "--dump", captures, "--ram", "--prefix", name,
                               "--outdir", str(outdir), "--dump-file", str(outdir / "state.txt")]
+        if args.trace_final:
+            command += ["--trace-from", str(frames - 1), "--trace-cpu", str(args.trace_final)]
         planned.append((name, command, outdir, expected))
         print(f"{name}: {frames} frames; expected: {expected}", flush=True)
 

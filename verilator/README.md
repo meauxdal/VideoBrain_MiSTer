@@ -42,8 +42,8 @@ mkdir -p out/apl
 The loader checks dump size, system RAM mirrors, cartridge type and fixed ROM
 contents. Use `--press` to enter the program name and NEXT after loading;
 Guess's program name is `GUES`. APL/S uses RUN/STOP as Space and SHIFT as a
-letter/symbol toggle. Guess reaches its limit input prompt after RAM loading.
-Full gameplay coverage is pending.
+letter/symbol toggle. Guess completes a limit-1 game with the expected score
+of `1 1`. Other programs and broader gameplay coverage remain pending.
 `bash apl_guess_check.sh` captures startup, RAM loading and the submitted
 `GUES` command, then enters a limit and guess of 1. Inspect its PNGs in
 `out/apl/guess_check` for the completed score of `1 1`.
@@ -53,9 +53,10 @@ four variants. This is a long run. Use `--case 04-guess` for one case or
 `--all --dry-run` to list the schedule without simulation. Captures, logs and
 `summary.tsv` go to `out/apl/suite`. A completed capture is not a verified pass.
 Cases without stored programs are entered from the reference listings.
-For diagnostic retries, `--normalize` attempts to clear pending snapshot input
-and leave edit mode; `--settle N` extends the wait after each line. Use
-`--outdir out/apl/retry` to keep the original captures.
+For diagnostic retries, `--normalize` clears pending snapshot input. Add
+`--leave-edit` only for snapshots in edit mode. `--settle N` extends the wait
+after each line; `--trace-final N` traces N CPU memory cycles in the final
+frame. Use `--outdir out/apl/retry` to keep the original captures.
 
 Joystick pulse timing is runtime-configurable without rebuilding. Headless
 defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; use

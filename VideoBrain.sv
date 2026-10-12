@@ -49,14 +49,16 @@ localparam CONF_STR = {
 	"-;",
 	"F1,BIN,Load Cartridge;",
 	"F2,BIN,Expander 1 ROM;",
+	"H0F3,BIN,Load APL/S RAM;",
+	"H1-APL/S RAM load rejected;",
 	"-;",
-	"O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
+	"O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
 	"O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"-;",
 	"O[5],Joystick,Off,On;",
-	"O[8],Stick timing,Curve,Linear;",
-	"O[7:6],Cart fallback,Standard,Timeshare,Money Minder;",
+	"O[8],Stick Timing,Curve,Linear;",
+	"O[11:9],Cart Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
 	"-;",
 	"T[0],Reset;",
 	"R[0],Reset and close OSD;",
@@ -90,7 +92,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.buttons(buttons),
 	.status(status),
-	.status_menumask(0),
+	.status_menumask({14'd0, ~apl_load_error, ~apl_available}),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -121,21 +123,25 @@ pll pll
 );
 
 reg master_control = 0;
-wire system_reset = RESET | status[0] | buttons[1] | ioctl_download | ~pll_locked;
+wire system_reset = RESET | status[0] | buttons[1] | (ioctl_download && !apl_dl) | ~pll_locked;
 wire reset = system_reset | master_control;
 
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
 wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
+wire apl_dl = ioctl_download && (ioctl_index[7:0] == 8'd3);
+wire apl_available, apl_load_error;
 wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
                                     (ioctl_index[7:0] == 8'd2));
 
-wire [7:0] dl_index = expander_dl           ? 8'd3 :
+wire [7:0] dl_index = apl_dl                ? 8'd4 :
+                      expander_dl           ? 8'd3 :
                       cart_dl               ? 8'd2 :
-                      ioctl_addr[11]        ? 8'd1 : 8'd0;
+                      boot_dl               ? (ioctl_addr[11] ? 8'd1 : 8'd0) : 8'hff;
 
-wire [15:0] dl_addr = (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
-wire        dl_wr   = (boot_dl | cart_dl | expander_dl) & ioctl_wr;
+wire [15:0] dl_addr = apl_dl ? (|ioctl_addr[24:16] ? 16'hffff : ioctl_addr[15:0]) :
+                     (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
+wire        dl_wr   = (boot_dl | cart_dl | expander_dl | apl_dl) & ioctl_wr;
 
 
 // 9 columns by 4 rows, bit = col * 4 + row, active high. Columns 0-7 are
@@ -287,7 +293,9 @@ videobrain_core core
 	.dl_data    (ioctl_dout),
 	.dl_wr      (dl_wr),
 	.dl_index   (dl_index),
-	.unknown_cart_profile ({6'd0, status[7:6]}),
+	.unknown_cart_profile ({5'd0, status[11:9]}),
+	.apl_available (apl_available),
+	.apl_load_error (apl_load_error),
 
 	.pc0        (),
 	.pc1        (),

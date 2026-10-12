@@ -5,7 +5,8 @@ USE work.base_pack.ALL;
 USE work.uv202_pack.ALL;
 
 ENTITY tb_cartridges IS
-  GENERIC (apl_image : string := ""; info_image : string := "");
+  GENERIC (apl_image : string := ""; info_image : string := "";
+           apl_dump : string := "");
 END ENTITY;
 
 ARCHITECTURE test OF tb_cartridges IS
@@ -19,6 +20,9 @@ ARCHITECTURE test OF tb_cartridges IS
   SIGNAL dl_data : uv8 := (OTHERS => '0');
   SIGNAL dl_wr : std_logic := '0';
   SIGNAL dl_index, fallback : uv8 := (OTHERS => '0');
+  SIGNAL apl_hold, apl_error, apl_available : std_logic;
+  SIGNAL apl_paused : std_logic := '0';
+  SIGNAL background : uv8;
 BEGIN
   clk <= NOT clk AFTER 5 ns;
   dut : ENTITY work.sys_bus
@@ -33,10 +37,12 @@ BEGIN
       uv_o_x_zm => OPEN, uv_o_frz => OPEN, uv_o_enb => OPEN,
       uv_o_int => OPEN, uv_o_kbd => OPEN, uv_o_y_zm => OPEN,
       uv_o_a_b => OPEN, uv_o_yint_ho => OPEN, uv_y_int => OPEN,
-      uv_final_mod => OPEN, uv_background => OPEN,
+      uv_final_mod => OPEN, uv_background => background,
       uv_obj_addr => (OTHERS => '0'), uv_obj_rdata => OPEN,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
-      dl_index => dl_index, unknown_cart_profile => fallback
+      dl_index => dl_index, unknown_cart_profile => fallback,
+      apl_hold => apl_hold, apl_paused => apl_paused,
+      apl_available => apl_available, apl_load_error => apl_error
     );
 
   PROCESS
@@ -101,6 +107,35 @@ BEGIN
       tick;
       tick;
     END PROCEDURE;
+
+    PROCEDURE load_dump(mode : natural) IS
+    BEGIN
+      file_open(image, apl_dump, read_mode);
+      dl_index <= to_unsigned(4, 8);
+      dl_wr <= '1';
+      n := 0;
+      WHILE NOT endfile(image) LOOP
+        read(image, byte);
+        EXIT WHEN mode = 1 AND n = 16383;
+        dl_addr <= to_unsigned(n, 16);
+        dl_data <= to_unsigned(character'pos(byte), 8);
+        IF (mode = 2 AND n = 16#1000#) OR
+           (mode = 3 AND n = 16#2C00#) THEN
+          dl_data <= to_unsigned(character'pos(byte), 8) XOR x"01";
+        END IF;
+        IF mode = 4 AND n = 2 THEN dl_addr <= x"0001"; END IF;
+        tick;
+        n := n + 1;
+      END LOOP;
+      file_close(image);
+      IF mode = 5 THEN
+        dl_addr <= x"4000"; tick;
+      END IF;
+      dl_wr <= '0';
+      dl_index <= x"FF";
+      tick;
+      tick;
+    END PROCEDURE;
   BEGIN
     -- Give each chip a distinct value to expose bank/address aliasing.
     dl_index <= to_unsigned(2, 8);
@@ -158,6 +193,44 @@ BEGIN
       read_at(16#3000#, 16#08#);
       write_at(16#1001#, 0);
       read_at(16#3000#, 16#15#);
+      IF apl_dump /= "" THEN
+        write_at(ADDR_UV201_LO + REG_BACKGROUND, 16#12#);
+        write_at(16#0C00#, 16#A5#);
+        write_at(16#1C00#, 16#5A#);
+        FOR mode IN 1 TO 5 LOOP
+          load_dump(mode);
+          ASSERT apl_error = '1' AND apl_hold = '0'
+            REPORT "Invalid APL dump accepted" SEVERITY failure;
+          read_at(16#0C00#, 16#A5#);
+          read_at(16#1C00#, 16#5A#);
+        END LOOP;
+        load_dump(0);
+        ASSERT apl_available = '1' AND apl_hold = '1' AND apl_error = '0'
+          REPORT "Valid APL dump rejected" SEVERITY failure;
+        read_at(16#0C00#, 16#A5#);
+        read_at(16#1C00#, 16#5A#);
+        apl_paused <= '1';
+        FOR i IN 0 TO 4100 LOOP tick; END LOOP;
+        ASSERT apl_hold = '0' REPORT "APL copy did not finish" SEVERITY failure;
+        apl_paused <= '0';
+        file_open(image, apl_dump, read_mode);
+        FOR i IN 0 TO 16383 LOOP
+          read(image, byte);
+          IF (i >= 16#0C00# AND i <= 16#0FFF#) OR
+             (i >= 16#1C00# AND i <= 16#1FFF#) THEN
+            read_at(i, character'pos(byte));
+          END IF;
+        END LOOP;
+        file_close(image);
+        read_at(16#1000#, 16#AA#);
+        read_at(16#3000#, 16#15#);
+        ASSERT background = x"12"
+          REPORT "APL load changed UV201 registers" SEVERITY failure;
+        -- Reset cancels a validated transfer waiting for the CPU.
+        load_dump(0);
+        reset_na <= '0'; tick; reset_na <= '1'; tick;
+        ASSERT apl_hold = '0' REPORT "Reset did not cancel APL load" SEVERITY failure;
+      END IF;
     END IF;
     IF info_image /= "" THEN
       load_file(info_image);
@@ -180,6 +253,13 @@ BEGIN
     read_at(16#1800#, 16#6D#);
     dma_at(16#1C00#, 16#6D#);
     read_at(16#3000#, 255);
+    IF apl_dump /= "" THEN
+      write_at(16#0C00#, 16#A5#);
+      load_dump(0);
+      ASSERT apl_available = '0' AND apl_error = '1' AND apl_hold = '0'
+        REPORT "APL dump accepted without interpreter cartridge" SEVERITY failure;
+      read_at(16#0C00#, 16#A5#);
+    END IF;
     REPORT "Cartridge tests passed";
     std.env.stop;
     WAIT;

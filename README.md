@@ -16,31 +16,39 @@ Set Joystick=On and Stick timing=Curve in the OSD. Curve is the default. In Glad
 
 ## Installing
 
-Place the latest .rbf from `releases` in `/media/fat/_Computers`.
+Place the latest .rbf from releases in /media/fat/_Computers.
 
 The core folder is /media/fat/games/VideoBrain. A BIOS is required. Verified BIOS ROMs are circulated split:
 
-- uvres1.bin: MD5 `CDF2F70F616AB61D7FBF31A3763BFC21`, 2,048 bytes
-- uvres2.bin: MD5 `E4B8B681CCCF4E8ECB09C3FDC206B8B2`, 2,048 bytes
+- uvres1.bin: MD5 CDF2F70F616AB61D7FBF31A3763BFC21, 2,048 bytes
+- uvres2.bin: MD5 E4B8B681CCCF4E8ECB09C3FDC206B8B2, 2,048 bytes
 
 Place boot0.rom in the VideoBrain games folder. Rename an existing firmware boot.rom to boot0.rom.
 
 ```text
 tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 ```
-- boot0.rom: MD5 `E1E7F6120EB8E23CA5C63B4246F04F18`, 4,096 bytes
+- boot0.rom: MD5 E1E7F6120EB8E23CA5C63B4246F04F18, 4,096 bytes
 
-Preliminary [Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K firmware as `boot1.rom` or through the OSD. This is required for Information Manager.
+Preliminary [Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K firmware as boot1.rom or through the OSD. This is required for Information Manager.
 
 ### Split cartridge dumps
 
-Information Manager (`infoman` in MAME) and The Computational Language (`complang`, APL/S) need assembled ROM images. Place `infoman.zip` and `complang.zip` in `software/vidbrain (MAME)` and run from the repository root:
+Information Manager (infoman.zip in MAME) and APL/S: The Computational Language (complang.zip) need assembled ROM images. Place the .zip files in software/vidbrain (MAME) and run from the repository root:
 
 ```sh
 python3 tools/convert_software.py
 ```
 
-Copy the resulting `.bin` files from `software/converted` to the VideoBrain games folder and load them through the OSD. The core selects their mappers automatically. See [chip order and padding](docs/CARTRIDGES.md#split-cartridge-conversion) to assemble them manually.
+Copy the resulting .bin files from software/converted to the VideoBrain games folder and load them through the OSD. The core selects their mappers automatically. See [chip order and padding](docs/CARTRIDGES.md#split-cartridge-conversion) to assemble them manually.
+
+## APL/S program RAM
+
+Load The Computational Language (APL-S).bin as the cartridge and wait for the interpreter to accept input. Choose **Load APL/S RAM** in the OSD, then select an original .bin. These files can be located in James Price's [APL/S games repo](https://github.com/jamescprice/21-APL-Games-and-One-Liners-For-Your-Umtech-Videobrain).
+
+The loader validates the size, RAM mirror and fixed ROM CRCs before replacing RAM at 0C00-0FFF and 1C00-1FFF. The CPU pauses briefly for the copy; no reset occurs. CPU registers, mapper state and video registers are retained. Load only while the interpreter is idle. A rejected file leaves RAM unchanged and shows **APL/S RAM load rejected** in the OSD. Reset returns to cartridge startup.
+
+Snapshots can contain pending input or an open editor. Inspect the restored screen before typing: F3 submits the current line, Space is RUN/STOP, and SHIFT toggles letters/symbols. See the collection's program instructions.
 
 ## Keyboard
 
