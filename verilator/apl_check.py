@@ -44,8 +44,8 @@ SYMBOLS.update({
 })
 
 
-def schedule(lines, settle=64, normalize=False, leave_edit=False):
-    frame, symbols = 224, False
+def schedule(lines, settle=64, normalize=False, leave_edit=False, symbols=False):
+    frame = 224
     presses, shots = [], []
 
     def press(key):
@@ -115,14 +115,21 @@ def main():
     for name in selected:
         snapshot, lines, expected = CASES[name]
         normalize = args.normalize and bool(snapshot)
-        presses, shots, frames = schedule(lines, args.settle, normalize, normalize and args.leave_edit)
         outdir = simdir / args.outdir / name
         command = [str(executable), "--cart", str(cartridge)]
+        symbols = False
         if snapshot:
             image = software / "21 games for apl_s" / f"{snapshot}.bin"
             if not image.is_file():
                 parser.error(f"Missing snapshot: {image}")
+            data = image.read_bytes()
+            if len(data) != 16384:
+                parser.error(f"Invalid snapshot size: {image}")
+            # APL/S SHIFT latch: 0 = letters, 1 = symbols.
+            symbols = bool(data[0x0FE2] & 1)
             command += ["--apl", f"{image}@210"]
+        presses, shots, frames = schedule(lines, args.settle, normalize,
+                                         normalize and args.leave_edit, symbols)
         captures = ",".join(map(str, [199, 211, *shots]))
         command += presses + ["--frames", str(frames), "--shot", captures,
                               "--dump", captures, "--ram", "--prefix", name,

@@ -23,6 +23,8 @@ ARCHITECTURE test OF tb_cartridges IS
   SIGNAL apl_hold, apl_error, apl_available : std_logic;
   SIGNAL apl_paused : std_logic := '0';
   SIGNAL background : uv8;
+  SIGNAL command : std_logic_vector(7 DOWNTO 0);
+  SIGNAL y_int, final_mod : uv8;
 BEGIN
   clk <= NOT clk AFTER 5 ns;
   dut : ENTITY work.sys_bus
@@ -34,10 +36,10 @@ BEGIN
       uv_cur_field => '0', uv_cur_vpos => (OTHERS => '0'),
       uv_capture_stb => '0', uv_capture_x => (OTHERS => '0'),
       uv_capture_y => (OTHERS => '0'),
-      uv_o_x_zm => OPEN, uv_o_frz => OPEN, uv_o_enb => OPEN,
-      uv_o_int => OPEN, uv_o_kbd => OPEN, uv_o_y_zm => OPEN,
-      uv_o_a_b => OPEN, uv_o_yint_ho => OPEN, uv_y_int => OPEN,
-      uv_final_mod => OPEN, uv_background => background,
+      uv_o_x_zm => command(0), uv_o_frz => command(1), uv_o_enb => command(2),
+      uv_o_int => command(3), uv_o_kbd => command(4), uv_o_y_zm => command(5),
+      uv_o_a_b => command(6), uv_o_yint_ho => command(7), uv_y_int => y_int,
+      uv_final_mod => final_mod, uv_background => background,
       uv_obj_addr => (OTHERS => '0'), uv_obj_rdata => OPEN,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index, unknown_cart_profile => fallback,
@@ -210,22 +212,33 @@ BEGIN
         read_at(16#0C00#, 16#A5#);
         read_at(16#1C00#, 16#5A#);
         apl_paused <= '1';
-        FOR i IN 0 TO 4100 LOOP tick; END LOOP;
+        FOR i IN 0 TO 32772 LOOP tick; END LOOP;
         ASSERT apl_hold = '0' REPORT "APL copy did not finish" SEVERITY failure;
         apl_paused <= '0';
         file_open(image, apl_dump, read_mode);
         FOR i IN 0 TO 16383 LOOP
           read(image, byte);
           IF (i >= 16#0C00# AND i <= 16#0FFF#) OR
-             (i >= 16#1C00# AND i <= 16#1FFF#) THEN
+             (i >= 16#1C00# AND i <= 16#1FFF#) OR
+             (i >= 16#2B00# AND i <= 16#2B8F#) THEN
             read_at(i, character'pos(byte));
+          ELSIF i = 16#2BF0# THEN
+            ASSERT y_int = to_unsigned(character'pos(byte), 8)
+              REPORT "APL Y interrupt mismatch" SEVERITY failure;
+          ELSIF i = 16#2BF2# THEN
+            ASSERT final_mod = to_unsigned(character'pos(byte) MOD 32, 8)
+              REPORT "APL final modifier mismatch" SEVERITY failure;
+          ELSIF i = 16#2BF5# THEN
+            ASSERT background = to_unsigned(character'pos(byte) MOD 32, 8)
+              REPORT "APL background mismatch" SEVERITY failure;
+          ELSIF i = 16#2BF7# THEN
+            ASSERT command = std_logic_vector(to_unsigned(character'pos(byte), 8))
+              REPORT "APL command mismatch" SEVERITY failure;
           END IF;
         END LOOP;
         file_close(image);
         read_at(16#1000#, 16#AA#);
-        read_at(16#3000#, 16#15#);
-        ASSERT background = x"12"
-          REPORT "APL load changed UV201 registers" SEVERITY failure;
+        read_at(16#3000#, 16#08#);
         -- Reset cancels a validated transfer waiting for the CPU.
         load_dump(0);
         reset_na <= '0'; tick; reset_na <= '1'; tick;

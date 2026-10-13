@@ -42,18 +42,26 @@ mkdir -p out/apl
 The loader checks dump size, system RAM mirrors, cartridge type and fixed ROM
 contents. Use `--press` to enter the program name and NEXT after loading;
 Guess's program name is `GUES`. APL/S uses RUN/STOP as Space and SHIFT as a
-letter/symbol toggle. Guess completes a limit-1 game with the expected score
-of `1 1`. Other programs and broader gameplay coverage remain pending.
+letter/symbol toggle. A completed limit-1 game should show a score of `1 1`.
+Other programs and broader gameplay coverage remain pending.
 `bash apl_guess_check.sh` captures startup, RAM loading and the submitted
 `GUES` command, then enters a limit and guess of 1. Inspect its PNGs in
 `out/apl/guess_check` for the completed score of `1 1`.
 
-`bash apl_guess_check.sh rtl` repeats the schedule through the RTL loader
+`bash apl_guess_check.sh rtl` uses the same keyboard schedule through the RTL loader
 using core download index 4 (MiSTer OSD index 3). Captures go to
 `out/apl/guess_check_rtl`. `--apl-rtl FILE@F` exercises staging, validation,
-CPU pause, RAM copy and resume without resetting the interpreter. It checks
-the 2048 copy writes, restored bytes, CPU pause and unchanged mapper bank
-during the copy. Compare both runs before changing the restored RAM regions.
+CPU pause, dump replay and resume without resetting the interpreter. The RTL
+replays all 16384 bytes through normal memory writes, including UV201 object
+RAM, video registers and cartridge banking. ROM remains read-only. The harness
+checks write order, RAM, video state, mapper writes and CPU pause/resume.
+`--apl` remains a RAM-only diagnostic baseline.
+
+`bash apl_load_check.sh [name]` follows the collection author's MAME procedure:
+load the dump, then press NEXT without retyping the saved command. It defaults
+to `clocknye2026`; captures go to `out/apl/load_check/name`. This is a long run.
+Dump loading writes `$FF` into write-only UV201 registers, as MAME does; the
+display can look distorted. Continued program execution needs visual verification.
 
 `python3 apl_check.py --all` captures the 23 numbered reference entries and
 four variants. This is a long run. Use `--case 04-guess` for one case or

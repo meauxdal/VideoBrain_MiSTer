@@ -757,8 +757,15 @@ int main(int argc, char** argv) {
             }
         }
         if (apl_rtl && apl_started && BUS(apl_copy_wr)) {
-            if (!apl_paused || BUS(apl_copy_addr) != apl_writes || apl_writes >= 2048) {
-                fprintf(stderr, "error: unsafe or out-of-order APL/S RAM copy\n"); return 1;
+            if (!apl_paused || BUS(apl_copy_addr) != apl_writes || apl_writes >= 16384 ||
+                BUS(apl_copy_data) != apl_data[apl_writes]) {
+                fprintf(stderr, "error: unsafe or incorrect APL/S replay\n"); return 1;
+            }
+            if (apl_writes >= 0x1000 && apl_writes <= 0x17ff) {
+                static const unsigned banks[4][4] = {
+                    {0, 1, 2, 0}, {2, 1, 2, 1}, {0, 2, 2, 0}, {2, 2, 2, 2}
+                };
+                apl_bank = banks[apl_data[apl_writes] & 3][apl_writes & 3];
             }
             apl_writes++;
         }
@@ -772,18 +779,27 @@ int main(int argc, char** argv) {
                 fprintf(stderr, "error: RTL rejected APL/S dump\n"); return 1;
             }
             if (apl_paused && (top->rootp->top__DOT__pc0 != apl_pc || BUS(cart_bank) != apl_bank)) {
-                fprintf(stderr, "error: CPU or mapper advanced during APL/S copy\n"); return 1;
+                fprintf(stderr, "error: CPU advanced or mapper differs from APL/S replay\n"); return 1;
             }
             if (apl_paused_seen && !CORE(apl_hold)) {
-                if (apl_writes != 2048 || !top->apl_available) {
-                    fprintf(stderr, "error: incomplete APL/S RAM copy\n"); return 1;
+                if (apl_writes != 16384 || !top->apl_available) {
+                    fprintf(stderr, "error: incomplete APL/S replay\n"); return 1;
                 }
                 for (int i = 0; i < 1024; i++) {
                     if (SYSRAM[i] != apl_data[0xc00 + i] || BUS(cart_ram)[i] != apl_data[0x1c00 + i]) {
                         fprintf(stderr, "error: APL/S RAM mismatch at offset %03X\n", i); return 1;
                     }
                 }
-                printf("[apl-rtl] frame=%ld copied %u bytes, pause released, bank=%u\n",
+                for (int i = 0; i < 144; i++) {
+                    if (obj_byte(i) != apl_data[0x2b00 + i]) {
+                        fprintf(stderr, "error: APL/S object RAM mismatch at offset %02X\n", i); return 1;
+                    }
+                }
+                if (UVR(r_cmd) != apl_data[0x2bf7] || UVR(r_y_int) != apl_data[0x2bf0] ||
+                    UVR(r_bg) != (apl_data[0x2bf5] & 31) || UVR(r_fmod) != (apl_data[0x2bf2] & 31)) {
+                    fprintf(stderr, "error: APL/S video registers differ from debugger writes\n"); return 1;
+                }
+                printf("[apl-rtl] frame=%ld replayed %u bytes, pause released, bank=%u\n",
                        fg.frame, apl_writes, apl_bank);
                 apl_data.clear();
             } else if (cycles - apl_start_cycle > 100000) {

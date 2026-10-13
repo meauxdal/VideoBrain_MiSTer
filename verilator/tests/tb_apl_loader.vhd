@@ -100,14 +100,14 @@ BEGIN
     saved_pc := pc;
     saved_x := video_x;
     moved := false;
-    FOR i IN 0 TO 3900 LOOP
+    FOR i IN 0 TO 32500 LOOP
       tick;
       ASSERT pc = saved_pc REPORT "CPU advanced during APL copy" SEVERITY failure;
       IF video_x /= saved_x THEN moved := true; END IF;
     END LOOP;
     ASSERT moved REPORT "Video timing stopped during APL copy" SEVERITY failure;
     moved := false;
-    FOR i IN 0 TO 500 LOOP
+    FOR i IN 0 TO 1000 LOOP
       tick;
       IF pc /= saved_pc THEN moved := true; END IF;
     END LOOP;

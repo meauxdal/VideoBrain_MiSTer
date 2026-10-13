@@ -94,6 +94,8 @@ ARCHITECTURE rtl OF sys_bus IS
   END FUNCTION;
 
   SIGNAL a_eff : unsigned(13 DOWNTO 0);
+  SIGNAL bus_wr : std_logic;
+  SIGNAL bus_wdata : uv8;
 
   TYPE rom_t IS ARRAY (0 TO 2047) OF uv8;
   SIGNAL res1_rom : rom_t := (OTHERS => (OTHERS => '0'));
@@ -115,7 +117,7 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL sys_ram_wa, cart_ram_wa : unsigned(9 DOWNTO 0);
   SIGNAL sys_ram_wdata, cart_ram_wdata : uv8;
 
-  TYPE apl_ram_t IS ARRAY (0 TO 2047) OF uv8;
+  TYPE apl_ram_t IS ARRAY (0 TO 16383) OF uv8;
   SIGNAL apl_ram : apl_ram_t;
   TYPE apl_state_t IS (IDLE, RECEIVE, WAIT_PAUSE, COPY_READ, COPY_WRITE);
   SIGNAL apl_state : apl_state_t := IDLE;
@@ -123,10 +125,9 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL apl_bad, apl_error : std_logic := '0';
   SIGNAL apl_sys_crc, apl_mirror_crc, apl_rom_crc : uv32 := (OTHERS => '1');
   SIGNAL cart_fixed_crc : uv32 := (OTHERS => '1');
-  SIGNAL apl_copy_addr : unsigned(10 DOWNTO 0) := (OTHERS => '0');
+  SIGNAL apl_copy_addr : unsigned(13 DOWNTO 0) := (OTHERS => '0');
   SIGNAL apl_copy_data : uv8;
   SIGNAL apl_copy_wr : std_logic;
-  SIGNAL apl_stage_addr : unsigned(10 DOWNTO 0);
 
   SIGNAL uv_reg_addr  : uv8;
   SIGNAL uv_reg_we    : std_logic;
@@ -175,17 +176,14 @@ BEGIN
                        apl_state = COPY_WRITE ELSE '0';
   apl_copy_wr <= '1' WHEN apl_state = COPY_WRITE AND apl_paused = '1' AND
                          reset_na = '1' ELSE '0';
-  apl_stage_addr <= dl_addr(12) & dl_addr(9 DOWNTO 0);
-
-  -- Stage only RAM. Validate sequential size, RAM mirror and fixed ROM CRCs.
+  -- Stage the debugger dump; validate before changing live memory.
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
       IF dl_wr = '1' AND dl_index = to_unsigned(4, 8) AND
          (apl_state = IDLE OR apl_state = RECEIVE) THEN
-        IF dl_addr(15 DOWNTO 10) = "000011" OR
-           dl_addr(15 DOWNTO 10) = "000111" THEN
-          apl_ram(to_integer(apl_stage_addr)) <= dl_data;
+        IF dl_addr < x"4000" THEN
+          apl_ram(to_integer(dl_addr(13 DOWNTO 0))) <= dl_data;
         END IF;
       END IF;
       apl_copy_data <= apl_ram(to_integer(apl_copy_addr));
@@ -249,7 +247,7 @@ BEGIN
             apl_state <= COPY_WRITE;
           WHEN COPY_WRITE =>
             IF apl_paused = '1' THEN
-              IF apl_copy_addr = 2047 THEN
+              IF apl_copy_addr = 16383 THEN
                 apl_state <= IDLE;
               ELSE
                 apl_copy_addr <= apl_copy_addr + 1;
@@ -261,7 +259,11 @@ BEGIN
     END IF;
   END PROCESS;
 
-  a_eff <= cpu_addr_fold(ext_addr);
+  -- Replay MAME debugger writes through the normal memory handlers.
+  a_eff <= cpu_addr_fold(apl_copy_addr) WHEN apl_copy_wr = '1'
+             ELSE cpu_addr_fold(ext_addr);
+  bus_wr <= apl_copy_wr OR ext_wr;
+  bus_wdata <= apl_copy_data WHEN apl_copy_wr = '1' ELSE ext_wdata;
   cart_effective_type <= cart_auto_type
                          WHEN cart_auto_type /= to_unsigned(CART_UNRECOGNIZED, 8)
                          ELSE unknown_cart_profile;
@@ -296,18 +298,16 @@ BEGIN
       );
 
   uv_reg_addr  <= a_eff(7 DOWNTO 0);
-  uv_reg_we    <= ext_wr WHEN (a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
+  uv_reg_we    <= bus_wr WHEN (a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
                                 a_eff <= to_unsigned(ADDR_UV201_HI, 14))
                   ELSE '0';
-  uv_reg_wdata <= ext_wdata;
+  uv_reg_wdata <= bus_wdata;
 
 
-  sys_ram_we <= (apl_copy_wr AND NOT apl_copy_addr(10)) OR
-                (ext_wr AND to_std_logic(a_eff >= to_unsigned(ADDR_RAM_LO, 14) AND
-                                        a_eff <= to_unsigned(ADDR_RAM_HI, 14)));
-  sys_ram_wa <= apl_copy_addr(9 DOWNTO 0) WHEN apl_copy_wr = '1'
-                ELSE a_eff(9 DOWNTO 0);
-  sys_ram_wdata <= apl_copy_data WHEN apl_copy_wr = '1' ELSE ext_wdata;
+  sys_ram_we <= bus_wr AND to_std_logic(a_eff >= to_unsigned(ADDR_RAM_LO, 14) AND
+                                      a_eff <= to_unsigned(ADDR_RAM_HI, 14));
+  sys_ram_wa <= a_eff(9 DOWNTO 0);
+  sys_ram_wdata <= bus_wdata;
 
   PROCESS (clk, reset_na) IS
   BEGIN
@@ -463,9 +463,9 @@ BEGIN
     END IF;
   END PROCESS;
 
-  cart_ram_we <= (ext_wr AND cart_ram_rd) OR (apl_copy_wr AND apl_copy_addr(10));
-  cart_ram_wa <= apl_copy_addr(9 DOWNTO 0) WHEN apl_copy_wr = '1' ELSE cart_ram_a;
-  cart_ram_wdata <= apl_copy_data WHEN apl_copy_wr = '1' ELSE ext_wdata;
+  cart_ram_we <= bus_wr AND cart_ram_rd;
+  cart_ram_wa <= cart_ram_a;
+  cart_ram_wdata <= bus_wdata;
 
   PROCESS (clk) IS
   BEGIN
@@ -549,9 +549,9 @@ BEGIN
       IF dl_cart = '1' AND dl_addr = x"0000" THEN
         cart_bank <= 0;
       -- APL's ROM bus conflict makes both data and address select the bank.
-      ELSIF reset_na = '1' AND ext_wr = '1' AND cs1 = '1' AND
+      ELSIF reset_na = '1' AND bus_wr = '1' AND cs1 = '1' AND
             cart_effective_type = CART_COMPLANG THEN
-        cart_bank <= bank_lut(to_integer(ext_wdata(1 DOWNTO 0)),
+        cart_bank <= bank_lut(to_integer(bus_wdata(1 DOWNTO 0)),
                              to_integer(a_eff(1 DOWNTO 0)));
       END IF;
     END IF;
