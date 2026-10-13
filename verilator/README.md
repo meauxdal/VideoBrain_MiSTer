@@ -57,9 +57,13 @@ RAM, video registers and cartridge banking. ROM remains read-only. The harness
 checks write order, RAM, video state, mapper writes and CPU pause/resume.
 `--apl` remains a RAM-only diagnostic baseline.
 
-`bash apl_load_check.sh [name]` follows the collection author's MAME procedure:
+`bash apl_load_check.sh [name] [direct|rtl] [frames]` follows the collection author's MAME procedure:
 load the dump, then press NEXT without retyping the saved command. It defaults
-to `clocknye2026`; captures go to `out/apl/load_check/name`. This is a long run.
+to `clocknye2026` and `rtl`; captures go to `out/apl/load_check/name_mode_trace`.
+Both modes use the same input schedule and record 4096 CPU memory cycles starting
+10 frames before the end in `run.log`. Frames defaults to 360 (minimum 360).
+Longer runs add intermediate and final captures and append the frame count to
+the output directory. This is a long run.
 Dump loading writes `$FF` into write-only UV201 registers, as MAME does; the
 display can look distorted. Continued program execution needs visual verification.
 
