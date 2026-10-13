@@ -2,12 +2,17 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-outdir=out/apl/guess_check
+mode=${1:-direct}
+case "$mode" in
+  direct) load_option=--apl; outdir=out/apl/guess_check ;;
+  rtl) load_option=--apl-rtl; outdir=out/apl/guess_check_rtl ;;
+  *) printf 'Usage: %s [direct|rtl]\n' "$0" >&2; exit 1 ;;
+esac
 mkdir -p "$outdir"
 
 ./obj_dir_headless/Vtop \
   --cart "../software/converted/The Computational Language (APL-S).bin" \
-  --apl "../software/21 games for apl_s/guess.bin@210" \
+  "$load_option" "../software/21 games for apl_s/guess.bin@210" \
   --press G@224:8 --press U@240:8 --press E@256:8 --press S@272:8 \
   --press NEXT@288:8 \
   --press SHIFT@336:8 --press Z@352:8 --press NEXT@368:8 \

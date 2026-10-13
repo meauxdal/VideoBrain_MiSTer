@@ -48,6 +48,13 @@ of `1 1`. Other programs and broader gameplay coverage remain pending.
 `GUES` command, then enters a limit and guess of 1. Inspect its PNGs in
 `out/apl/guess_check` for the completed score of `1 1`.
 
+`bash apl_guess_check.sh rtl` repeats the schedule through the RTL loader
+using core download index 4 (MiSTer OSD index 3). Captures go to
+`out/apl/guess_check_rtl`. `--apl-rtl FILE@F` exercises staging, validation,
+CPU pause, RAM copy and resume without resetting the interpreter. It checks
+the 2048 copy writes, restored bytes, CPU pause and unchanged mapper bank
+during the copy. Compare both runs before changing the restored RAM regions.
+
 `python3 apl_check.py --all` captures the 23 numbered reference entries and
 four variants. This is a long run. Use `--case 04-guess` for one case or
 `--all --dry-run` to list the schedule without simulation. Captures, logs and

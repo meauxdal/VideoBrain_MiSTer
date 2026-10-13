@@ -25,6 +25,8 @@ module top(
    input [7:0]   ioctl_din,
    input [7:0]   ioctl_index,
    output reg    ioctl_wait = 1'b0,
+   output        apl_available,
+   output        apl_load_error,
 
    input [10:0]  ps2_key,
 
@@ -114,6 +116,8 @@ module top(
       .dl_wr      (dl_wr),
       .dl_index   (ioctl_download ? ioctl_index : 8'hff),
       .unknown_cart_profile (cart_type),
+      .apl_available (apl_available),
+      .apl_load_error (apl_load_error),
 
       .pc0        (pc0),
       .pc1        (pc1),
