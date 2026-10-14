@@ -23,6 +23,11 @@ class SourceTests(unittest.TestCase):
     def test_apl_symbols(self):
         self.assertEqual(encode("\u00d7\u00f7\u03c0\u00af")[8:], bytes([0x4c, 0x48, 0x43, 0x42, 0x9b]))
         self.assertNotEqual(encode("*")[8], encode("\u00d7")[8])
+        self.assertEqual(encode("{MUL}{DIV}{PI}{NEG}"), encode("\u00d7\u00f7\u03c0\u00af"))
+        with self.assertRaisesRegex(ValueError, "column 6"):
+            encode("{MUL}@")
+        with self.assertRaises(ValueError):
+            encode("{UNKNOWN}")
 
     def test_reject_with_position(self):
         with self.assertRaisesRegex(ValueError, "line 2, column 5"):

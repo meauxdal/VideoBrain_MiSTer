@@ -28,6 +28,7 @@ Letters become uppercase. Blank lines and surrounding indentation are ignored;
 CRLF and LF are accepted. Tabs become spaces. Smart double quotes become plain
 quotes, nonbreaking spaces become spaces, and Unicode minus becomes hyphen.
 Multiplication, division, pi and high minus use their UTF-8 APL glyphs.
+Their ASCII spellings are `{MUL}`, `{DIV}`, `{PI}` and `{NEG}`.
 ASCII `*` means exponentiation; it is not converted to multiplication.
 Unsupported characters are rejected with their source line and column.
 The limit is 4096 key tokens, including spaces and NEXT.

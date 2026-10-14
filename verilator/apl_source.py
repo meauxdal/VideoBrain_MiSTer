@@ -3,6 +3,7 @@
 import argparse
 import binascii
 from pathlib import Path
+import re
 import struct
 
 
@@ -15,6 +16,7 @@ SYMBOLS = dict(zip("0123456789", [34, 33, 30, 26, 29, 25, 21, 24, 20, 16]))
 SYMBOLS.update({".": 32, "-": 17, "+": 22, "=": 18, "(": 9, ")": 5,
                 "*": 7, "/": 13, ",": 14, ":": 10, '"': 0,
                 "\u00d7": 12, "\u00f7": 8, "\u03c0": 3, "\u00af": 2})
+SYMBOLS.update({"{MUL}": 12, "{DIV}": 8, "{PI}": 3, "{NEG}": 2})
 NORMALIZE = {"\u201c": '"', "\u201d": '"', "\u2212": "-",
              "\u00a0": " ", "\t": " "}
 MAX_KEYS = 4096
@@ -29,7 +31,9 @@ def encode(text):
         line = line.strip(" \t")
         if not line:
             continue
-        for column, char in enumerate(line, offset + 1):
+        for match in re.finditer(r"\{[A-Z]+\}|.", line):
+            column = offset + match.start() + 1
+            char = match.group()
             char = NORMALIZE.get(char, char)
             if char == " ":
                 keys.append(0x80 | 19)
