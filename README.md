@@ -48,7 +48,7 @@ Boot The Computational Language (APL-S).bin and wait for its input prompt.
 Choose **Enter APL/S Source**, select a `.vbk` file and close the OSD. The core
 types the listing through the keyboard. Ready-to-load controls and their text
 sources are in `examples/apl`. See [conversion, cancellation and limits](docs/APL-SOURCE.md).
-Hardware playback is pending validation. The older **Load APL/S Dump** path
+Arithmetic and bar entry passed repeated hardware tests. The older **Load APL/S Dump** path
 remains experimental; preserved MAME memory dumps have hung on hardware.
 
 ## Keyboard

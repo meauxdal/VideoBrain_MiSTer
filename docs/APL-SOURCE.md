@@ -9,7 +9,8 @@ Reset or reload the cartridge before retrying a partial listing.
 
 Ready-to-load controls are in `examples/apl`: `arithmetic.vbk` should produce
 2 then 5; `bars.vbk` should draw heights 10, 20, 30 and then produce 2.
-Hardware playback remains unverified.
+Arithmetic and bars passed repeated hardware runs, including consecutive
+source entries and executions. Longer program definitions remain unverified.
 
 ## Converting a listing
 

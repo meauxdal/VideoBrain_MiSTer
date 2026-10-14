@@ -61,20 +61,22 @@ endtask
 initial begin
     tick; reset = 0; tick;
     packet[8] = 8'h61; packet[9] = 8'h56; packet[10] = 8'h61; packet[11] = 8'h9b;
-    init_packet(4);
-    send_packet(12, -1);
+    packet[12] = 8'h5e; packet[13] = 8'h56; packet[14] = 8'h5a; packet[15] = 8'h9b;
+    init_packet(8);
+    send_packet(16, -1);
     repeat (5) tick;
     if (!busy || error || presses != 0) $fatal(1, "OSD wait failed");
     enabled = 1; frame_tick = 1;
     finish_entry;
-    if (error || !complete || presses != 5 || observed[0] != 11 || observed[1] != 33 ||
-        observed[2] != 22 || observed[3] != 33 || observed[4] != 27)
+    if (error || !complete || presses != 9 || observed[0] != 11 || observed[1] != 33 ||
+        observed[2] != 22 || observed[3] != 33 || observed[4] != 27 ||
+        observed[5] != 30 || observed[6] != 22 || observed[7] != 26 || observed[8] != 27)
         $fatal(1, "Arithmetic key sequence mismatch");
 
     // A second load must use the live symbol latch without another SHIFT.
     presses = 0;
-    send_packet(12, -1); finish_entry;
-    if (error || presses != 4 || observed[0] != 33) $fatal(1, "Live mode mismatch");
+    send_packet(16, -1); finish_entry;
+    if (error || presses != 8 || observed[0] != 33) $fatal(1, "Live mode mismatch");
 
     packet[8] = 0; // Letter I requires a transition back to letters.
     init_packet(4); presses = 0;
