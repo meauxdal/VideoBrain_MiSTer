@@ -196,7 +196,10 @@ BEGIN
       write_at(16#1001#, 0);
       read_at(16#3000#, 16#15#);
       IF apl_dump /= "" THEN
+        write_at(ADDR_UV201_LO + REG_Y_INTERRUPT, 16#B0#);
+        write_at(ADDR_UV201_LO + REG_FINAL_MOD, 16#03#);
         write_at(ADDR_UV201_LO + REG_BACKGROUND, 16#12#);
+        write_at(ADDR_UV201_LO + REG_COMMAND, 16#4C#);
         write_at(16#0C00#, 16#A5#);
         write_at(16#1C00#, 16#5A#);
         FOR mode IN 1 TO 5 LOOP
@@ -212,7 +215,12 @@ BEGIN
         read_at(16#0C00#, 16#A5#);
         read_at(16#1C00#, 16#5A#);
         apl_paused <= '1';
-        FOR i IN 0 TO 32772 LOOP tick; END LOOP;
+        FOR i IN 0 TO 32772 LOOP
+          tick;
+          ASSERT y_int = x"B0" AND final_mod = x"03" AND
+                 background = x"12" AND command = x"4C"
+            REPORT "APL load changed write-only video controls" SEVERITY failure;
+        END LOOP;
         ASSERT apl_hold = '0' REPORT "APL copy did not finish" SEVERITY failure;
         apl_paused <= '0';
         file_open(image, apl_dump, read_mode);
@@ -222,18 +230,6 @@ BEGIN
              (i >= 16#1C00# AND i <= 16#1FFF#) OR
              (i >= 16#2B00# AND i <= 16#2B8F#) THEN
             read_at(i, character'pos(byte));
-          ELSIF i = 16#2BF0# THEN
-            ASSERT y_int = to_unsigned(character'pos(byte), 8)
-              REPORT "APL Y interrupt mismatch" SEVERITY failure;
-          ELSIF i = 16#2BF2# THEN
-            ASSERT final_mod = to_unsigned(character'pos(byte) MOD 32, 8)
-              REPORT "APL final modifier mismatch" SEVERITY failure;
-          ELSIF i = 16#2BF5# THEN
-            ASSERT background = to_unsigned(character'pos(byte) MOD 32, 8)
-              REPORT "APL background mismatch" SEVERITY failure;
-          ELSIF i = 16#2BF7# THEN
-            ASSERT command = std_logic_vector(to_unsigned(character'pos(byte), 8))
-              REPORT "APL command mismatch" SEVERITY failure;
           END IF;
         END LOOP;
         file_close(image);

@@ -298,8 +298,10 @@ BEGIN
       );
 
   uv_reg_addr  <= a_eff(7 DOWNTO 0);
+  -- Dumps contain FF for write-only controls; preserve their live values.
   uv_reg_we    <= bus_wr WHEN (a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
-                                a_eff <= to_unsigned(ADDR_UV201_HI, 14))
+                                a_eff <= to_unsigned(ADDR_UV201_HI, 14) AND
+                                (apl_copy_wr = '0' OR a_eff(7 DOWNTO 0) <= x"8F"))
                   ELSE '0';
   uv_reg_wdata <= bus_wdata;
 

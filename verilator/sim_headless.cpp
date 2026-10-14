@@ -430,6 +430,7 @@ int main(int argc, char** argv) {
     bool apl_rtl = false, apl_started = false, apl_paused_seen = false, apl_resumed = false;
     long apl_start_cycle = -1;
     unsigned apl_writes = 0, apl_bank = 0;
+    unsigned apl_cmd = 0, apl_yint = 0, apl_bg = 0, apl_fmod = 0;
     std::vector<uint8_t> apl_data;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
@@ -751,6 +752,10 @@ int main(int argc, char** argv) {
             if (!apl_paused_seen) {
                 apl_paused_seen = true;
                 apl_bank = BUS(cart_bank);
+                apl_cmd = UVR(r_cmd);
+                apl_yint = UVR(r_y_int);
+                apl_bg = UVR(r_bg);
+                apl_fmod = UVR(r_fmod);
             }
             if (CORE(phase) || CORE(ext_req) || CORE(ext_wr) || CORE(io_wr) || CORE(cpu_ce)) {
                 fprintf(stderr, "error: APL/S pause left an active CPU transaction\n"); return 1;
@@ -795,16 +800,17 @@ int main(int argc, char** argv) {
                         fprintf(stderr, "error: APL/S object RAM mismatch at offset %02X\n", i); return 1;
                     }
                 }
-                if (UVR(r_cmd) != apl_data[0x2bf7] || UVR(r_y_int) != apl_data[0x2bf0] ||
-                    UVR(r_bg) != (apl_data[0x2bf5] & 31) || UVR(r_fmod) != (apl_data[0x2bf2] & 31)) {
-                    fprintf(stderr, "error: APL/S video registers differ from debugger writes\n"); return 1;
-                }
                 printf("[apl-rtl] frame=%ld replayed %u bytes, pause released, bank=%u\n",
                        fg.frame, apl_writes, apl_bank);
                 apl_data.clear();
             } else if (cycles - apl_start_cycle > 100000) {
                 fprintf(stderr, "error: RTL APL/S loader did not complete\n"); return 1;
             }
+        }
+
+        if (apl_paused && (UVR(r_cmd) != apl_cmd || UVR(r_y_int) != apl_yint ||
+                           UVR(r_bg) != apl_bg || UVR(r_fmod) != apl_fmod)) {
+            fprintf(stderr, "error: APL/S load changed write-only video controls\n"); return 1;
         }
 
         if (af && CORE(audio_stb))
