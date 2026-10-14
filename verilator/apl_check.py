@@ -7,6 +7,8 @@ from pathlib import Path
 
 
 CASES = {
+    "00-arithmetic": (None, ["1+1", "2+3"], "Results 2 then 5; input remains responsive"),
+    "00-bars": (None, ["BARH 10 20 30", "1+1"], "Three bars, then result 2"),
     "01-sine": (None, ["BARH(64{MUL}SIN(INDEX 7{MUL}25{MUL}{PI}{DIV}180))"], "Sine bars"),
     "02-fibonacci": (None, ["BARH FLOOR(.5+((1.618*INDEX 7){DIV}(5*.5)))"], "Fibonacci bars"),
     "03-random": (None, ["BARC RAND(15+ARRA 7)", "BARH RAND(63+ARRA 7)"], "Random bar colors and heights"),

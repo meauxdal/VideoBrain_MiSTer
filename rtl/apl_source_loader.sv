@@ -1,0 +1,181 @@
+module apl_source_loader #(
+    parameter integer KEY_FRAMES = 8,
+    parameter integer LINE_FRAMES = 64
+)(
+    input wire clk,
+    input wire reset,
+    input wire frame_tick,
+    input wire download,
+    input wire wr,
+    input wire [24:0] addr,
+    input wire [7:0] data,
+    input wire available,
+    input wire symbols,
+    input wire enabled,
+    input wire cancel,
+    output wire busy,
+    output reg error = 0,
+    output reg [35:0] keys = 0
+);
+
+localparam IDLE = 0, RECEIVE = 1, WAIT_START = 2, READ_KEY = 3,
+           SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6, LINE_WAIT = 7;
+reg [2:0] state = IDLE;
+reg download_d = 0;
+reg bad = 0;
+reg [12:0] received = 0;
+reg [15:0] length = 0, expected_crc = 0, crc = 16'hffff;
+reg [11:0] position = 0;
+reg [7:0] memory [0:4095];
+reg [7:0] token;
+reg [7:0] frames = 0;
+reg shifting = 0, shifted = 0, started = 0;
+
+function automatic [15:0] crc_byte(input [15:0] old_crc, input [7:0] byte_value);
+    reg [15:0] value;
+    integer i;
+    begin
+        value = old_crc ^ {byte_value, 8'd0};
+        for (i = 0; i < 8; i = i + 1)
+            value = value[15] ? (value << 1) ^ 16'h1021 : value << 1;
+        crc_byte = value;
+    end
+endfunction
+
+function automatic valid_key(input [7:0] value);
+    begin
+        if (value[7]) valid_key = value == 8'h93 || value == 8'h9b;
+        else valid_key = value[5:0] < 35 && value[5:0] != 11 &&
+                         value[5:0] != 15 && value[5:0] != 19 &&
+                         value[5:0] != 23 && value[5:0] != 27 && value[5:0] != 31;
+    end
+endfunction
+
+assign busy = state != IDLE;
+
+// Synchronous RAM read; READ_KEY allows its latency before selection.
+always @(posedge clk) begin
+    if (download && wr && addr >= 8 && addr < 4104)
+        memory[addr[11:0] - 12'd8] <= data;
+    token <= memory[position];
+end
+
+always @(posedge clk) begin
+    download_d <= download;
+    if (reset) begin
+        state <= IDLE;
+        error <= 0;
+        keys <= 0;
+        started <= 0;
+    end else if (download && !download_d) begin
+        state <= RECEIVE;
+        bad <= !available || (wr && (addr != 0 || data != "V"));
+        received <= wr ? 1 : 0;
+        length <= 0;
+        expected_crc <= 0;
+        crc <= 16'hffff;
+        error <= 0;
+        keys <= 0;
+        started <= 0;
+    end else if (busy && (!available || cancel || (started && !enabled))) begin
+        state <= IDLE;
+        keys <= 0;
+        error <= !available;
+    end else begin
+        case (state)
+            RECEIVE: begin
+                if (!download) begin
+                    if (bad || length == 0 || length > 4096 ||
+                        received != length + 8 || crc != expected_crc) begin
+                        error <= 1;
+                        state <= IDLE;
+                    end else begin
+                        position <= 0;
+                        frames <= LINE_FRAMES;
+                        state <= WAIT_START;
+                    end
+                end else if (wr) begin
+                    if (addr != {12'd0, received} || received >= 4104) bad <= 1;
+                    else begin
+                        received <= received + 1'b1;
+                        case (received)
+                            0: if (data != "V") bad <= 1;
+                            1: if (data != "B") bad <= 1;
+                            2: if (data != "K") bad <= 1;
+                            3: if (data != "1") bad <= 1;
+                            4: length[7:0] <= data;
+                            5: length[15:8] <= data;
+                            6: expected_crc[7:0] <= data;
+                            7: expected_crc[15:8] <= data;
+                            default: begin
+                                crc <= crc_byte(crc, data);
+                                if (!valid_key(data)) bad <= 1;
+                            end
+                        endcase
+                    end
+                end
+            end
+            WAIT_START: if (enabled && frame_tick) begin
+                if (frames > 1) frames <= frames - 1'b1;
+                else begin
+                    started <= 1;
+                    shifted <= 0;
+                    state <= READ_KEY;
+                end
+            end
+            READ_KEY: state <= SELECT_KEY;
+            SELECT_KEY: begin
+                if (!token[7] && token[6] != symbols) begin
+                    if (shifted) begin
+                        error <= 1;
+                        state <= IDLE;
+                    end else begin
+                        keys <= 36'd1 << 11;
+                        shifting <= 1;
+                        shifted <= 1;
+                        frames <= KEY_FRAMES;
+                        state <= HOLD_KEY;
+                    end
+                end else begin
+                    keys <= 36'd1 << token[5:0];
+                    shifting <= 0;
+                    frames <= KEY_FRAMES;
+                    state <= HOLD_KEY;
+                end
+            end
+            HOLD_KEY: if (frame_tick) begin
+                if (frames > 1) frames <= frames - 1'b1;
+                else begin
+                    keys <= 0;
+                    frames <= KEY_FRAMES;
+                    state <= RELEASE_KEY;
+                end
+            end
+            RELEASE_KEY: if (frame_tick) begin
+                if (frames > 1) frames <= frames - 1'b1;
+                else if (shifting) state <= SELECT_KEY;
+                else if (token == 8'h9b) begin
+                    frames <= LINE_FRAMES;
+                    state <= LINE_WAIT;
+                end else if ({4'd0, position} + 16'd1 == length) state <= IDLE;
+                else begin
+                    position <= position + 1'b1;
+                    shifted <= 0;
+                    state <= READ_KEY;
+                end
+            end
+            LINE_WAIT: if (frame_tick) begin
+                if (frames > 1) frames <= frames - 1'b1;
+                else if ({4'd0, position} + 16'd1 == length) state <= IDLE;
+                else begin
+                    position <= position + 1'b1;
+                    shifted <= 0;
+                    state <= READ_KEY;
+                end
+            end
+            default: state <= IDLE;
+        endcase
+    end
+end
+
+endmodule

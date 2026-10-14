@@ -68,7 +68,13 @@ the output directory. This is a long run.
 Dump loading writes `$FF` into write-only UV201 registers, as MAME does; the
 display can look distorted. Continued program execution needs visual verification.
 
-`python3 apl_check.py --all` captures the 23 numbered reference entries and
+Start with clean execution controls: `python3 apl_check.py --case 00-arithmetic`
+and `python3 apl_check.py --case 00-bars`. Each boots the cartridge without a
+dump. Check echoed input, results and keyboard response after NEXT. Arithmetic
+must show 2 then 5; bars must show heights 10, 20, 30 and then evaluate 1+1 to 2.
+These runs require visual verification, including hardware comparison.
+
+`python3 apl_check.py --all` captures the clean controls, 23 numbered reference entries and
 four variants. This is a long run. Use `--case 04-guess` for one case or
 `--all --dry-run` to list the schedule without simulation. Captures, logs and
 `summary.tsv` go to `out/apl/suite`. A completed capture is not a verified pass.
