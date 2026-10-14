@@ -551,9 +551,9 @@ BEGIN
       IF dl_cart = '1' AND dl_addr = x"0000" THEN
         cart_bank <= 0;
       -- APL's ROM bus conflict makes both data and address select the bank.
-      ELSIF reset_na = '1' AND bus_wr = '1' AND cs1 = '1' AND
+      ELSIF reset_na = '1' AND ext_wr = '1' AND cs1 = '1' AND
             cart_effective_type = CART_COMPLANG THEN
-        cart_bank <= bank_lut(to_integer(bus_wdata(1 DOWNTO 0)),
+        cart_bank <= bank_lut(to_integer(ext_wdata(1 DOWNTO 0)),
                              to_integer(a_eff(1 DOWNTO 0)));
       END IF;
     END IF;

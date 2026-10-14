@@ -53,9 +53,9 @@ using core download index 4 (MiSTer OSD index 3). Captures go to
 `out/apl/guess_check_rtl`. `--apl-rtl FILE@F` exercises staging, validation,
 CPU pause, dump replay and resume without resetting the interpreter. The RTL
 replays all 16384 bytes through normal memory writes, including UV201 object
-RAM and cartridge banking. Write-only video controls retain their live values;
+RAM. Cartridge banking and write-only video controls retain their live values;
 their dump bytes are FF readback, not saved state. ROM remains read-only. The
-harness checks write order, RAM, video state, mapper writes and CPU pause/resume.
+harness checks write order, RAM, video state, bank preservation and CPU pause/resume.
 `--apl` remains a RAM-only diagnostic baseline.
 
 `bash apl_load_check.sh [name] [direct|rtl] [frames]` follows the collection author's MAME procedure:

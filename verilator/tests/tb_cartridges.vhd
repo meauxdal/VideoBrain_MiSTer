@@ -234,7 +234,7 @@ BEGIN
         END LOOP;
         file_close(image);
         read_at(16#1000#, 16#AA#);
-        read_at(16#3000#, 16#08#);
+        read_at(16#3000#, 16#15#);
         -- Reset cancels a validated transfer waiting for the CPU.
         load_dump(0);
         reset_na <= '0'; tick; reset_na <= '1'; tick;

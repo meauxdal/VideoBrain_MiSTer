@@ -766,12 +766,6 @@ int main(int argc, char** argv) {
                 BUS(apl_copy_data) != apl_data[apl_writes]) {
                 fprintf(stderr, "error: unsafe or incorrect APL/S replay\n"); return 1;
             }
-            if (apl_writes >= 0x1000 && apl_writes <= 0x17ff) {
-                static const unsigned banks[4][4] = {
-                    {0, 1, 2, 0}, {2, 1, 2, 1}, {0, 2, 2, 0}, {2, 2, 2, 2}
-                };
-                apl_bank = banks[apl_data[apl_writes] & 3][apl_writes & 3];
-            }
             apl_writes++;
         }
 
@@ -784,7 +778,7 @@ int main(int argc, char** argv) {
                 fprintf(stderr, "error: RTL rejected APL/S dump\n"); return 1;
             }
             if (apl_paused && (top->rootp->top__DOT__pc0 != apl_pc || BUS(cart_bank) != apl_bank)) {
-                fprintf(stderr, "error: CPU advanced or mapper differs from APL/S replay\n"); return 1;
+                fprintf(stderr, "error: CPU advanced or mapper changed during APL/S replay\n"); return 1;
             }
             if (apl_paused_seen && !CORE(apl_hold)) {
                 if (apl_writes != 16384 || !top->apl_available) {
