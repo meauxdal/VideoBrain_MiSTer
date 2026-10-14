@@ -51,6 +51,9 @@ localparam CONF_STR = {
 	"F2,BIN,Expander 1 ROM;",
 	"H0F3,BIN,Load APL/S Dump;",
 	"H1-APL/S dump load rejected;",
+	"H0F4,VBK,Enter APL/S Source;",
+	"H2-APL/S source entry active;",
+	"H3-APL/S source rejected;",
 	"-;",
 	"O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
@@ -92,7 +95,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.buttons(buttons),
 	.status(status),
-	.status_menumask({14'd0, ~apl_load_error, ~apl_available}),
+	.status_menumask({12'd0, ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -123,14 +126,18 @@ pll pll
 );
 
 reg master_control = 0;
-wire system_reset = RESET | status[0] | buttons[1] | (ioctl_download && !apl_dl) | ~pll_locked;
+wire system_reset = RESET | status[0] | buttons[1] |
+                    (ioctl_download && !apl_dl && !source_dl) | ~pll_locked;
 wire reset = system_reset | master_control;
 
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
 wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
 wire apl_dl = ioctl_download && (ioctl_index[7:0] == 8'd3);
+wire source_dl = ioctl_download && (ioctl_index[7:0] == 8'd4);
 wire apl_available, apl_load_error;
+wire apl_symbols, source_busy, source_error;
+wire [35:0] source_keys;
 wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
                                     (ioctl_index[7:0] == 8'd2));
 
@@ -242,12 +249,33 @@ wire       vid_de, vid_hs, vid_vs, vid_hb, vid_vb;
 wire [1:0] audio_code;
 wire audio_stb;
 
+reg source_vs_d = 0;
+always @(posedge clk_sys) source_vs_d <= vid_vs;
+
+apl_source_loader source_loader (
+	.clk(clk_sys),
+	.reset(reset),
+	.frame_tick(vid_vs && !source_vs_d),
+	.download(source_dl),
+	.wr(ioctl_wr),
+	.addr(ioctl_addr),
+	.data(ioctl_dout),
+	.available(apl_available),
+	.symbols(apl_symbols),
+	.enabled(!OSD_STATUS),
+	.cancel(|kbd_matrix),
+	.busy(source_busy),
+	.complete(),
+	.error(source_error),
+	.keys(source_keys)
+);
+
 videobrain_core core
 (
 	.clk        (clk_sys),
 	.reset_na   (~reset),
 
-	.kbd_matrix (kbd_matrix),
+	.kbd_matrix (source_busy ? source_keys : kbd_matrix),
 	.joy_fire   (joy_fire),
 	.joy_pots   (joy_pots),
 	.joy_timer_base (14'd2580),
@@ -296,6 +324,7 @@ videobrain_core core
 	.unknown_cart_profile ({5'd0, status[11:9]}),
 	.apl_available (apl_available),
 	.apl_load_error (apl_load_error),
+	.apl_symbols (apl_symbols),
 
 	.pc0        (),
 	.pc1        (),
@@ -369,6 +398,6 @@ videobrain_audio audio
 assign AUDIO_L = audio_sample;
 assign AUDIO_R = audio_sample;
 
-assign LED_USER = ioctl_download;
+assign LED_USER = ioctl_download | source_busy;
 
 endmodule

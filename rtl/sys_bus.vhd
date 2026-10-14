@@ -50,6 +50,7 @@ ENTITY sys_bus IS
     apl_paused : IN std_logic := '0';
     apl_available : OUT std_logic;
     apl_load_error : OUT std_logic;
+    apl_symbols : OUT std_logic := '0';
 
     unknown_cart_profile : IN uv8
     );
@@ -314,10 +315,12 @@ BEGIN
   PROCESS (clk, reset_na) IS
   BEGIN
     IF reset_na = '0' THEN
-      NULL;  -- Hardware reset leaves RAM undefined; BIOS initializes it.
+      apl_symbols <= '0';
     ELSIF rising_edge(clk) THEN
       IF sys_ram_we = '1' THEN
         sys_ram(to_integer(sys_ram_wa)) <= sys_ram_wdata;
+        -- Observe the interpreter's letter/symbol latch without changing RAM.
+        IF sys_ram_wa = 16#3E2# THEN apl_symbols <= sys_ram_wdata(0); END IF;
       END IF;
     END IF;
   END PROCESS;

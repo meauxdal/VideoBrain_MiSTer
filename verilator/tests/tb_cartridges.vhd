@@ -21,6 +21,7 @@ ARCHITECTURE test OF tb_cartridges IS
   SIGNAL dl_wr : std_logic := '0';
   SIGNAL dl_index, fallback : uv8 := (OTHERS => '0');
   SIGNAL apl_hold, apl_error, apl_available : std_logic;
+  SIGNAL apl_symbols : std_logic;
   SIGNAL apl_paused : std_logic := '0';
   SIGNAL background : uv8;
   SIGNAL command : std_logic_vector(7 DOWNTO 0);
@@ -44,7 +45,8 @@ BEGIN
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index, unknown_cart_profile => fallback,
       apl_hold => apl_hold, apl_paused => apl_paused,
-      apl_available => apl_available, apl_load_error => apl_error
+      apl_available => apl_available, apl_load_error => apl_error,
+      apl_symbols => apl_symbols
     );
 
   PROCESS
@@ -196,6 +198,10 @@ BEGIN
       write_at(16#1001#, 0);
       read_at(16#3000#, 16#15#);
       IF apl_dump /= "" THEN
+        write_at(16#0FE2#, 1);
+        ASSERT apl_symbols = '1' REPORT "APL symbol mode not observed" SEVERITY failure;
+        write_at(16#2FE2#, 0);
+        ASSERT apl_symbols = '0' REPORT "APL mirrored symbol mode not observed" SEVERITY failure;
         write_at(ADDR_UV201_LO + REG_Y_INTERRUPT, 16#B0#);
         write_at(ADDR_UV201_LO + REG_FINAL_MOD, 16#03#);
         write_at(ADDR_UV201_LO + REG_BACKGROUND, 16#12#);

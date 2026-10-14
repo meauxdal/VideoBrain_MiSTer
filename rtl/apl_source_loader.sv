@@ -1,6 +1,7 @@
+`timescale 1ns/1ps
 module apl_source_loader #(
-    parameter integer KEY_FRAMES = 8,
-    parameter integer LINE_FRAMES = 64
+    parameter [7:0] KEY_FRAMES = 8,
+    parameter [7:0] LINE_FRAMES = 64
 )(
     input wire clk,
     input wire reset,
@@ -14,6 +15,7 @@ module apl_source_loader #(
     input wire enabled,
     input wire cancel,
     output wire busy,
+    output reg complete = 0,
     output reg error = 0,
     output reg [35:0] keys = 0
 );
@@ -67,6 +69,7 @@ always @(posedge clk) begin
         error <= 0;
         keys <= 0;
         started <= 0;
+        complete <= 0;
     end else if (download && !download_d) begin
         state <= RECEIVE;
         bad <= !available || (wr && (addr != 0 || data != "V"));
@@ -77,6 +80,7 @@ always @(posedge clk) begin
         error <= 0;
         keys <= 0;
         started <= 0;
+        complete <= 0;
     end else if (busy && (!available || cancel || (started && !enabled))) begin
         state <= IDLE;
         keys <= 0;
@@ -86,7 +90,7 @@ always @(posedge clk) begin
             RECEIVE: begin
                 if (!download) begin
                     if (bad || length == 0 || length > 4096 ||
-                        received != length + 8 || crc != expected_crc) begin
+                        {3'd0, received} != length + 16'd8 || crc != expected_crc) begin
                         error <= 1;
                         state <= IDLE;
                     end else begin
@@ -157,7 +161,10 @@ always @(posedge clk) begin
                 else if (token == 8'h9b) begin
                     frames <= LINE_FRAMES;
                     state <= LINE_WAIT;
-                end else if ({4'd0, position} + 16'd1 == length) state <= IDLE;
+                end else if ({4'd0, position} + 16'd1 == length) begin
+                    complete <= 1;
+                    state <= IDLE;
+                end
                 else begin
                     position <= position + 1'b1;
                     shifted <= 0;
@@ -166,7 +173,10 @@ always @(posedge clk) begin
             end
             LINE_WAIT: if (frame_tick) begin
                 if (frames > 1) frames <= frames - 1'b1;
-                else if ({4'd0, position} + 16'd1 == length) state <= IDLE;
+                else if ({4'd0, position} + 16'd1 == length) begin
+                    complete <= 1;
+                    state <= IDLE;
+                end
                 else begin
                     position <= position + 1'b1;
                     shifted <= 0;

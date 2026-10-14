@@ -27,6 +27,9 @@ module top(
    output reg    ioctl_wait = 1'b0,
    output        apl_available,
    output        apl_load_error,
+   output        source_busy,
+   output        source_error,
+   output        source_complete,
 
    input [10:0]  ps2_key,
 
@@ -51,6 +54,18 @@ module top(
    wire [7:0]  background /*verilator public_flat*/;
    wire        x_zoom, y_zoom;
    wire        video_en /*verilator public_flat*/;
+   wire        apl_symbols;
+   wire [35:0] source_keys;
+   reg source_vs_d = 0;
+   always @(posedge clk_sys) source_vs_d <= vid_vs;
+
+   apl_source_loader source_loader (
+      .clk(clk_sys), .reset(reset), .frame_tick(vid_vs && !source_vs_d),
+      .download(ioctl_download && ioctl_index == 5), .wr(ioctl_wr),
+      .addr(ioctl_addr), .data(ioctl_dout), .available(apl_available),
+      .symbols(apl_symbols), .enabled(1'b1), .cancel(|kbd_matrix),
+      .busy(source_busy), .complete(source_complete), .error(source_error), .keys(source_keys)
+   );
 
    wire [15:0] pc0 /*verilator public_flat*/;
    wire [15:0] pc1 /*verilator public_flat*/;
@@ -70,7 +85,7 @@ module top(
       .clk        (clk_sys),
       .reset_na   (~reset),
 
-      .kbd_matrix (kbd_matrix),
+      .kbd_matrix (source_busy ? source_keys : kbd_matrix),
       .joy_fire   (joy_fire),
       .joy_pots   (joy_pots),
       .joy_timer_base (joy_timer_base),
@@ -118,6 +133,7 @@ module top(
       .unknown_cart_profile (cart_type),
       .apl_available (apl_available),
       .apl_load_error (apl_load_error),
+      .apl_symbols (apl_symbols),
 
       .pc0        (pc0),
       .pc1        (pc1),

@@ -6,9 +6,11 @@ from pathlib import Path
 import struct
 
 
-LETTERS = dict(zip("IOP;UKL,YJMT HNRGBE FVWDCQSXAZ?".replace(" ", ""),
-                   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14,
-                    16, 17, 18, 20, 21, 22, 24, 25, 26, 28, 29, 30, 32, 33, 34]))
+LETTERS = {"I": 0, "O": 1, "P": 2, "U": 4, "K": 5, "L": 6,
+           "Y": 8, "J": 9, "M": 10, "T": 12, "H": 13, "N": 14,
+           "R": 16, "G": 17, "B": 18, "E": 20, "F": 21, "V": 22,
+           "W": 24, "D": 25, "C": 26, "Q": 28, "S": 29, "X": 30,
+           "A": 32, "Z": 33, "?": 34}
 SYMBOLS = dict(zip("0123456789", [34, 33, 30, 26, 29, 25, 21, 24, 20, 16]))
 SYMBOLS.update({".": 32, "-": 17, "+": 22, "=": 18, "(": 9, ")": 5,
                 "*": 7, "/": 13, ",": 14, ":": 10, '"': 0,
@@ -23,16 +25,17 @@ def encode(text):
         text = text[1:]
     keys = bytearray()
     for line_no, line in enumerate(text.splitlines(), 1):
+        offset = len(line) - len(line.lstrip(" \t"))
         line = line.strip(" \t")
         if not line:
             continue
-        for column, char in enumerate(line, 1):
+        for column, char in enumerate(line, offset + 1):
             char = NORMALIZE.get(char, char)
             if char == " ":
                 keys.append(0x80 | 19)
             elif char in SYMBOLS:
                 keys.append(0x40 | SYMBOLS[char])
-            elif char.upper() in LETTERS:
+            elif char.isascii() and char.upper() in LETTERS:
                 keys.append(LETTERS[char.upper()])
             else:
                 raise ValueError(f"line {line_no}, column {column}: unsupported character {char!r}")
@@ -56,7 +59,10 @@ def main():
     output = args.output or args.source.with_suffix(".vbk")
     if output.resolve() == args.source.resolve():
         parser.exit(1, "error: output would overwrite source\n")
-    output.write_bytes(data)
+    try:
+        output.write_bytes(data)
+    except OSError as error:
+        parser.exit(1, f"error: {error}\n")
     print(f"{output}: {len(data) - 8} keys")
 
 

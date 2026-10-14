@@ -72,6 +72,7 @@ ENTITY videobrain_core IS
     unknown_cart_profile: IN uv8;
     apl_available : OUT std_logic;
     apl_load_error : OUT std_logic;
+    apl_symbols : OUT std_logic := '0';
 
     pc0 : OUT uv16;
     pc1 : OUT uv16;
@@ -325,6 +326,7 @@ BEGIN
       apl_paused     => apl_paused,
       apl_available  => apl_available,
       apl_load_error => apl_load_error,
+      apl_symbols    => apl_symbols,
       unknown_cart_profile => unknown_cart_profile
       );
 

@@ -25,6 +25,9 @@ experimental; see [limits and hardware evidence](../docs/EXPANDER1.md).
 
 ## APL/S memory dumps
 
+For clean source entry, use the [source loader](../docs/APL-SOURCE.md).
+The preserved memory dumps below remain an experimental diagnostic path.
+
 The `.bin` files in `software/21 games for apl_s` are 16K MAME CPU memory
 dumps, not cartridge ROMs. Load the Computational Language cartridge first.
 `--apl FILE@F` restores system RAM at 0C00-0FFF and cartridge RAM at

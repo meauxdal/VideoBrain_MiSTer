@@ -359,6 +359,7 @@ static void usage(const char* argv0) {
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
 "  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
 "  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
+"  --source FILE@F      enter a converted APL/S source file through RTL\n"
 "  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman\n"
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
@@ -427,6 +428,9 @@ int main(int argc, char** argv) {
     std::string res2 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
     std::string cart, expander1, apl_path, outdir = "out", prefix, dump_path, audio_path;
     long apl_frame = -1;
+    std::string source_path;
+    long source_frame = -1;
+    bool source_started = false, source_seen = false, source_done = false;
     bool apl_rtl = false, apl_started = false, apl_paused_seen = false, apl_resumed = false;
     long apl_start_cycle = -1;
     unsigned apl_writes = 0, apl_bank = 0;
@@ -464,6 +468,19 @@ int main(int argc, char** argv) {
         else if (a == "--res2")        res2 = need("--res2");
         else if (a == "--expander1")   expander1 = need("--expander1");
         else if (a == "--cart")        cart = need("--cart");
+        else if (a == "--source") {
+            std::string value = need("--source");
+            size_t at = value.rfind('@');
+            if (!source_path.empty() || at == std::string::npos) {
+                fprintf(stderr, "error: --source needs one FILE@FRAME\n"); return 1;
+            }
+            source_path = value.substr(0, at);
+            char* end = nullptr;
+            source_frame = strtol(value.c_str() + at + 1, &end, 10);
+            if (at + 1 == value.size() || *end || source_frame < 0) {
+                fprintf(stderr, "error: invalid --source frame\n"); return 1;
+            }
+        }
         else if (a == "--apl" || a == "--apl-rtl") {
             if (!apl_path.empty()) {
                 fprintf(stderr, "error: choose one APL/S load option\n"); return 1;
@@ -589,6 +606,9 @@ int main(int argc, char** argv) {
         }
     }
     if (prefix.empty()) prefix = basename_noext(!apl_path.empty() ? apl_path : (cart.empty() ? res1 : cart));
+    if (!source_path.empty() && (cart.empty() || !apl_path.empty() || source_frame >= frames)) {
+        fprintf(stderr, "error: --source needs --cart, a frame below --frames and no RAM dump\n"); return 1;
+    }
 
     FILE* df = stdout;
     if (!dump_path.empty()) {
@@ -650,6 +670,13 @@ int main(int argc, char** argv) {
     unsigned joy_sweep_index[8] = {};
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
+
+        if (!source_path.empty() && !source_started && fg.frame >= source_frame && io.finished) {
+            source_started = true;
+            io.add(source_path, 5);
+            io.finished = false;
+            printf("[source] frame=%ld download started\n", fg.frame);
+        }
 
         if (!apl_data.empty() && !apl_started && fg.frame >= apl_frame && io.finished) {
             apl_started = true;
@@ -724,7 +751,7 @@ int main(int argc, char** argv) {
         }
 
         io.tick();
-        top->reset = (((io.active || !io.finished) && top->ioctl_index != 4) || master_control) ? 1 : 0;
+        top->reset = (((io.active || !io.finished) && top->ioctl_index != 4 && top->ioctl_index != 5) || master_control) ? 1 : 0;
 
         if (!joy_timer_sweep.empty() && CORE(joy_armed) && CORE(joy_enable_l) &&
             CORE(hblank_l) && CORE(key_latch_l)) {
@@ -771,6 +798,20 @@ int main(int argc, char** argv) {
 
         top->clk_sys = 1;
         top->eval();
+
+        if (source_started) {
+            if (top->source_error) {
+                fprintf(stderr, "error: RTL rejected or could not enter APL/S source\n"); return 1;
+            }
+            if (top->source_busy) source_seen = true;
+            if (source_seen && !top->source_busy && !source_done) {
+                if (!top->source_complete) {
+                    fprintf(stderr, "error: source entry was cancelled\n"); return 1;
+                }
+                source_done = true;
+                printf("[source] frame=%ld entry finished\n", fg.frame);
+            }
+        }
 
         if (apl_paused_seen && apl_data.empty() && CORE(cpu_ce)) apl_resumed = true;
         if (apl_rtl && apl_started && !apl_data.empty()) {
@@ -1080,6 +1121,9 @@ int main(int argc, char** argv) {
 
     if (apl_rtl && (!apl_data.empty() || !apl_resumed)) {
         fprintf(stderr, "error: simulation ended before RTL APL/S loading and CPU resume completed\n"); return 1;
+    }
+    if (!source_path.empty() && !source_done) {
+        fprintf(stderr, "error: simulation ended before source entry completed\n"); return 1;
     }
     printf("\ndone: %ld frames in %ld cycles\n", fg.frame, cycles);
     printf("      last frame %dx%d, hash %08X, %s\n",

@@ -42,13 +42,14 @@ python3 tools/convert_software.py
 
 Copy the resulting .bin files from software/converted to the VideoBrain games folder and load them through the OSD. The core selects their mappers automatically. See [chip order and padding](docs/CARTRIDGES.md#split-cartridge-conversion) to assemble them manually.
 
-## APL/S program RAM
+## APL/S source entry
 
-Load The Computational Language (APL-S).bin as the cartridge and wait for the interpreter to accept input. Choose **Load APL/S RAM** in the OSD, then select an original .bin. These files can be located in James Price's [APL/S games repo](https://github.com/jamescprice/21-APL-Games-and-One-Liners-For-Your-Umtech-Videobrain).
-
-The loader validates the size, RAM mirror and fixed ROM CRCs before replacing RAM at 0C00-0FFF and 1C00-1FFF. The CPU pauses briefly for the copy; no reset occurs. CPU registers, mapper state and video registers are retained. Load only while the interpreter is idle. A rejected file leaves RAM unchanged and shows **APL/S RAM load rejected** in the OSD. Reset returns to cartridge startup.
-
-Snapshots can contain pending input or an open editor. Inspect the restored screen before typing: F3 submits the current line, Space is RUN/STOP, and SHIFT toggles letters/symbols. See the collection's program instructions.
+Boot The Computational Language (APL-S).bin and wait for its input prompt.
+Choose **Enter APL/S Source**, select a `.vbk` file and close the OSD. The core
+types the listing through the keyboard. Ready-to-load controls and their text
+sources are in `examples/apl`. See [conversion, cancellation and limits](docs/APL-SOURCE.md).
+Hardware playback is pending validation. The older **Load APL/S Dump** path
+remains experimental; preserved MAME memory dumps have hung on hardware.
 
 ## Keyboard
 

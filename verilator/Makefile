@@ -37,7 +37,7 @@ VHD_SRC = \
 CONVERTED =
 
 CONVERTED_V = $(patsubst %,rtl_v/%.v,$(CONVERTED))
-V_SRC = sim.v $(GEN_V) $(RTL)/videobrain_audio.sv $(CONVERTED_V)
+V_SRC = sim.v $(GEN_V) $(RTL)/videobrain_audio.sv $(RTL)/apl_source_loader.sv $(CONVERTED_V)
 
 UNAME_S := $(shell uname -s)
 
@@ -148,3 +148,12 @@ test-apl-ram: test-cartridges
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_apl_loader --assert-level=error
 
 .PHONY: test-apl-ram
+
+test-apl-source:
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_source.py
+	@mkdir -p out/source_test
+	$(V) --binary --timing -Wno-fatal --top-module tb_apl_source_loader \
+		--Mdir out/source_test $(RTL)/apl_source_loader.sv tests/tb_apl_source_loader.sv
+	./out/source_test/Vtb_apl_source_loader
+
+.PHONY: test-apl-source
