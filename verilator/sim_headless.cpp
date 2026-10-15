@@ -357,9 +357,9 @@ static void usage(const char* argv0) {
 "  --res2 FILE          RES2 ROM, ioctl index 1\n"
 "  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
-"  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
-"  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
-"  --source FILE@F      enter a converted APL/S source file through RTL\n"
+// "  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
+// "  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
+"  --source FILE@F      enter a VBK keyboard file through RTL\n"
 "  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman\n"
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
@@ -426,16 +426,17 @@ static std::string basename_noext(const std::string& p) {
 int main(int argc, char** argv) {
     std::string res1 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
     std::string res2 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
-    std::string cart, expander1, apl_path, outdir = "out", prefix, dump_path, audio_path;
-    long apl_frame = -1;
+//    std::string cart, expander1, apl_path, outdir = "out", prefix, dump_path, audio_path;
+    std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
+//     long apl_frame = -1;
     std::string source_path;
     long source_frame = -1;
     bool source_started = false, source_seen = false, source_done = false;
-    bool apl_rtl = false, apl_started = false, apl_paused_seen = false, apl_resumed = false;
-    long apl_start_cycle = -1;
-    unsigned apl_writes = 0, apl_bank = 0;
-    unsigned apl_cmd = 0, apl_yint = 0, apl_bg = 0, apl_fmod = 0;
-    std::vector<uint8_t> apl_data;
+//     bool apl_rtl = false, apl_started = false, apl_paused_seen = false, apl_resumed = false;
+//     long apl_start_cycle = -1;
+//     unsigned apl_writes = 0, apl_bank = 0;
+//     unsigned apl_cmd = 0, apl_yint = 0, apl_bg = 0, apl_fmod = 0;
+//     std::vector<uint8_t> apl_data;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     long joy_trace_from = -1;
@@ -481,21 +482,21 @@ int main(int argc, char** argv) {
                 fprintf(stderr, "error: invalid --source frame\n"); return 1;
             }
         }
-        else if (a == "--apl" || a == "--apl-rtl") {
-            if (!apl_path.empty()) {
-                fprintf(stderr, "error: choose one APL/S load option\n"); return 1;
-            }
-            apl_rtl = a == "--apl-rtl";
-            std::string v = need(a.c_str());
-            size_t at = v.find_last_of('@');
-            char* end = nullptr;
-            if (at != std::string::npos) apl_frame = strtol(v.c_str() + at + 1, &end, 10);
-            if (at == std::string::npos || at == 0 || !end || end == v.c_str() + at + 1 ||
-                *end || apl_frame < 1) {
-                fprintf(stderr, "error: %s needs FILE@F with F>0\n", a.c_str()); return 1;
-            }
-            apl_path = v.substr(0, at);
-        }
+//         else if (a == "--apl" || a == "--apl-rtl") {
+//             if (!apl_path.empty()) {
+//                 fprintf(stderr, "error: choose one APL/S load option\n"); return 1;
+//             }
+//             apl_rtl = a == "--apl-rtl";
+//             std::string v = need(a.c_str());
+//             size_t at = v.find_last_of('@');
+//             char* end = nullptr;
+//             if (at != std::string::npos) apl_frame = strtol(v.c_str() + at + 1, &end, 10);
+//             if (at == std::string::npos || at == 0 || !end || end == v.c_str() + at + 1 ||
+//                 *end || apl_frame < 1) {
+//                 fprintf(stderr, "error: %s needs FILE@F with F>0\n", a.c_str()); return 1;
+//             }
+//             apl_path = v.substr(0, at);
+//         }
         else if (a == "--cart-type")   cart_type = atoi(need("--cart-type"));
         else if (a == "--frames")      frames = atol(need("--frames"));
         else if (a == "--max-cycles")  max_cycles = atol(need("--max-cycles"));
@@ -591,23 +592,28 @@ int main(int argc, char** argv) {
         fprintf(stderr, "error: curve and sweep are mutually exclusive\n");
         return 1;
     }
-    if (!apl_path.empty()) {
-        FILE* f = fopen(apl_path.c_str(), "rb");
-        if (!f) { fprintf(stderr, "error: cannot open %s\n", apl_path.c_str()); return 2; }
-        apl_data.resize(16384);
-        bool valid = fread(apl_data.data(), 1, apl_data.size(), f) == apl_data.size();
-        valid = valid && fgetc(f) == EOF;
-        fclose(f);
-        if (!valid || memcmp(&apl_data[0xc00], &apl_data[0x2c00], 1024)) {
-            fprintf(stderr, "error: --apl needs a 16K dump with matching RAM mirrors\n"); return 1;
-        }
-        if (cart.empty() || apl_frame >= frames) {
-            fprintf(stderr, "error: --apl needs --cart and a load frame below --frames\n"); return 1;
-        }
-    }
-    if (prefix.empty()) prefix = basename_noext(!apl_path.empty() ? apl_path : (cart.empty() ? res1 : cart));
-    if (!source_path.empty() && (cart.empty() || !apl_path.empty() || source_frame >= frames)) {
-        fprintf(stderr, "error: --source needs --cart, a frame below --frames and no RAM dump\n"); return 1;
+//     if (!apl_path.empty()) {
+//         FILE* f = fopen(apl_path.c_str(), "rb");
+//         if (!f) { fprintf(stderr, "error: cannot open %s\n", apl_path.c_str()); return 2; }
+//         apl_data.resize(16384);
+//         bool valid = fread(apl_data.data(), 1, apl_data.size(), f) == apl_data.size();
+//         valid = valid && fgetc(f) == EOF;
+//         fclose(f);
+//         if (!valid || memcmp(&apl_data[0xc00], &apl_data[0x2c00], 1024)) {
+//             fprintf(stderr, "error: --apl needs a 16K dump with matching RAM mirrors\n"); return 1;
+//         }
+//         if (cart.empty() || apl_frame >= frames) {
+//             fprintf(stderr, "error: --apl needs --cart and a load frame below --frames\n"); return 1;
+//         }
+//     }
+//     if (prefix.empty()) prefix = basename_noext(!apl_path.empty() ? apl_path : (cart.empty() ? res1 : cart));
+//     if (!source_path.empty() && (cart.empty() || !apl_path.empty() || source_frame >= frames)) {
+//         fprintf(stderr, "error: --source needs --cart, a frame below --frames and no RAM dump\n"); return 1;
+//     }
+
+    if (prefix.empty()) prefix = basename_noext(cart.empty() ? res1 : cart);
+    if (!source_path.empty() && source_frame >= frames) {
+        fprintf(stderr, "error: --source frame must be below --frames\n"); return 1;
     }
 
     FILE* df = stdout;
@@ -678,30 +684,30 @@ int main(int argc, char** argv) {
             printf("[source] frame=%ld download started\n", fg.frame);
         }
 
-        if (!apl_data.empty() && !apl_started && fg.frame >= apl_frame && io.finished) {
-            apl_started = true;
-            if (apl_rtl) {
-                io.add(apl_path, 4);
-                io.finished = false;
-                apl_start_cycle = cycles;
-                printf("[apl-rtl] frame=%ld download started\n", fg.frame);
-            } else {
-                if (BUS(cart_effective_type) != 3) {
-                    fprintf(stderr, "error: --apl requires the Computational Language cartridge\n"); return 1;
-                }
-                for (int i = 0; i < 0xc00; i++) {
-                    if (CART[i] != apl_data[0x1000 + i]) {
-                        fprintf(stderr, "error: APL/S dump does not match cartridge ROM\n"); return 1;
-                    }
-                }
-                for (int i = 0; i < 1024; i++) {
-                    SYSRAM[i] = apl_data[0xc00 + i];
-                    BUS(cart_ram)[i] = apl_data[0x1c00 + i];
-                }
-                printf("[apl] frame=%ld loaded %s\n", fg.frame, apl_path.c_str());
-                apl_data.clear();
-            }
-        }
+//         if (!apl_data.empty() && !apl_started && fg.frame >= apl_frame && io.finished) {
+//             apl_started = true;
+//             if (apl_rtl) {
+//                 io.add(apl_path, 4);
+//                 io.finished = false;
+//                 apl_start_cycle = cycles;
+//                 printf("[apl-rtl] frame=%ld download started\n", fg.frame);
+//             } else {
+//                 if (BUS(cart_effective_type) != 3) {
+//                     fprintf(stderr, "error: --apl requires the Computational Language cartridge\n"); return 1;
+//                 }
+//                 for (int i = 0; i < 0xc00; i++) {
+//                     if (CART[i] != apl_data[0x1000 + i]) {
+//                         fprintf(stderr, "error: APL/S dump does not match cartridge ROM\n"); return 1;
+//                     }
+//                 }
+//                 for (int i = 0; i < 1024; i++) {
+//                     SYSRAM[i] = apl_data[0xc00 + i];
+//                     BUS(cart_ram)[i] = apl_data[0x1c00 + i];
+//                 }
+//                 printf("[apl] frame=%ld loaded %s\n", fg.frame, apl_path.c_str());
+//                 apl_data.clear();
+//             }
+//         }
 
         bool master_control = false;
         {
@@ -751,7 +757,7 @@ int main(int argc, char** argv) {
         }
 
         io.tick();
-        top->reset = (((io.active || !io.finished) && top->ioctl_index != 4 && top->ioctl_index != 5) || master_control) ? 1 : 0;
+        top->reset = (((io.active || !io.finished) && top->ioctl_index != 5) || master_control) ? 1 : 0;
 
         if (!joy_timer_sweep.empty() && CORE(joy_armed) && CORE(joy_enable_l) &&
             CORE(hblank_l) && CORE(key_latch_l)) {
@@ -773,35 +779,35 @@ int main(int argc, char** argv) {
         unsigned capture_x = CORE(joy_capture_x), capture_y = CORE(joy_capture_y);
         unsigned capture_cmd = UVR(r_cmd);
 
-        bool apl_paused = apl_rtl && apl_started && CORE(apl_paused);
-        unsigned apl_pc = top->rootp->top__DOT__pc0;
-        if (apl_paused) {
-            if (!apl_paused_seen) {
-                apl_paused_seen = true;
-                apl_bank = BUS(cart_bank);
-                apl_cmd = UVR(r_cmd);
-                apl_yint = UVR(r_y_int);
-                apl_bg = UVR(r_bg);
-                apl_fmod = UVR(r_fmod);
-            }
-            if (CORE(phase) || CORE(ext_req) || CORE(ext_wr) || CORE(io_wr) || CORE(cpu_ce)) {
-                fprintf(stderr, "error: APL/S pause left an active CPU transaction\n"); return 1;
-            }
-        }
-        if (apl_rtl && apl_started && BUS(apl_copy_wr)) {
-            if (!apl_paused || BUS(apl_copy_addr) != apl_writes || apl_writes >= 16384 ||
-                BUS(apl_copy_data) != apl_data[apl_writes]) {
-                fprintf(stderr, "error: unsafe or incorrect APL/S replay\n"); return 1;
-            }
-            apl_writes++;
-        }
+//         bool apl_paused = apl_rtl && apl_started && CORE(apl_paused);
+//         unsigned apl_pc = top->rootp->top__DOT__pc0;
+//         if (apl_paused) {
+//             if (!apl_paused_seen) {
+//                 apl_paused_seen = true;
+//                 apl_bank = BUS(cart_bank);
+//                 apl_cmd = UVR(r_cmd);
+//                 apl_yint = UVR(r_y_int);
+//                 apl_bg = UVR(r_bg);
+//                 apl_fmod = UVR(r_fmod);
+//             }
+//             if (CORE(phase) || CORE(ext_req) || CORE(ext_wr) || CORE(io_wr) || CORE(cpu_ce)) {
+//                 fprintf(stderr, "error: APL/S pause left an active CPU transaction\n"); return 1;
+//             }
+//         }
+//         if (apl_rtl && apl_started && BUS(apl_copy_wr)) {
+//             if (!apl_paused || BUS(apl_copy_addr) != apl_writes || apl_writes >= 16384 ||
+//                 BUS(apl_copy_data) != apl_data[apl_writes]) {
+//                 fprintf(stderr, "error: unsafe or incorrect APL/S replay\n"); return 1;
+//             }
+//             apl_writes++;
+//         }
 
         top->clk_sys = 1;
         top->eval();
 
         if (source_started) {
             if (top->source_error) {
-                fprintf(stderr, "error: RTL rejected or could not enter APL/S source\n"); return 1;
+                fprintf(stderr, "error: RTL rejected keyboard file\n"); return 1;
             }
             if (top->source_busy) source_seen = true;
             if (source_seen && !top->source_busy && !source_done) {
@@ -813,40 +819,40 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (apl_paused_seen && apl_data.empty() && CORE(cpu_ce)) apl_resumed = true;
-        if (apl_rtl && apl_started && !apl_data.empty()) {
-            if (top->apl_load_error) {
-                fprintf(stderr, "error: RTL rejected APL/S dump\n"); return 1;
-            }
-            if (apl_paused && (top->rootp->top__DOT__pc0 != apl_pc || BUS(cart_bank) != apl_bank)) {
-                fprintf(stderr, "error: CPU advanced or mapper changed during APL/S replay\n"); return 1;
-            }
-            if (apl_paused_seen && !CORE(apl_hold)) {
-                if (apl_writes != 16384 || !top->apl_available) {
-                    fprintf(stderr, "error: incomplete APL/S replay\n"); return 1;
-                }
-                for (int i = 0; i < 1024; i++) {
-                    if (SYSRAM[i] != apl_data[0xc00 + i] || BUS(cart_ram)[i] != apl_data[0x1c00 + i]) {
-                        fprintf(stderr, "error: APL/S RAM mismatch at offset %03X\n", i); return 1;
-                    }
-                }
-                for (int i = 0; i < 144; i++) {
-                    if (obj_byte(i) != apl_data[0x2b00 + i]) {
-                        fprintf(stderr, "error: APL/S object RAM mismatch at offset %02X\n", i); return 1;
-                    }
-                }
-                printf("[apl-rtl] frame=%ld replayed %u bytes, pause released, bank=%u\n",
-                       fg.frame, apl_writes, apl_bank);
-                apl_data.clear();
-            } else if (cycles - apl_start_cycle > 100000) {
-                fprintf(stderr, "error: RTL APL/S loader did not complete\n"); return 1;
-            }
-        }
+//         if (apl_paused_seen && apl_data.empty() && CORE(cpu_ce)) apl_resumed = true;
+//         if (apl_rtl && apl_started && !apl_data.empty()) {
+//             if (top->apl_load_error) {
+//                 fprintf(stderr, "error: RTL rejected APL/S dump\n"); return 1;
+//             }
+//             if (apl_paused && (top->rootp->top__DOT__pc0 != apl_pc || BUS(cart_bank) != apl_bank)) {
+//                 fprintf(stderr, "error: CPU advanced or mapper changed during APL/S replay\n"); return 1;
+//             }
+//             if (apl_paused_seen && !CORE(apl_hold)) {
+//                 if (apl_writes != 16384 || !top->apl_available) {
+//                     fprintf(stderr, "error: incomplete APL/S replay\n"); return 1;
+//                 }
+//                 for (int i = 0; i < 1024; i++) {
+//                     if (SYSRAM[i] != apl_data[0xc00 + i] || BUS(cart_ram)[i] != apl_data[0x1c00 + i]) {
+//                         fprintf(stderr, "error: APL/S RAM mismatch at offset %03X\n", i); return 1;
+//                     }
+//                 }
+//                 for (int i = 0; i < 144; i++) {
+//                     if (obj_byte(i) != apl_data[0x2b00 + i]) {
+//                         fprintf(stderr, "error: APL/S object RAM mismatch at offset %02X\n", i); return 1;
+//                     }
+//                 }
+//                 printf("[apl-rtl] frame=%ld replayed %u bytes, pause released, bank=%u\n",
+//                        fg.frame, apl_writes, apl_bank);
+//                 apl_data.clear();
+//             } else if (cycles - apl_start_cycle > 100000) {
+//                 fprintf(stderr, "error: RTL APL/S loader did not complete\n"); return 1;
+//             }
+//         }
 
-        if (apl_paused && (UVR(r_cmd) != apl_cmd || UVR(r_y_int) != apl_yint ||
-                           UVR(r_bg) != apl_bg || UVR(r_fmod) != apl_fmod)) {
-            fprintf(stderr, "error: APL/S load changed write-only video controls\n"); return 1;
-        }
+//         if (apl_paused && (UVR(r_cmd) != apl_cmd || UVR(r_y_int) != apl_yint ||
+//                            UVR(r_bg) != apl_bg || UVR(r_fmod) != apl_fmod)) {
+//             fprintf(stderr, "error: APL/S load changed write-only video controls\n"); return 1;
+//         }
 
         if (af && CORE(audio_stb))
             fprintf(af, "%ld,%ld,%04X,%u,%u,%u,%02X,%u,%02X,%02X,%02X,%02X\n", cycles, fg.frame,
@@ -1119,9 +1125,9 @@ int main(int argc, char** argv) {
         cycles++;
     }
 
-    if (apl_rtl && (!apl_data.empty() || !apl_resumed)) {
-        fprintf(stderr, "error: simulation ended before RTL APL/S loading and CPU resume completed\n"); return 1;
-    }
+//     if (apl_rtl && (!apl_data.empty() || !apl_resumed)) {
+//         fprintf(stderr, "error: simulation ended before RTL APL/S loading and CPU resume completed\n"); return 1;
+//     }
     if (!source_path.empty() && !source_done) {
         fprintf(stderr, "error: simulation ended before source entry completed\n"); return 1;
     }

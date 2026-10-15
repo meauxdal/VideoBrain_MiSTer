@@ -14,15 +14,22 @@ reg [35:0] previous = 0;
 reg emulate_shift = 1;
 integer presses = 0;
 reg [5:0] observed [0:8191];
+integer held_cycles [0:8191];
+integer field_count = 0;
+integer press_field [0:8191];
 
 always @(negedge clk) begin
+    if (frame_tick) field_count = field_count + 1;
     if (keys != 0 && previous == 0) begin
         if ((keys & (keys - 1)) != 0) $fatal(1, "Multiple playback keys");
         for (integer i = 0; i < 36; i = i + 1)
             if (keys[i]) observed[presses] = 6'(i);
         presses = presses + 1;
+        held_cycles[presses - 1] = 0;
+        press_field[presses - 1] = field_count;
         if (keys[11] && emulate_shift) symbols = !symbols;
     end
+    if (keys != 0) held_cycles[presses - 1] = held_cycles[presses - 1] + 1;
     previous = keys;
 end
 
@@ -127,6 +134,55 @@ initial begin
     packet[4103] = 8'h9b;
     init_packet(4096); send_packet(4104, -1); finish_entry;
     if (error) $fatal(1, "Maximum stream failed");
+
+    // Timed physical events work without APL and never consult its mode.
+    available = 0; presses = 0;
+    packet[8] = 11; packet[9] = 3; packet[10] = 2;
+    packet[11] = 35; packet[12] = 5; packet[13] = 4;
+    packet[14] = 255; packet[15] = 7; packet[16] = 0;
+    packet[17] = 27; packet[18] = 2; packet[19] = 0;
+    init_packet(12); packet[3] = "2";
+    send_packet(20, -1); finish_entry;
+    if (error || !complete || presses != 3 || observed[0] != 11 ||
+        observed[1] != 35 || observed[2] != 27 || held_cycles[0] != 3 ||
+        held_cycles[1] != 5 || held_cycles[2] != 2)
+        $fatal(1, "Timed event sequence or hold duration mismatch");
+
+    // Space field ticks apart to check release gaps and a silent wait.
+    presses = 0; frame_tick = 0;
+    send_packet(20, -1);
+    for (integer i = 0; i < 50 && busy; i = i + 1) begin
+        repeat (20) tick;
+        frame_tick = 1; tick;
+        frame_tick = 0; tick;
+    end
+    if (busy || error || presses != 3 || press_field[1] - press_field[0] != 5 ||
+        press_field[2] - press_field[1] != 16)
+        $fatal(1, "Timed release gap or silent wait mismatch");
+    frame_tick = 1;
+
+    presses = 0; packet[9] = 0;
+    init_packet(12); packet[3] = "2"; send_packet(20, -1);
+    if (!error || busy || presses != 0) $fatal(1, "Zero hold accepted");
+    packet[9] = 3; packet[8] = 36;
+    init_packet(12); packet[3] = "2"; send_packet(20, -1);
+    if (!error || busy || presses != 0) $fatal(1, "Invalid physical key accepted");
+    packet[8] = 11;
+    init_packet(11); packet[3] = "2"; send_packet(19, -1);
+    if (!error || busy || presses != 0) $fatal(1, "Partial timed event accepted");
+    init_packet(12); packet[3] = "2";
+    send_packet(20, -1);
+    while (keys == 0) tick;
+    cancel = 1; tick; cancel = 0;
+    if (busy || keys != 0 || complete) $fatal(1, "Timed cancel failed");
+
+    presses = 0;
+    for (integer n = 8; n < 4103; n = n + 3) begin
+        packet[n] = 35; packet[n + 1] = 1; packet[n + 2] = 0;
+    end
+    init_packet(4095); packet[3] = "2";
+    send_packet(4103, -1); finish_entry;
+    if (error || !complete || presses != 1365) $fatal(1, "Maximum timed stream failed");
     $display("APL source loader tests passed");
     $finish;
 end

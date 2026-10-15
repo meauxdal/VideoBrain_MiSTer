@@ -139,18 +139,19 @@ clean:
 
 .PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio test-cartridges clean
 
-test-apl-ram: test-cartridges
-	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \
-		"-gapl_image=../software/converted/The Computational Language (APL-S).bin" \
-		"-gapl_dump=../software/21 games for apl_s/guess.bin"
-	@mkdir -p $(WORK)
-	$(GHDL) -a --std=08 --workdir=$(WORK) -Wno-hide $(VHD_SRC) tests/tb_apl_loader.vhd
-	$(GHDL) -r --std=08 --workdir=$(WORK) tb_apl_loader --assert-level=error
+# test-apl-ram: test-cartridges
+# 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \
+# 		"-gapl_image=../software/converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
+# 		"-gapl_dump=../software/21 games for apl_s/guess.bin"
+# 	@mkdir -p $(WORK)
+# 	$(GHDL) -a --std=08 --workdir=$(WORK) -Wno-hide $(VHD_SRC) tests/tb_apl_loader.vhd
+# 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_apl_loader --assert-level=error
 
-.PHONY: test-apl-ram
+# .PHONY: test-apl-ram
 
 test-apl-source:
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_source.py
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_keyboard_input.py
 	@mkdir -p out/source_test
 	$(V) --binary --timing -Wno-fatal --top-module tb_apl_source_loader \
 		--Mdir out/source_test $(RTL)/apl_source_loader.sv tests/tb_apl_source_loader.sv

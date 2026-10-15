@@ -11,9 +11,9 @@ import subprocess
 
 
 GAMES = {
-    "gladiator": ("Gladiator (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin", 150, 180, 0x22BE),
-    "checkers": ("Checkers (197x)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin", 260, 280, 0x22BE),
-    "tennis": ("Tennis (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin", 230, 270, 0x1FCB),
+    "gladiator": ("Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin", 150, 180, 0x22BE),
+    "checkers": ("Checkers (1978.05.01)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin", 260, 280, 0x22BE),
+    "tennis": ("Tennis (1978.11.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin", 230, 270, 0x1FCB),
 }
 
 

@@ -112,34 +112,34 @@ BEGIN
       tick;
     END PROCEDURE;
 
-    PROCEDURE load_dump(mode : natural) IS
-    BEGIN
-      file_open(image, apl_dump, read_mode);
-      dl_index <= to_unsigned(4, 8);
-      dl_wr <= '1';
-      n := 0;
-      WHILE NOT endfile(image) LOOP
-        read(image, byte);
-        EXIT WHEN mode = 1 AND n = 16383;
-        dl_addr <= to_unsigned(n, 16);
-        dl_data <= to_unsigned(character'pos(byte), 8);
-        IF (mode = 2 AND n = 16#1000#) OR
-           (mode = 3 AND n = 16#2C00#) THEN
-          dl_data <= to_unsigned(character'pos(byte), 8) XOR x"01";
-        END IF;
-        IF mode = 4 AND n = 2 THEN dl_addr <= x"0001"; END IF;
-        tick;
-        n := n + 1;
-      END LOOP;
-      file_close(image);
-      IF mode = 5 THEN
-        dl_addr <= x"4000"; tick;
-      END IF;
-      dl_wr <= '0';
-      dl_index <= x"FF";
-      tick;
-      tick;
-    END PROCEDURE;
+--     PROCEDURE load_dump(mode : natural) IS
+--     BEGIN
+--       file_open(image, apl_dump, read_mode);
+--       dl_index <= to_unsigned(4, 8);
+--       dl_wr <= '1';
+--       n := 0;
+--       WHILE NOT endfile(image) LOOP
+--         read(image, byte);
+--         EXIT WHEN mode = 1 AND n = 16383;
+--         dl_addr <= to_unsigned(n, 16);
+--         dl_data <= to_unsigned(character'pos(byte), 8);
+--         IF (mode = 2 AND n = 16#1000#) OR
+--            (mode = 3 AND n = 16#2C00#) THEN
+--           dl_data <= to_unsigned(character'pos(byte), 8) XOR x"01";
+--         END IF;
+--         IF mode = 4 AND n = 2 THEN dl_addr <= x"0001"; END IF;
+--         tick;
+--         n := n + 1;
+--       END LOOP;
+--       file_close(image);
+--       IF mode = 5 THEN
+--         dl_addr <= x"4000"; tick;
+--       END IF;
+--       dl_wr <= '0';
+--       dl_index <= x"FF";
+--       tick;
+--       tick;
+--     END PROCEDURE;
   BEGIN
     -- Give each chip a distinct value to expose bank/address aliasing.
     dl_index <= to_unsigned(2, 8);
@@ -191,61 +191,75 @@ BEGIN
     fallback <= to_unsigned(CART_STD, 8); tick;
     read_at(16#1800#, 17); read_at(16#3800#, 255);
 
+    -- The retired download index must not alter RAM or pause the CPU.
+    write_at(16#0FE2#, 16#A5#);
+    dl_index <= to_unsigned(4, 8); dl_wr <= '1';
+    dl_addr <= x"0FE2"; dl_data <= x"00"; tick;
+    dl_wr <= '0'; dl_index <= x"FF"; tick; tick;
+    read_at(16#0FE2#, 16#A5#);
+    ASSERT apl_hold = '0' AND apl_error = '0'
+      REPORT "Retired dump index is active" SEVERITY failure;
+
     IF apl_image /= "" THEN
       load_file(apl_image);
       read_at(16#1000#, 16#AA#);
       read_at(16#3000#, 16#08#);
       write_at(16#1001#, 0);
       read_at(16#3000#, 16#15#);
-      IF apl_dump /= "" THEN
-        write_at(16#0FE2#, 1);
-        ASSERT apl_symbols = '1' REPORT "APL symbol mode not observed" SEVERITY failure;
-        write_at(16#2FE2#, 0);
-        ASSERT apl_symbols = '0' REPORT "APL mirrored symbol mode not observed" SEVERITY failure;
-        write_at(ADDR_UV201_LO + REG_Y_INTERRUPT, 16#B0#);
-        write_at(ADDR_UV201_LO + REG_FINAL_MOD, 16#03#);
-        write_at(ADDR_UV201_LO + REG_BACKGROUND, 16#12#);
-        write_at(ADDR_UV201_LO + REG_COMMAND, 16#4C#);
-        write_at(16#0C00#, 16#A5#);
-        write_at(16#1C00#, 16#5A#);
-        FOR mode IN 1 TO 5 LOOP
-          load_dump(mode);
-          ASSERT apl_error = '1' AND apl_hold = '0'
-            REPORT "Invalid APL dump accepted" SEVERITY failure;
-          read_at(16#0C00#, 16#A5#);
-          read_at(16#1C00#, 16#5A#);
-        END LOOP;
-        load_dump(0);
-        ASSERT apl_available = '1' AND apl_hold = '1' AND apl_error = '0'
-          REPORT "Valid APL dump rejected" SEVERITY failure;
-        read_at(16#0C00#, 16#A5#);
-        read_at(16#1C00#, 16#5A#);
-        apl_paused <= '1';
-        FOR i IN 0 TO 32772 LOOP
-          tick;
-          ASSERT y_int = x"B0" AND final_mod = x"03" AND
-                 background = x"12" AND command = x"4C"
-            REPORT "APL load changed write-only video controls" SEVERITY failure;
-        END LOOP;
-        ASSERT apl_hold = '0' REPORT "APL copy did not finish" SEVERITY failure;
-        apl_paused <= '0';
-        file_open(image, apl_dump, read_mode);
-        FOR i IN 0 TO 16383 LOOP
-          read(image, byte);
-          IF (i >= 16#0C00# AND i <= 16#0FFF#) OR
-             (i >= 16#1C00# AND i <= 16#1FFF#) OR
-             (i >= 16#2B00# AND i <= 16#2B8F#) THEN
-            read_at(i, character'pos(byte));
-          END IF;
-        END LOOP;
-        file_close(image);
-        read_at(16#1000#, 16#AA#);
-        read_at(16#3000#, 16#15#);
-        -- Reset cancels a validated transfer waiting for the CPU.
-        load_dump(0);
-        reset_na <= '0'; tick; reset_na <= '1'; tick;
-        ASSERT apl_hold = '0' REPORT "Reset did not cancel APL load" SEVERITY failure;
-      END IF;
+--       IF apl_dump /= "" THEN
+--         write_at(16#0FE2#, 1);
+--         ASSERT apl_symbols = '1' REPORT "APL symbol mode not observed" SEVERITY failure;
+--         write_at(16#2FE2#, 0);
+--         ASSERT apl_symbols = '0' REPORT "APL mirrored symbol mode not observed" SEVERITY failure;
+--         write_at(ADDR_UV201_LO + REG_Y_INTERRUPT, 16#B0#);
+--         write_at(ADDR_UV201_LO + REG_FINAL_MOD, 16#03#);
+--         write_at(ADDR_UV201_LO + REG_BACKGROUND, 16#12#);
+--         write_at(ADDR_UV201_LO + REG_COMMAND, 16#4C#);
+--         write_at(16#0C00#, 16#A5#);
+--         write_at(16#1C00#, 16#5A#);
+--         FOR mode IN 1 TO 5 LOOP
+--           load_dump(mode);
+--           ASSERT apl_error = '1' AND apl_hold = '0'
+--             REPORT "Invalid APL dump accepted" SEVERITY failure;
+--           read_at(16#0C00#, 16#A5#);
+--           read_at(16#1C00#, 16#5A#);
+--         END LOOP;
+--         load_dump(0);
+--         ASSERT apl_available = '1' AND apl_hold = '1' AND apl_error = '0'
+--           REPORT "Valid APL dump rejected" SEVERITY failure;
+--         read_at(16#0C00#, 16#A5#);
+--         read_at(16#1C00#, 16#5A#);
+--         apl_paused <= '1';
+--         FOR i IN 0 TO 32772 LOOP
+--           tick;
+--           ASSERT y_int = x"B0" AND final_mod = x"03" AND
+--                  background = x"12" AND command = x"4C"
+--             REPORT "APL load changed write-only video controls" SEVERITY failure;
+--         END LOOP;
+--         ASSERT apl_hold = '0' REPORT "APL copy did not finish" SEVERITY failure;
+--         apl_paused <= '0';
+--         file_open(image, apl_dump, read_mode);
+--         FOR i IN 0 TO 16383 LOOP
+--           read(image, byte);
+--           IF (i >= 16#0C00# AND i <= 16#0FFF#) OR
+--              (i >= 16#1C00# AND i <= 16#1FFF#) OR
+--              (i >= 16#2B00# AND i <= 16#2B8F#) THEN
+--             read_at(i, character'pos(byte));
+--           END IF;
+--         END LOOP;
+--         file_close(image);
+--         read_at(16#1000#, 16#AA#);
+--         read_at(16#3000#, 16#15#);
+--         -- Reset cancels a validated transfer waiting for the CPU.
+--         load_dump(0);
+--         reset_na <= '0'; tick; reset_na <= '1'; tick;
+--         ASSERT apl_hold = '0' REPORT "Reset did not cancel APL load" SEVERITY failure;
+--       END IF;
+--     END IF;
+      write_at(16#0FE2#, 1);
+      ASSERT apl_symbols = '1' REPORT "APL symbol mode not observed" SEVERITY failure;
+      write_at(16#2FE2#, 0);
+      ASSERT apl_symbols = '0' REPORT "APL mirrored symbol mode not observed" SEVERITY failure;
     END IF;
     IF info_image /= "" THEN
       load_file(info_image);
@@ -268,13 +282,13 @@ BEGIN
     read_at(16#1800#, 16#6D#);
     dma_at(16#1C00#, 16#6D#);
     read_at(16#3000#, 255);
-    IF apl_dump /= "" THEN
-      write_at(16#0C00#, 16#A5#);
-      load_dump(0);
-      ASSERT apl_available = '0' AND apl_error = '1' AND apl_hold = '0'
-        REPORT "APL dump accepted without interpreter cartridge" SEVERITY failure;
-      read_at(16#0C00#, 16#A5#);
-    END IF;
+--     IF apl_dump /= "" THEN
+--       write_at(16#0C00#, 16#A5#);
+--       load_dump(0);
+--       ASSERT apl_available = '0' AND apl_error = '1' AND apl_hold = '0'
+--         REPORT "APL dump accepted without interpreter cartridge" SEVERITY failure;
+--       read_at(16#0C00#, 16#A5#);
+--     END IF;
     REPORT "Cartridge tests passed";
     std.env.stop;
     WAIT;

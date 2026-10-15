@@ -118,17 +118,17 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL sys_ram_wa, cart_ram_wa : unsigned(9 DOWNTO 0);
   SIGNAL sys_ram_wdata, cart_ram_wdata : uv8;
 
-  TYPE apl_ram_t IS ARRAY (0 TO 16383) OF uv8;
-  SIGNAL apl_ram : apl_ram_t;
-  TYPE apl_state_t IS (IDLE, RECEIVE, WAIT_PAUSE, COPY_READ, COPY_WRITE);
-  SIGNAL apl_state : apl_state_t := IDLE;
-  SIGNAL apl_count : unsigned(16 DOWNTO 0) := (OTHERS => '0');
-  SIGNAL apl_bad, apl_error : std_logic := '0';
-  SIGNAL apl_sys_crc, apl_mirror_crc, apl_rom_crc : uv32 := (OTHERS => '1');
-  SIGNAL cart_fixed_crc : uv32 := (OTHERS => '1');
-  SIGNAL apl_copy_addr : unsigned(13 DOWNTO 0) := (OTHERS => '0');
-  SIGNAL apl_copy_data : uv8;
-  SIGNAL apl_copy_wr : std_logic;
+--   TYPE apl_ram_t IS ARRAY (0 TO 16383) OF uv8;
+--   SIGNAL apl_ram : apl_ram_t;
+--   TYPE apl_state_t IS (IDLE, RECEIVE, WAIT_PAUSE, COPY_READ, COPY_WRITE);
+--   SIGNAL apl_state : apl_state_t := IDLE;
+--   SIGNAL apl_count : unsigned(16 DOWNTO 0) := (OTHERS => '0');
+--   SIGNAL apl_bad, apl_error : std_logic := '0';
+--   SIGNAL apl_sys_crc, apl_mirror_crc, apl_rom_crc : uv32 := (OTHERS => '1');
+--   SIGNAL cart_fixed_crc : uv32 := (OTHERS => '1');
+--   SIGNAL apl_copy_addr : unsigned(13 DOWNTO 0) := (OTHERS => '0');
+--   SIGNAL apl_copy_data : uv8;
+--   SIGNAL apl_copy_wr : std_logic;
 
   SIGNAL uv_reg_addr  : uv8;
   SIGNAL uv_reg_we    : std_logic;
@@ -172,99 +172,104 @@ ARCHITECTURE rtl OF sys_bus IS
 BEGIN
 
   apl_available <= '1' WHEN cart_auto_type = to_unsigned(CART_COMPLANG, 8) ELSE '0';
-  apl_load_error <= apl_error;
-  apl_hold <= '1' WHEN apl_state = WAIT_PAUSE OR apl_state = COPY_READ OR
-                       apl_state = COPY_WRITE ELSE '0';
-  apl_copy_wr <= '1' WHEN apl_state = COPY_WRITE AND apl_paused = '1' AND
-                         reset_na = '1' ELSE '0';
-  -- Stage the debugger dump; validate before changing live memory.
-  PROCESS (clk) IS
-  BEGIN
-    IF rising_edge(clk) THEN
-      IF dl_wr = '1' AND dl_index = to_unsigned(4, 8) AND
-         (apl_state = IDLE OR apl_state = RECEIVE) THEN
-        IF dl_addr < x"4000" THEN
-          apl_ram(to_integer(dl_addr(13 DOWNTO 0))) <= dl_data;
-        END IF;
-      END IF;
-      apl_copy_data <= apl_ram(to_integer(apl_copy_addr));
-    END IF;
-  END PROCESS;
+--   apl_load_error <= apl_error;
+--   apl_hold <= '1' WHEN apl_state = WAIT_PAUSE OR apl_state = COPY_READ OR
+--                        apl_state = COPY_WRITE ELSE '0';
+--   apl_copy_wr <= '1' WHEN apl_state = COPY_WRITE AND apl_paused = '1' AND
+--                          reset_na = '1' ELSE '0';
+--   -- Stage the debugger dump; validate before changing live memory.
+--   PROCESS (clk) IS
+--   BEGIN
+--     IF rising_edge(clk) THEN
+--       IF dl_wr = '1' AND dl_index = to_unsigned(4, 8) AND
+--          (apl_state = IDLE OR apl_state = RECEIVE) THEN
+--         IF dl_addr < x"4000" THEN
+--           apl_ram(to_integer(dl_addr(13 DOWNTO 0))) <= dl_data;
+--         END IF;
+--       END IF;
+--       apl_copy_data <= apl_ram(to_integer(apl_copy_addr));
+--     END IF;
+--   END PROCESS;
 
-  PROCESS (clk) IS
-  BEGIN
-    IF rising_edge(clk) THEN
-      IF reset_na = '0' THEN
-        apl_state <= IDLE;
-        apl_error <= '0';
-      ELSE
-        CASE apl_state IS
-          WHEN IDLE =>
-            IF dl_index = to_unsigned(4, 8) THEN
-              apl_state <= RECEIVE;
-              apl_count <= (OTHERS => '0');
-              apl_sys_crc <= (OTHERS => '1');
-              apl_mirror_crc <= (OTHERS => '1');
-              apl_rom_crc <= (OTHERS => '1');
-              apl_bad <= '0';
-              apl_error <= '0';
-              IF cart_auto_type /= to_unsigned(CART_COMPLANG, 8) THEN
-                apl_bad <= '1';
-              END IF;
-              -- HPS can present the first byte with the download index.
-              IF dl_wr = '1' THEN
-                apl_count <= to_unsigned(1, 17);
-                IF dl_addr /= x"0000" THEN apl_bad <= '1'; END IF;
-              END IF;
-            END IF;
-          WHEN RECEIVE =>
-            IF dl_index /= to_unsigned(4, 8) THEN
-              IF apl_bad = '0' AND apl_count = to_unsigned(16384, 17) AND
-                 apl_sys_crc = apl_mirror_crc AND apl_rom_crc = cart_fixed_crc AND
-                 cart_auto_type = to_unsigned(CART_COMPLANG, 8) THEN
-                apl_copy_addr <= (OTHERS => '0');
-                apl_state <= WAIT_PAUSE;
-              ELSE
-                apl_error <= '1';
-                apl_state <= IDLE;
-              END IF;
-            ELSIF dl_wr = '1' THEN
-              IF resize(dl_addr, 17) /= apl_count OR apl_count >= 16384 THEN
-                apl_bad <= '1';
-              ELSE
-                apl_count <= apl_count + 1;
-              END IF;
-              IF dl_addr >= x"0C00" AND dl_addr <= x"0FFF" THEN
-                apl_sys_crc <= crc32_byte(apl_sys_crc, dl_data);
-              ELSIF dl_addr >= x"2C00" AND dl_addr <= x"2FFF" THEN
-                apl_mirror_crc <= crc32_byte(apl_mirror_crc, dl_data);
-              ELSIF dl_addr >= x"1000" AND dl_addr <= x"1BFF" THEN
-                apl_rom_crc <= crc32_byte(apl_rom_crc, dl_data);
-              END IF;
-            END IF;
-          WHEN WAIT_PAUSE =>
-            IF apl_paused = '1' THEN apl_state <= COPY_READ; END IF;
-          WHEN COPY_READ =>
-            apl_state <= COPY_WRITE;
-          WHEN COPY_WRITE =>
-            IF apl_paused = '1' THEN
-              IF apl_copy_addr = 16383 THEN
-                apl_state <= IDLE;
-              ELSE
-                apl_copy_addr <= apl_copy_addr + 1;
-                apl_state <= COPY_READ;
-              END IF;
-            END IF;
-        END CASE;
-      END IF;
-    END IF;
-  END PROCESS;
+--   PROCESS (clk) IS
+--   BEGIN
+--     IF rising_edge(clk) THEN
+--       IF reset_na = '0' THEN
+--         apl_state <= IDLE;
+--         apl_error <= '0';
+--       ELSE
+--         CASE apl_state IS
+--           WHEN IDLE =>
+--             IF dl_index = to_unsigned(4, 8) THEN
+--               apl_state <= RECEIVE;
+--               apl_count <= (OTHERS => '0');
+--               apl_sys_crc <= (OTHERS => '1');
+--               apl_mirror_crc <= (OTHERS => '1');
+--               apl_rom_crc <= (OTHERS => '1');
+--               apl_bad <= '0';
+--               apl_error <= '0';
+--               IF cart_auto_type /= to_unsigned(CART_COMPLANG, 8) THEN
+--                 apl_bad <= '1';
+--               END IF;
+--               -- HPS can present the first byte with the download index.
+--               IF dl_wr = '1' THEN
+--                 apl_count <= to_unsigned(1, 17);
+--                 IF dl_addr /= x"0000" THEN apl_bad <= '1'; END IF;
+--               END IF;
+--             END IF;
+--           WHEN RECEIVE =>
+--             IF dl_index /= to_unsigned(4, 8) THEN
+--               IF apl_bad = '0' AND apl_count = to_unsigned(16384, 17) AND
+--                  apl_sys_crc = apl_mirror_crc AND apl_rom_crc = cart_fixed_crc AND
+--                  cart_auto_type = to_unsigned(CART_COMPLANG, 8) THEN
+--                 apl_copy_addr <= (OTHERS => '0');
+--                 apl_state <= WAIT_PAUSE;
+--               ELSE
+--                 apl_error <= '1';
+--                 apl_state <= IDLE;
+--               END IF;
+--             ELSIF dl_wr = '1' THEN
+--               IF resize(dl_addr, 17) /= apl_count OR apl_count >= 16384 THEN
+--                 apl_bad <= '1';
+--               ELSE
+--                 apl_count <= apl_count + 1;
+--               END IF;
+--               IF dl_addr >= x"0C00" AND dl_addr <= x"0FFF" THEN
+--                 apl_sys_crc <= crc32_byte(apl_sys_crc, dl_data);
+--               ELSIF dl_addr >= x"2C00" AND dl_addr <= x"2FFF" THEN
+--                 apl_mirror_crc <= crc32_byte(apl_mirror_crc, dl_data);
+--               ELSIF dl_addr >= x"1000" AND dl_addr <= x"1BFF" THEN
+--                 apl_rom_crc <= crc32_byte(apl_rom_crc, dl_data);
+--               END IF;
+--             END IF;
+--           WHEN WAIT_PAUSE =>
+--             IF apl_paused = '1' THEN apl_state <= COPY_READ; END IF;
+--           WHEN COPY_READ =>
+--             apl_state <= COPY_WRITE;
+--           WHEN COPY_WRITE =>
+--             IF apl_paused = '1' THEN
+--               IF apl_copy_addr = 16383 THEN
+--                 apl_state <= IDLE;
+--               ELSE
+--                 apl_copy_addr <= apl_copy_addr + 1;
+--                 apl_state <= COPY_READ;
+--               END IF;
+--             END IF;
+--         END CASE;
+--       END IF;
+--     END IF;
+--   END PROCESS;
 
-  -- Replay MAME debugger writes through the normal memory handlers.
-  a_eff <= cpu_addr_fold(apl_copy_addr) WHEN apl_copy_wr = '1'
-             ELSE cpu_addr_fold(ext_addr);
-  bus_wr <= apl_copy_wr OR ext_wr;
-  bus_wdata <= apl_copy_data WHEN apl_copy_wr = '1' ELSE ext_wdata;
+--   -- Replay MAME debugger writes through the normal memory handlers.
+--   a_eff <= cpu_addr_fold(apl_copy_addr) WHEN apl_copy_wr = '1'
+--              ELSE cpu_addr_fold(ext_addr);
+--   bus_wr <= apl_copy_wr OR ext_wr;
+--   bus_wdata <= apl_copy_data WHEN apl_copy_wr = '1' ELSE ext_wdata;
+  apl_load_error <= '0';
+  apl_hold <= '0';
+  a_eff <= cpu_addr_fold(ext_addr);
+  bus_wr <= ext_wr;
+  bus_wdata <= ext_wdata;
   cart_effective_type <= cart_auto_type
                          WHEN cart_auto_type /= to_unsigned(CART_UNRECOGNIZED, 8)
                          ELSE unknown_cart_profile;
@@ -299,11 +304,13 @@ BEGIN
       );
 
   uv_reg_addr  <= a_eff(7 DOWNTO 0);
-  -- Dumps contain FF for write-only controls; preserve their live values.
-  uv_reg_we    <= bus_wr WHEN (a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
-                                a_eff <= to_unsigned(ADDR_UV201_HI, 14) AND
-                                (apl_copy_wr = '0' OR a_eff(7 DOWNTO 0) <= x"8F"))
-                  ELSE '0';
+--   -- Dumps contain FF for write-only controls; preserve their live values.
+--   uv_reg_we    <= bus_wr WHEN (a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
+--                                 a_eff <= to_unsigned(ADDR_UV201_HI, 14) AND
+--                                 (apl_copy_wr = '0' OR a_eff(7 DOWNTO 0) <= x"8F"))
+--                   ELSE '0';
+  uv_reg_we <= bus_wr WHEN a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
+                               a_eff <= to_unsigned(ADDR_UV201_HI, 14) ELSE '0';
   uv_reg_wdata <= bus_wdata;
 
 
@@ -402,14 +409,14 @@ BEGIN
         cart_dl_prev <= '1';
         IF dl_wr = '1' THEN
           IF dl_addr = to_unsigned(0, 16) THEN
-            cart_fixed_crc <= crc32_byte((OTHERS => '1'), dl_data);
+--          cart_fixed_crc <= crc32_byte((OTHERS => '1'), dl_data);
             cart_crc <= crc32_byte((OTHERS => '1'), dl_data);
             cart_size <= to_unsigned(1, cart_size'length);
             cart_auto_type <= to_unsigned(CART_UNRECOGNIZED, 8);
           ELSE
-            IF dl_addr < x"0C00" THEN
-              cart_fixed_crc <= crc32_byte(cart_fixed_crc, dl_data);
-            END IF;
+--             IF dl_addr < x"0C00" THEN
+--               cart_fixed_crc <= crc32_byte(cart_fixed_crc, dl_data);
+--             END IF;
             cart_crc <= crc32_byte(cart_crc, dl_data);
             cart_size <= cart_size + 1;
           END IF;

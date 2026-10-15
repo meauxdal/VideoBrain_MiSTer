@@ -8,7 +8,7 @@ out=out/joystick/directions9
 mkdir -p "$out"
 
 run_checkers() {
-    local cart="../software/Checkers (197x)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin"
+    local cart="../software/Checkers (1978.05.01)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin"
     ./obj_dir_headless/Vtop \
         --cart "$cart" \
         --frames 350 \
@@ -31,7 +31,7 @@ run_checkers() {
 }
 
 run_gladiator() {
-    local cart="../software/Gladiator (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin"
+    local cart="../software/Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin"
     local name=$1
     ./obj_dir_headless/Vtop \
         --cart "$cart" \

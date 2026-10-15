@@ -112,7 +112,7 @@ def main():
     simdir = Path(__file__).resolve().parent
     software = simdir.parent / "software"
     executable = simdir / "obj_dir_headless/Vtop"
-    cartridge = software / "converted/The Computational Language (APL-S).bin"
+    cartridge = software / "converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
     planned = []
     for name in selected:
         snapshot, lines, expected = CASES[name]
@@ -120,16 +120,18 @@ def main():
         outdir = simdir / args.outdir / name
         command = [str(executable), "--cart", str(cartridge)]
         symbols = False
+#         if snapshot:
+#             image = software / "21 games for apl_s" / f"{snapshot}.bin"
+#             if not image.is_file():
+#                 parser.error(f"Missing snapshot: {image}")
+#             data = image.read_bytes()
+#             if len(data) != 16384:
+#                 parser.error(f"Invalid snapshot size: {image}")
+#             # APL/S SHIFT latch: 0 = letters, 1 = symbols.
+#             symbols = bool(data[0x0FE2] & 1)
+#             command += ["--apl", f"{image}@210"]
         if snapshot:
-            image = software / "21 games for apl_s" / f"{snapshot}.bin"
-            if not image.is_file():
-                parser.error(f"Missing snapshot: {image}")
-            data = image.read_bytes()
-            if len(data) != 16384:
-                parser.error(f"Invalid snapshot size: {image}")
-            # APL/S SHIFT latch: 0 = letters, 1 = symbols.
-            symbols = bool(data[0x0FE2] & 1)
-            command += ["--apl", f"{image}@210"]
+            parser.error("RAM dump loading is disabled; use a keyboard source file")
         presses, shots, frames = schedule(lines, args.settle, normalize,
                                          normalize and args.leave_edit, symbols)
         captures = ",".join(map(str, [199, 211, *shots]))

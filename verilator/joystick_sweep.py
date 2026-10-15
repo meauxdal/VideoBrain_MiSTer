@@ -89,7 +89,7 @@ def run(candidate, out):
     case = out / f"{base}_{step}"
     case.mkdir(parents=True, exist_ok=True)
     command = ["./obj_dir_headless/Vtop", "--cart",
-               "../software/Gladiator (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin",
+               "../software/Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin",
                "--frames", "290", "--press", "SPACE@140:8", "--joy-results", "150",
                "--joy-timer-base", str(base), "--joy-timer-step", str(step),
                "--dump-every", "1", "--dump-file", str(case / "state.txt"), "--quiet"]

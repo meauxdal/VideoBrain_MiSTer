@@ -50,7 +50,7 @@ After rebuilding the headless simulator, test the actual firmware:
 cd verilator
 make headless
 ./obj_dir_headless/Vtop \
-  --cart "../software/converted/Information Manager (prototype).bin" \
+  --cart "../software/converted/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
   --expander1 "../software/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin" \
   --frames 300 --shot-last --outdir out/expander1
 ```

@@ -21,6 +21,7 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(encode("1-1"), encode("1\u22121"))
 
     def test_apl_symbols(self):
+        self.assertEqual(encode("!$#")[8:], bytes([0x44, 0x46, 0x41, 0x9b]))
         self.assertEqual(encode("\u00d7\u00f7\u03c0\u00af")[8:], bytes([0x4c, 0x48, 0x43, 0x42, 0x9b]))
         self.assertNotEqual(encode("*")[8], encode("\u00d7")[8])
         self.assertEqual(encode("{MUL}{DIV}{PI}{NEG}"), encode("\u00d7\u00f7\u03c0\u00af"))

@@ -23,6 +23,17 @@ profile only for unrecognized images.
 experimental; see [limits and hardware evidence](../docs/EXPANDER1.md).
 `make test-expander1` tests its ROM loading, processor and host clock wiring.
 
+## Keyboard files
+
+Use [APL/S source entry](../docs/APL-SOURCE.md) or
+[generic text, physical keys and Music Teacher](../docs/KEYBOARD-INPUT.md).
+`--source FILE@FRAME` accepts VBK1 and VBK2, including built-in Text without a
+cartridge. `make test-apl-source` checks both converters and the RTL loader.
+RAM dump options and tests are disabled; their code and files are preserved.
+The two clean `apl_check.py` controls remain available. Snapshot cases reject
+entry instead of restoring RAM.
+
+<!--
 ## APL/S memory dumps
 
 For clean source entry, use the [source loader](../docs/APL-SOURCE.md).
@@ -37,7 +48,7 @@ ROM, CPU registers, mapper bank and video registers are not restored.
 ```sh
 mkdir -p out/apl
 ./obj_dir_headless/Vtop \
-  --cart "../software/converted/The Computational Language (APL-S).bin" \
+  --cart "../software/converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
   --apl "../software/21 games for apl_s/guess.bin@300" \
   --frames 330 --shot-last --outdir out/apl
 ```
@@ -86,6 +97,8 @@ For diagnostic retries, `--normalize` clears pending snapshot input. Add
 `--leave-edit` only for snapshots in edit mode. `--settle N` extends the wait
 after each line; `--trace-final N` traces N CPU memory cycles in the final
 frame. Use `--outdir out/apl/retry` to keep the original captures.
+
+-->
 
 Joystick pulse timing is runtime-configurable without rebuilding. Headless
 defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; use

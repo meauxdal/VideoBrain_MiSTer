@@ -21,8 +21,9 @@ module apl_source_loader #(
 );
 
 localparam IDLE = 0, RECEIVE = 1, WAIT_START = 2, READ_KEY = 3,
-           SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6, LINE_WAIT = 7;
-reg [2:0] state = IDLE;
+           SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6, LINE_WAIT = 7,
+           READ_HOLD = 8, SELECT_HOLD = 9, READ_GAP = 10, SELECT_GAP = 11;
+reg [3:0] state = IDLE;
 reg download_d = 0;
 reg bad = 0;
 reg [12:0] received = 0;
@@ -32,6 +33,9 @@ reg [7:0] memory [0:4095];
 reg [7:0] token;
 reg [7:0] frames = 0;
 reg shifting = 0, shifted = 0, started = 0;
+reg timed = 0;
+reg [1:0] payload_phase = 0;
+reg [7:0] event_key, hold_frames, gap_frames;
 
 function automatic [15:0] crc_byte(input [15:0] old_crc, input [7:0] byte_value);
     reg [15:0] value;
@@ -72,7 +76,7 @@ always @(posedge clk) begin
         complete <= 0;
     end else if (download && !download_d) begin
         state <= RECEIVE;
-        bad <= !available || (wr && (addr != 0 || data != "V"));
+        bad <= wr && (addr != 0 || data != "V");
         received <= wr ? 1 : 0;
         length <= 0;
         expected_crc <= 0;
@@ -81,16 +85,20 @@ always @(posedge clk) begin
         keys <= 0;
         started <= 0;
         complete <= 0;
-    end else if (busy && (!available || cancel || (started && !enabled))) begin
+        timed <= 0;
+        payload_phase <= 0;
+    end else if (busy && ((!timed && state != RECEIVE && !available) ||
+                         cancel || (started && !enabled))) begin
         state <= IDLE;
         keys <= 0;
-        error <= !available;
+        error <= !timed && !available;
     end else begin
         case (state)
             RECEIVE: begin
                 if (!download) begin
                     if (bad || length == 0 || length > 4096 ||
-                        {3'd0, received} != length + 16'd8 || crc != expected_crc) begin
+                        {3'd0, received} != length + 16'd8 || crc != expected_crc ||
+                        (timed ? payload_phase != 0 : !available)) begin
                         error <= 1;
                         state <= IDLE;
                     end else begin
@@ -106,14 +114,21 @@ always @(posedge clk) begin
                             0: if (data != "V") bad <= 1;
                             1: if (data != "B") bad <= 1;
                             2: if (data != "K") bad <= 1;
-                            3: if (data != "1") bad <= 1;
+                            3: begin
+                                timed <= data == "2";
+                                if (data != "1" && data != "2") bad <= 1;
+                            end
                             4: length[7:0] <= data;
                             5: length[15:8] <= data;
                             6: expected_crc[7:0] <= data;
                             7: expected_crc[15:8] <= data;
                             default: begin
                                 crc <= crc_byte(crc, data);
-                                if (!valid_key(data)) bad <= 1;
+                                if (timed) begin
+                                    if ((payload_phase == 0 && data > 35 && data != 8'hff) ||
+                                        (payload_phase == 1 && data == 0)) bad <= 1;
+                                    payload_phase <= payload_phase == 2 ? 0 : payload_phase + 1'b1;
+                                end else if (!valid_key(data)) bad <= 1;
                             end
                         endcase
                     end
@@ -129,7 +144,11 @@ always @(posedge clk) begin
             end
             READ_KEY: state <= SELECT_KEY;
             SELECT_KEY: begin
-                if (!token[7] && token[6] != symbols) begin
+                if (timed) begin
+                    event_key <= token;
+                    position <= position + 1'b1;
+                    state <= READ_HOLD;
+                end else if (!token[7] && token[6] != symbols) begin
                     if (shifted) begin
                         error <= 1;
                         state <= IDLE;
@@ -147,18 +166,32 @@ always @(posedge clk) begin
                     state <= HOLD_KEY;
                 end
             end
+            READ_HOLD: state <= SELECT_HOLD;
+            SELECT_HOLD: begin
+                hold_frames <= token;
+                position <= position + 1'b1;
+                state <= READ_GAP;
+            end
+            READ_GAP: state <= SELECT_GAP;
+            SELECT_GAP: begin
+                gap_frames <= token;
+                keys <= event_key == 8'hff ? 36'd0 : 36'd1 << event_key[5:0];
+                frames <= hold_frames;
+                shifting <= 0;
+                state <= HOLD_KEY;
+            end
             HOLD_KEY: if (frame_tick) begin
                 if (frames > 1) frames <= frames - 1'b1;
                 else begin
                     keys <= 0;
-                    frames <= KEY_FRAMES;
+                    frames <= timed ? gap_frames : KEY_FRAMES;
                     state <= RELEASE_KEY;
                 end
             end
-            RELEASE_KEY: if (frame_tick) begin
+            RELEASE_KEY: if (frame_tick || (timed && frames == 0)) begin
                 if (frames > 1) frames <= frames - 1'b1;
                 else if (shifting) state <= SELECT_KEY;
-                else if (token == 8'h9b) begin
+                else if (!timed && token == 8'h9b) begin
                     frames <= LINE_FRAMES;
                     state <= LINE_WAIT;
                 end else if ({4'd0, position} + 16'd1 == length) begin

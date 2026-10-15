@@ -17,6 +17,10 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's
 
 ## Summary
 
+Cartridge filenames use manufacturing start dates from
+[AtariProtos](https://www.atariprotos.com/othersystems/videobrain/cartridges/cartridgelist.htm)
+where known. Information Manager uses the year on its prototype chip labels.
+
 | Cartridge | Size | Slot device | First screen | Notes |
 |---|---|---|---|---|
 | Blackjack | 2K | standard | correct | "1 OR 2 PLAYERS?" over black and red card suits on green. |
@@ -35,7 +39,7 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's
 | VideoArtist | 2K | standard | correct | Design selection menu. |
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
-| APL / Computational Language | 16K | comp_language | correct | Assembled MAME image; full program execution coverage pending. |
+| APL/S: The Computational Language | 16K | comp_language | correct | Assembled MAME image; full program execution coverage pending. |
 | Information Manager | 8K | info_manager | correct | Prototype; with Expander 1 firmware, reaches PROGRAM / ENTER / REVIEW / EDIT without I/O ERR. Tape and serial operations need investigation. |
 
 ## Split cartridge conversion
@@ -45,7 +49,7 @@ Use the chip names from MAME's
 Every chip below is 2,048 bytes. Offsets are hexadecimal positions in the
 output file, not CPU addresses. Padding must contain zero bytes.
 
-### Computational Language (`complang.zip`)
+### APL/S: The Computational Language (`complang.zip`)
 
 Concatenate A, B, C, D, E, F, G, then 2,048 zero bytes:
 
@@ -60,7 +64,7 @@ Concatenate A, B, C, D, E, F, G, then 2,048 zero bytes:
 | 3000 | `0316_apls-g.u11` |
 | 3800 | 2,048 zero bytes |
 
-Output: `The Computational Language (APL-S).bin`, 16,384 bytes.
+Output: `APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin`, 16,384 bytes.
 
 ### Information Manager (`infoman.zip`, also known as `infomgr`)
 
@@ -73,7 +77,7 @@ Concatenate the 1000 chip, 2,048 zero bytes, the 3000 chip, then the 3800 chip:
 | 1000 | `vb1200c_3000-37ff_9_25_78_51` |
 | 1800 | `vb-1200_3800-3fff_9_26_78` |
 
-Output: `Information Manager (prototype).bin`, 8,192 bytes. Load the separate
+Output: `Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin`, 8,192 bytes. Load the separate
 Expander 1 firmware as described in [Expander 1 setup](EXPANDER1.md).
 
 ### Converter

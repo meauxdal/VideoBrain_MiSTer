@@ -49,11 +49,11 @@ localparam CONF_STR = {
 	"-;",
 	"F1,BIN,Load Cartridge;",
 	"F2,BIN,Expander 1 ROM;",
-	"H0F3,BIN,Load APL/S Dump;",
-	"H1-APL/S dump load rejected;",
-	"H0F4,VBK,Enter APL/S Source;",
-	"H2-APL/S source entry active;",
-	"H3-APL/S source rejected;",
+//	"H0F3,BIN,Load APL/S Dump;",
+//	"H1-APL/S dump load rejected;",
+	"F4,VBK,Enter Keyboard File;",
+	"H2-Keyboard entry active;",
+	"H3-Keyboard file rejected;",
 	"-;",
 	"O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
@@ -95,7 +95,8 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.buttons(buttons),
 	.status(status),
-	.status_menumask({12'd0, ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
+//	.status_menumask({12'd0, ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
+	.status_menumask({12'd0, ~source_error, ~source_busy, 2'b11}),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -127,13 +128,13 @@ pll pll
 
 reg master_control = 0;
 wire system_reset = RESET | status[0] | buttons[1] |
-                    (ioctl_download && !apl_dl && !source_dl) | ~pll_locked;
+                    (ioctl_download && !source_dl) | ~pll_locked;
 wire reset = system_reset | master_control;
 
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
 wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
-wire apl_dl = ioctl_download && (ioctl_index[7:0] == 8'd3);
+// wire apl_dl = ioctl_download && (ioctl_index[7:0] == 8'd3);
 wire source_dl = ioctl_download && (ioctl_index[7:0] == 8'd4);
 wire apl_available, apl_load_error;
 wire apl_symbols, source_busy, source_error;
@@ -141,14 +142,20 @@ wire [35:0] source_keys;
 wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
                                     (ioctl_index[7:0] == 8'd2));
 
-wire [7:0] dl_index = apl_dl                ? 8'd4 :
-                      expander_dl           ? 8'd3 :
+// wire [7:0] dl_index = apl_dl                ? 8'd4 :
+//                       expander_dl           ? 8'd3 :
+//                       cart_dl               ? 8'd2 :
+//                       boot_dl               ? (ioctl_addr[11] ? 8'd1 : 8'd0) : 8'hff;
+//
+// wire [15:0] dl_addr = apl_dl ? (|ioctl_addr[24:16] ? 16'hffff : ioctl_addr[15:0]) :
+//                      (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
+// wire        dl_wr   = (boot_dl | cart_dl | expander_dl | apl_dl) & ioctl_wr;
+wire [7:0] dl_index = expander_dl           ? 8'd3 :
                       cart_dl               ? 8'd2 :
                       boot_dl               ? (ioctl_addr[11] ? 8'd1 : 8'd0) : 8'hff;
 
-wire [15:0] dl_addr = apl_dl ? (|ioctl_addr[24:16] ? 16'hffff : ioctl_addr[15:0]) :
-                     (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
-wire        dl_wr   = (boot_dl | cart_dl | expander_dl | apl_dl) & ioctl_wr;
+wire [15:0] dl_addr = (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
+wire        dl_wr   = (boot_dl | cart_dl | expander_dl) & ioctl_wr;
 
 
 // 9 columns by 4 rows, bit = col * 4 + row, active high. Columns 0-7 are
