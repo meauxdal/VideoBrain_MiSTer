@@ -172,6 +172,7 @@ int main(int argc, char** argv, char** env) {
     top->joy_timer_base = 2580;
     top->joy_timer_step = 7;
     top->joy_timer_curve = 0;
+    top->joy_timer_auto = 1;
     top->cart_type = (uint8_t)opt_cart_type;
     top->reset = 1;
 

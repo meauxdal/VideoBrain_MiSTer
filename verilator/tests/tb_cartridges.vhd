@@ -23,6 +23,8 @@ ARCHITECTURE test OF tb_cartridges IS
   SIGNAL apl_hold, apl_error, apl_available : std_logic;
   SIGNAL apl_symbols : std_logic;
   SIGNAL apl_paused : std_logic := '0';
+  SIGNAL joy_base : unsigned(13 DOWNTO 0);
+  SIGNAL joy_step : unsigned(6 DOWNTO 0);
   SIGNAL background : uv8;
   SIGNAL command : std_logic_vector(7 DOWNTO 0);
   SIGNAL y_int, final_mod : uv8;
@@ -46,7 +48,8 @@ BEGIN
       dl_index => dl_index, unknown_cart_profile => fallback,
       apl_hold => apl_hold, apl_paused => apl_paused,
       apl_available => apl_available, apl_load_error => apl_error,
-      apl_symbols => apl_symbols
+      apl_symbols => apl_symbols,
+      joy_linear_base => joy_base, joy_linear_step => joy_step
     );
 
   PROCESS
@@ -110,6 +113,31 @@ BEGIN
       dl_index <= (OTHERS => '0');
       tick;
       tick;
+    END PROCEDURE;
+
+    -- Zero-filled images with CRC-matching suffixes; no cartridge ROM needed.
+    PROCEDURE load_signature(size : positive; tail : uv32; step : natural;
+                             base : natural := 2580) IS
+    BEGIN
+      dl_index <= to_unsigned(2, 8);
+      dl_wr <= '1';
+      FOR i IN 0 TO size - 1 LOOP
+        dl_addr <= to_unsigned(i, 16);
+        dl_data <= (OTHERS => '0');
+        IF i >= size - 4 THEN
+          dl_data <= tail((size - 1 - i) * 8 + 7 DOWNTO (size - 1 - i) * 8);
+        END IF;
+        tick;
+        IF i = 0 THEN
+          ASSERT joy_base = 2580 AND joy_step = 7
+            REPORT "Joystick preset not cleared on replacement" SEVERITY failure;
+        END IF;
+      END LOOP;
+      dl_wr <= '0';
+      dl_index <= (OTHERS => '0');
+      tick; tick;
+      ASSERT joy_base = base AND joy_step = step
+        REPORT "Joystick preset mismatch" SEVERITY failure;
     END PROCEDURE;
 
 --     PROCEDURE load_dump(mode : natural) IS
@@ -289,6 +317,17 @@ BEGIN
 --         REPORT "APL dump accepted without interpreter cartridge" SEVERITY failure;
 --       read_at(16#0C00#, 16#A5#);
 --     END IF;
+    load_signature(4096, x"78F61A44", 24, 2644); -- Tennis CRC 1942F852.
+    reset_na <= '0'; tick; reset_na <= '1'; tick;
+    ASSERT joy_base = 2644 AND joy_step = 24
+      REPORT "Reset cleared joystick preset" SEVERITY failure;
+    fallback <= to_unsigned(CART_TIMESHARE, 8); tick;
+    ASSERT joy_base = 2644 AND joy_step = 24
+      REPORT "Mapper fallback changed joystick preset" SEVERITY failure;
+    load_signature(4096, x"BB09D7FB", 7); -- Gladiator CRC E6A88A49.
+    load_signature(4096, x"78F61A44", 24, 2644);
+    load_signature(2048, x"23469D84", 7); -- Tennis CRC, wrong length.
+    load_signature(4096, x"78F61A45", 7); -- Altered Tennis fingerprint.
     REPORT "Cartridge tests passed";
     std.env.stop;
     WAIT;

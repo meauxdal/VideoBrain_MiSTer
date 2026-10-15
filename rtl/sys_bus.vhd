@@ -52,6 +52,8 @@ ENTITY sys_bus IS
     apl_load_error : OUT std_logic;
     apl_symbols : OUT std_logic := '0';
 
+    joy_linear_base : OUT unsigned(13 DOWNTO 0) := to_unsigned(2580, 14);
+    joy_linear_step : OUT unsigned(6 DOWNTO 0) := to_unsigned(7, 7);
     unknown_cart_profile : IN uv8
     );
 END ENTITY sys_bus;
@@ -413,6 +415,8 @@ BEGIN
             cart_crc <= crc32_byte((OTHERS => '1'), dl_data);
             cart_size <= to_unsigned(1, cart_size'length);
             cart_auto_type <= to_unsigned(CART_UNRECOGNIZED, 8);
+            joy_linear_base <= to_unsigned(2580, 14);
+            joy_linear_step <= to_unsigned(7, 7);
           ELSE
 --             IF dl_addr < x"0C00" THEN
 --               cart_fixed_crc <= crc32_byte(cart_fixed_crc, dl_data);
@@ -423,6 +427,12 @@ BEGIN
         END IF;
       ELSIF cart_dl_prev = '1' THEN
         cart_dl_prev <= '0';
+        -- Tennis uses fixed scaling instead of the BIOS gain selection.
+        IF cart_size = to_unsigned(16#1000#, cart_size'length) AND
+           (NOT cart_crc) = CART_CRC_TENNIS THEN
+          joy_linear_base <= to_unsigned(2644, 14);
+          joy_linear_step <= to_unsigned(24, 7);
+        END IF;
         IF cart_size = to_unsigned(16#0800#, cart_size'length) AND
            (NOT cart_crc) = CART_CRC_TIMESHARE THEN
           cart_auto_type <= to_unsigned(CART_TIMESHARE, 8);

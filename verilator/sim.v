@@ -39,6 +39,7 @@ module top(
    input [13:0]  joy_timer_base /*verilator public_flat*/,
    input [6:0]   joy_timer_step /*verilator public_flat*/,
    input         joy_timer_curve /*verilator public_flat*/,
+   input         joy_timer_auto /*verilator public_flat*/,
    input [7:0]   cart_type /*verilator public_flat*/
 );
 
@@ -91,6 +92,7 @@ module top(
       .joy_timer_base (joy_timer_base),
       .joy_timer_step (joy_timer_step),
       .joy_timer_curve (joy_timer_curve),
+      .joy_timer_auto (joy_timer_auto),
       .audio_code (audio_code),
       .audio_stb  (audio_stb),
       .joy_enable (joy_enable),

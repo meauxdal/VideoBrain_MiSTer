@@ -24,6 +24,7 @@ ENTITY videobrain_core IS
     joy_timer_base : IN unsigned(13 DOWNTO 0);
     joy_timer_step : IN unsigned(6 DOWNTO 0);
     joy_timer_curve : IN std_logic;
+    joy_timer_auto : IN std_logic := '0';
 
     audio_code : OUT std_logic_vector(1 DOWNTO 0);
     audio_stb  : OUT std_logic;
@@ -126,6 +127,8 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
   SIGNAL joy_timer : unsigned(13 DOWNTO 0) := (OTHERS => '0');
+  SIGNAL joy_linear_base : unsigned(13 DOWNTO 0);
+  SIGNAL joy_linear_step : unsigned(6 DOWNTO 0);
   SIGNAL joy_timer_active : std_logic := '0';
   SIGNAL joy_capture_stb : std_logic := '0';
   SIGNAL joy_capture_x : uv8 := (OTHERS => '0');
@@ -330,6 +333,8 @@ BEGIN
       apl_available  => apl_available,
       apl_load_error => apl_load_error,
       apl_symbols    => apl_symbols,
+      joy_linear_base => joy_linear_base,
+      joy_linear_step => joy_linear_step,
       unknown_cart_profile => unknown_cart_profile
       );
 
@@ -413,6 +418,8 @@ BEGIN
           ELSE
             joy_timer <= to_unsigned(4564 + 53 * (to_integer(pot_v) - 128), joy_timer'length);
           END IF;
+        ELSIF joy_timer_auto = '1' THEN
+          joy_timer <= joy_linear_base + resize(pot_v * joy_linear_step, joy_timer'length);
         ELSE
           joy_timer <= joy_timer_base + resize(pot_v * joy_timer_step, joy_timer'length);
         END IF;

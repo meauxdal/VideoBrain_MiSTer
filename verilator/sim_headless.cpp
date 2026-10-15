@@ -396,8 +396,9 @@ static void usage(const char* argv0) {
 "  --joy-focus F        trace joystick timing and BIOS operands only in frame F\n"
 "  --joy-results F      log BIOS joystick returns and bounds from frame F\n"
 "  --joy-return-pc HEX  joystick return instruction (default 22BE; Tennis 1FCB)\n"
-"  --joy-timer-base N   555 pulse base in MCLK ticks (default 2580)\n"
-"  --joy-timer-step N   added MCLK ticks per pot count (default 7)\n"
+"  --joy-timer-base N   manual 555 pulse base in MCLK ticks (default 2580)\n"
+"  --joy-timer-step N   manual MCLK ticks per pot count (default 7)\n"
+"                      otherwise use the cartridge's linear preset\n"
 "  --joy-timer-curve    shared 1620:23/53 curve, split at pot128\n"
 "  --joy-timer-sweep LIST  cycle base:step candidates independently per axis\n"
 "  --quiet              suppress progress output\n", argv0);
@@ -445,6 +446,7 @@ int main(int argc, char** argv) {
     unsigned joy_return_pc = 0x22be;
     long joy_timer_base = 2580, joy_timer_step = 7;
     bool joy_timer_curve = false;
+    bool joy_timer_auto = true;
     struct JoyTimer { long base, step; };
     std::vector<JoyTimer> joy_timer_sweep;
     int  scale = 3, cart_type = 0;
@@ -563,10 +565,17 @@ int main(int argc, char** argv) {
         else if (a == "--joy-focus")   joy_focus_frame = atol(need("--joy-focus"));
         else if (a == "--joy-results") joy_results_from = atol(need("--joy-results"));
         else if (a == "--joy-return-pc") joy_return_pc = strtoul(need("--joy-return-pc"), nullptr, 16);
-        else if (a == "--joy-timer-base") joy_timer_base = atol(need("--joy-timer-base"));
-        else if (a == "--joy-timer-step") joy_timer_step = atol(need("--joy-timer-step"));
+        else if (a == "--joy-timer-base") {
+            joy_timer_base = atol(need("--joy-timer-base"));
+            joy_timer_auto = false;
+        }
+        else if (a == "--joy-timer-step") {
+            joy_timer_step = atol(need("--joy-timer-step"));
+            joy_timer_auto = false;
+        }
         else if (a == "--joy-timer-curve") joy_timer_curve = true;
         else if (a == "--joy-timer-sweep") {
+            joy_timer_auto = false;
             std::string list = need("--joy-timer-sweep");
             size_t pos = 0;
             while (pos < list.size()) {
@@ -657,6 +666,7 @@ int main(int argc, char** argv) {
     top->joy_timer_base = (uint16_t)joy_timer_base;
     top->joy_timer_step = (uint8_t)joy_timer_step;
     top->joy_timer_curve = joy_timer_curve;
+    top->joy_timer_auto = joy_timer_auto;
     top->cart_type = (uint8_t)cart_type;
     top->eval();
 
@@ -963,6 +973,8 @@ int main(int argc, char** argv) {
                 joy_start_pot = (int)pot;
                 joy_start_latch = (int)CORE(key_latch_l);
                 joy_start_timer = { (long)top->joy_timer_base, (long)top->joy_timer_step };
+                if (joy_timer_auto)
+                    joy_start_timer = { (long)CORE(joy_linear_base), (long)CORE(joy_linear_step) };
                 if (joy_timer_curve)
                     joy_start_timer = { pot <= 128 ? 1620 + 23 * (long)pot :
                                         4564 + 53 * ((long)pot - 128), 0 };

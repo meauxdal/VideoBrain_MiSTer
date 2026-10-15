@@ -4,6 +4,12 @@ See [joystick timing](../docs/JOYSTICK.md) for setup, the Curve mapping and
 release verification. Results below are simulator measurements unless
 marked hardware.
 
+These retained runs predate automatic linear presets. The Transfers note in
+[joystick timing](../docs/JOYSTICK.md#per-game-adjustment) documents per-game
+trim readjustment, so a shared affine mapping is no longer a requirement.
+The new Tennis 2644:24 preset and Gladiator horizontal aiming still need
+gameplay verification; the older runs below do not establish those results.
+
 ## Measurement and scaling
 
 BIOS stores initial Y+1 at 21D1 and subtracts with COM/INC at 21FC..21FD.
