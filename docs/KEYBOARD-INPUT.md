@@ -42,9 +42,9 @@ NEXT unless `--hold-final` suppresses the last one. NEXT receives an additional
 | Other titles, including Information Manager and Timeshare | Physical key scripts are available. Their text/mode transitions have not been established here; do not assume the APL/S mapping. |
 
 The title rules above come from the local owner's, Financier, Money Minder and
-Wordwise manuals in `vb_large_docs/videobrain-manuals.zip`. New title profiles
-and timing remain hardware-unverified. The core permits VBK2 in any program;
-acceptance by the program depends on its current screen and key handling.
+Wordwise manuals in `vb_large_docs/videobrain-manuals.zip`. Other title profiles
+remain hardware-unverified; Music Teacher results are below. The core permits
+VBK2 in any program; acceptance depends on its current screen and key handling.
 
 `examples/keyboard/text.vbk` starts inside empty built-in Text in lower mode.
 Expected lines: HELLO VIDEOBRAIN, 0123456789, and A, B; C?.
@@ -92,35 +92,36 @@ up to 80 notes. How rests affect capacity remains unverified. The compiler's
 80 explicit note/rest limit does not prove the complete performance fits;
 key-off gaps may also consume entries. For long songs inspect the recording.
 
-## Music timing still needs hardware measurement
+## Music hardware results
 
-The default minimum hold and gap are 8 fields each (about 134 ms). These are
-initial candidates borrowed from working APL/S entry, not measured music
-limits. A quarter note at T120 is 30 fields: 22 held and 8 released. Notes too
+Hardware testing reported on 2026-10-15:
+
+- `timing-1-1.vbk` produced no notes in several tests; 1/1 is too short.
+- `timing-2-2.vbk` was consistently recognized, as were higher tested values.
+  This is the shortest tested reliable pair: about 33 ms held and 33 ms released.
+  Independent minimum hold and gap values have not been measured.
+- `timing-8-64.vbk` displayed rests between notes as expected.
+- Pages flip after six notes during both type-in and playback. Rests do not
+  count toward this interval during initial type-in; their effect on playback
+  pagination has not been established.
+- Drawing the new page consumes part of the incoming note during type-in.
+  This does not necessarily affect the recorded playback note; playback timing
+  needs separate measurement before treating redraw as lost recorded duration.
+
+The default minimum hold and gap remain 8 fields each (about 134 ms).
+`--min-hold 2 --gap 2` permits the tested shorter pair. A quarter note at T120
+is 30 fields: 22 held and 8 released at the defaults. Notes too
 short for `--min-hold` plus `--gap` are rejected instead of silently slowed.
 Held notes longer than 255 fields are rejected; long rests are supported.
 
-Page size, redraw latency, the minimum reliable note hold/gap and the effect
-of long gaps on recording capacity remain unverified. No page interval is
-assumed. `--page-notes N --page-wait 64` adds a wait after each N note/rest
-entries once that interval is measured. These waits may be recorded as rests;
-they do not acknowledge completion of redraw or preserve musical tempo.
-The counter excludes implicit rests from key-off gaps; a measured interval
-may not transfer to a different rhythm.
-
-Build the updated core in Quartus, then test from a fresh lower-mode staff:
-
-1. `scale.vbk`: eight ascending notes; replay twice with T.
-2. `octaves.vbk`: C2, C3, C4, C5, C6, D6; check staff position and pitch.
-3. `timing-8-8.vbk`: 32 notes, S S D D F F G G repeated four times, then replay.
-   Count missed/repeated notes and note the first staff/page transition.
-4. Repeat with `timing-4-4`, `timing-2-2`, and `timing-1-1` until errors appear.
-   Test each passing pair several times; one pass does not establish a minimum.
-5. If 8/8 misses at page changes, compare `timing-8-64.vbk`. It deliberately
-   inserts long gaps on every note and will record a slower performance.
-
-Report the last reliable pair, the failing note numbers, and the observed page
-interval. These files are candidates, not hardware-verified songs.
+Redraw duration and the effect of rests on recording capacity remain unverified.
+No page wait is enabled by default. `--page-notes N --page-wait 64` uses a
+cumulative note/rest count to schedule waits. Its current counter includes
+explicit rests, unlike observed initial type-in pagination; setting N to 6
+matches only input without explicit rests. Correcting that counter is pending.
+Added waits may be recorded as rests; they do not acknowledge redraw completion or preserve
+musical tempo. Measure type-in and playback separately before adding automatic
+page compensation or lowering the defaults.
 
 ## Format and checks
 
