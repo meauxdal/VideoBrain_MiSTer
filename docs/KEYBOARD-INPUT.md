@@ -70,8 +70,9 @@ sound routines; the loader supplies no replacement audio engine.
 
 The monophonic MML subset accepts A-G, `#`/`+` sharp, `-` flat, O2-O6,
 `<`/`>`, T32-T255, L1-L64, per-note lengths, one dot, and R/P rests.
-Default: O4, T120, L4. C4 means middle C. Range: C2 through D6. Chords, ties,
-loops, voices and other MML commands are rejected. MML conventions follow the
+Default: O4, T120, L4. C4 means middle C. Range: C2 through B5, checked after
+accidentals; O6 permits only C- (B5). Chords, ties, loops, voices and other MML
+commands are rejected. MML conventions follow the
 [QB64 PLAY notation](https://qb64phoenix.com/qb64wiki/index.php/PLAY).
 
 ```text
@@ -84,12 +85,15 @@ The black-note keys complete the chromatic scale. Z selects Low (-1 octave),
 V High (+1), SPACE Middle. Shifted SPACE erases, shifted Z records, shifted
 COMMA selects No-Record, and unshifted T replays. Octave controls select a
 fixed bank; repeated Low/High does not step indefinitely.
+The cartridge's key table and bank routine confirm Low C2..D4, Middle C3..D5,
+and High C4..B5. `scale.vbk` enters all 48 chromatic pitches C2..B5 and replays;
+`octaves.vbk` probes C2, C3, C4, C5, B5, then returns to C2 and replays.
 
 The converter keeps the current octave bank while it contains the next pitch.
 Bank changes add control-key time; they can appear as extra rests in recording.
 Use a single bank when precise rhythm matters. The manual specifies songs of
-up to 80 notes. How rests affect capacity remains unverified. The compiler's
-80 explicit note/rest limit does not prove the complete performance fits;
+up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
+The compiler's 80 explicit note/rest limit does not prove the performance fits;
 key-off gaps may also consume entries. For long songs inspect the recording.
 
 ## Music hardware results
@@ -101,12 +105,12 @@ Hardware testing reported on 2026-10-15:
   This is the shortest tested reliable pair: about 33 ms held and 33 ms released.
   Independent minimum hold and gap values have not been measured.
 - `timing-8-64.vbk` displayed rests between notes as expected.
-- Pages flip after six notes during both type-in and playback. Rests do not
-  count toward this interval during initial type-in; their effect on playback
-  pagination has not been established.
-- Drawing the new page consumes part of the incoming note during type-in.
-  This does not necessarily affect the recorded playback note; playback timing
-  needs separate measurement before treating redraw as lost recorded duration.
+- Pages flip after six notes during type-in. The cartridge counts stored notes
+  and rests during playback.
+- Recorded durations appear to match targets even across page flips, with a
+  small playback delay. Full onset capture during input redraw is unmeasured.
+- O5 reportedly failed on hardware; the confirmed pitch range does not explain
+  that result. Upper-range hardware testing remains open.
 
 The default minimum hold and gap remain 8 fields each (about 134 ms).
 `--min-hold 2 --gap 2` permits the tested shorter pair. A quarter note at T120

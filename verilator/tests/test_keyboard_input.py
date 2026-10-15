@@ -1,4 +1,3 @@
-import binascii
 from pathlib import Path
 import struct
 import sys
@@ -12,8 +11,29 @@ from keyboard_input import keyboard_text, music, physical_keys
 def events(data):
     assert data[:4] == b"VBK2"
     assert struct.unpack("<H", data[4:6])[0] == len(data) - 8
-    assert struct.unpack("<H", data[6:8])[0] == binascii.crc_hqx(data[8:], 0xffff)
+    crc = 0xffff
+    for byte in data[8:]:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ (0x1021 if crc & 0x8000 else 0)) & 0xffff
+    assert struct.unpack("<H", data[6:8])[0] == crc
     return list(zip(*[iter(data[8:])] * 3))
+
+
+def music_pitches(body):
+    # ED01 ROM $1616 key table; BIOS $4361 key codes; $1255 bank offsets.
+    table = bytes.fromhex("00 0d 0f 11 f2 14 16 f0 f0 18 f0 0c 0e 10 12 13 15 17 "
+                          "f3 0a 0b 19 1b 1d f1 20 22 23 09 f0 f0 1a f4 1c 1e 1f 21")
+    bank = 0
+    pitches = []
+    for key, _, _ in body:
+        if key in (33, 19, 22):
+            bank = {33: 12, 19: 0, 22: -12}[key]
+        elif key != 255:
+            index = table[(key % 4) * 9 + key // 4 + 1]
+            assert index < 0x80 and 0 <= index + bank <= 47
+            pitches.append(83 - index - bank)
+    return pitches
 
 
 class KeyboardTests(unittest.TestCase):
@@ -54,13 +74,42 @@ class KeyboardTests(unittest.TestCase):
         self.assertEqual(a[-1], (12, 8, 8))
 
     def test_music_accidentals_banks_rests_and_page_wait(self):
-        a = events(music('O2 C C# D- R4 O6 D', 'symbols', page_notes=2))
+        a = events(music('O2 C C# D- R4 O5 B', 'symbols', page_notes=2))
         self.assertIn((33, 8, 8), a)
         self.assertIn((22, 8, 8), a)
-        self.assertEqual([key for key, hold, gap in a if hold == 22], [34, 30, 30, 3])
+        self.assertEqual([key for key, hold, gap in a if hold == 22], [34, 30, 30, 5])
         self.assertIn((255, 64, 0), a)
         self.assertIn((255, 30, 0), a)
         self.assertEqual(events(music('C4.', 'letters'))[-4][1:], (37, 8))
+
+    def test_music_range_boundaries(self):
+        for text, pitch in (('O2 C', 36), ('O2 D-', 37),
+                            ('O5 C', 72), ('O5 A#', 82), ('O5 B', 83),
+                            ('O6 C-', 83), ('O5 > C-', 83)):
+            with self.subTest(text=text):
+                self.assertEqual(music_pitches(events(music(text, 'letters'))[5:-3]), [pitch])
+        for text in ('O2 C-', 'O5 B#', 'O5 B+', 'O6 C', 'O6 C#', 'O6 D-',
+                     'O6 D', 'O5 > C', 'O6 C- C'):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, r'range is C2\.\.B5'):
+                music(text, 'letters')
+
+    def test_music_retains_bank_in_overlap(self):
+        a = events(music('O2 C O3 C O4 C O5 C O4 C O5 B O4 C', 'letters'))
+        body = a[5:-3]
+        self.assertEqual(music_pitches(body), [36, 48, 60, 72, 60, 83, 60])
+        self.assertEqual([key for key, _, _ in body if key in (33, 19, 22)], [33, 19, 22])
+
+    def test_music_range_example_packets(self):
+        directory = Path(__file__).resolve().parents[2] / 'examples' / 'music'
+        for name, expected in (('scale', list(range(36, 84))),
+                               ('octaves', [36, 48, 60, 72, 83, 36])):
+            with self.subTest(name=name):
+                data = (directory / f'{name}.vbk').read_bytes()
+                a = events(data)
+                self.assertEqual(a[:5], [(11, 8, 8), (19, 8, 64), (33, 8, 8), (11, 8, 8), (19, 8, 8)])
+                self.assertEqual(a[-4:], [(11, 8, 8), (7, 8, 8), (11, 8, 8), (12, 8, 8)])
+                self.assertEqual(music_pitches(a[5:-4]), expected)
+                self.assertEqual(data, music((directory / f'{name}.mml').read_text(), 'letters', replay=True))
 
     def test_music_rejects_unsupported_or_unsafe_timing(self):
         for text in ('C,E,G', 'O7 C', 'O6 E', 'T120 C64', 'L0 C', 'R4', 'C ' * 81):

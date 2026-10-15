@@ -168,8 +168,8 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
             continue
         pitch = 12 * (octave + 1) + {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}[command]
         pitch += {"": 0, "+": 1, "#": 1, "-": -1}[accidental]
-        if not 36 <= pitch <= 86:
-            raise ValueError("Music Teacher range is C2..D6")
+        if not 36 <= pitch <= 83:
+            raise ValueError("Music Teacher range is C2..B5")
         if not 48 <= pitch - bank <= 74:
             bank = next(offset for offset in (0, -12, 12) if 48 <= pitch - offset <= 74)
             events.append(({-12: 33, 0: 19, 12: 22}[bank], 8, 8))
@@ -195,7 +195,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("output", type=Path, nargs="?")
-    parser.add_argument("--profile", choices=("apl", "keyboard", "text", "keys", "music"), default="apl")
+    parser.add_argument("--profile", choices=("apl", "keyboard", "text", "keys", "music"), default="apl",
+                        help="input profile (music range: C2..B5)")
     parser.add_argument("--start-mode", choices=("letters", "symbols"))
     parser.add_argument("--hold-final", action="store_true", help="omit the final NEXT; earlier lines still submit")
     parser.add_argument("--gap", type=int, default=8, help="music key-off fields (hardware minimum unverified)")
