@@ -69,14 +69,14 @@ Unsupported characters are rejected with their source line and column.
 The limit is 4096 key tokens, including spaces and NEXT.
 
 The interpreter must be ready for input. **APL/S Type-in** selects Normal
-(6 fields per press and release), Fast (5/5), or Slow (7/7). These are temporary
-test candidates: hardware entry at 8/8 is reliable; 4/4 sometimes loses a
-character. Select before loading; the setting is latched per file. Normal is
-the default. Every speed keeps SHIFT and NEXT at 8/8 and retains the 64-field
-startup and line waits.
+(8 fields per press and release), Fast (6/6), or Slow (10/10). Continuous-entry
+hardware testing confirmed 6/6 through automatic line clearances; 4/4 can lose
+characters. Select before loading; the setting is latched per file. Normal is
+the default. SHIFT and NEXT use at least 8 fields per press and release (10 at
+Slow); every speed retains the 64-field startup and line waits.
 SHIFT must update the observed interpreter mode before the next character.
-Other keys and prompts have no acknowledgement. Fast needs APL/S hardware
-testing; Music Teacher's reliable 2/2 result does not establish it for APL/S.
+Other keys and prompts have no acknowledgement. Music Teacher's reliable 2/2
+result does not establish it for APL/S.
 Long operations or interactive prompts need separate testing. Avoid typing
 during entry. VBK2 files, including music, retain their encoded timings.
 
@@ -88,9 +88,17 @@ without quotes. Groups of three expose missed or repeated letters. The file
 runs immediate expressions without storing a program.
 
 Boot APL/S fresh, select a candidate speed, load the file and watch every row.
-Allow about 7-9 minutes per run. Any shortened group, missing quote, error or
+Allow about 8-12 minutes per run. Any shortened group, missing quote, error or
 extra character is a failure, even if later rows look correct. Repeat at each
 speed; a clean final screen alone cannot establish zero misses across 100 rows.
+
+`examples/apl/timing-continuous-100.vbk` types the same quoted phrase 100 times
+continuously, with no NEXT (PC F3) or line waits. It uses the selected APL/S
+Type-in speed. Regenerate it with:
+
+```sh
+python3 verilator/apl_source.py examples/apl/timing-continuous-100.txt --hold-final
+```
 
 ## File format and simulator
 
