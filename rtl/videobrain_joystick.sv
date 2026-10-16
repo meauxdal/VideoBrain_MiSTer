@@ -22,7 +22,9 @@ endfunction
 
 wire paired_enabled = (paired == 2'd1 || paired == 2'd2);
 
-for (genvar i = 0; i < 4; i = i + 1) begin : sticks
+genvar i;
+generate
+for (i = 0; i < 4; i = i + 1) begin : sticks
 	localparam integer PARTNER = i ^ 1;
 	localparam integer DOUBLES_PARTNER = i ^ 2;
 	wire [31:0] own_buttons = buttons[i*32 +: 32];
@@ -44,6 +46,7 @@ for (genvar i = 0; i < 4; i = i + 1) begin : sticks
 		(paired_enabled && own_pots == 16'h8080) ? paired_pots : own_pots;
 	assign fire[i] = enabled && (own_buttons[4] || (paired_enabled && paired_fire));
 end
+endgenerate
 
 // Reserved presets use Auto. Curve takes precedence in the core.
 assign timer_auto = (preset != 2'd1 && preset != 2'd2);
