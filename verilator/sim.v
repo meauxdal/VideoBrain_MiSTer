@@ -67,6 +67,7 @@ module top(
       .addr(ioctl_addr), .data(ioctl_dout), .available(apl_available),
       .symbols(apl_symbols), .enabled(1'b1), .cancel(|kbd_matrix),
       .speed(source_speed),
+      .music_playback(1'b0), .auto_repeat(1'b0),
       .busy(source_busy), .complete(source_complete), .error(source_error), .keys(source_keys)
    );
 

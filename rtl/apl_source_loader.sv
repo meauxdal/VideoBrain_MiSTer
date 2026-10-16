@@ -13,6 +13,8 @@ module apl_source_loader #(
     input wire available,
     input wire symbols,
     input wire [1:0] speed,
+    input wire music_playback,
+    input wire auto_repeat,
     input wire enabled,
     input wire cancel,
     output wire busy,
@@ -24,6 +26,7 @@ module apl_source_loader #(
 localparam IDLE = 0, RECEIVE = 1, WAIT_START = 2, READ_KEY = 3,
            SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6, LINE_WAIT = 7,
            READ_HOLD = 8, SELECT_HOLD = 9, READ_GAP = 10, SELECT_GAP = 11;
+localparam [7:0] MUSIC_REPLAY = 8'hfd, MUSIC_RECORD = 8'hfe;
 reg [3:0] state = IDLE;
 reg download_d = 0;
 reg bad = 0;
@@ -35,6 +38,7 @@ reg [7:0] token;
 reg [7:0] frames = 0;
 reg shifting = 0, shifted = 0, started = 0;
 reg timed = 0;
+reg playback = 0;
 reg [7:0] key_frames = KEY_FRAMES;
 wire [7:0] control_frames = key_frames < 8 ? 8'd8 : key_frames;
 reg [1:0] payload_phase = 0;
@@ -90,6 +94,7 @@ always @(posedge clk) begin
         complete <= 0;
         timed <= 0;
         payload_phase <= 0;
+        playback <= music_playback;
         // Latch speed per file; timed events retain their encoded durations.
         case (speed)
             1: key_frames <= 6;
@@ -134,7 +139,7 @@ always @(posedge clk) begin
                             default: begin
                                 crc <= crc_byte(crc, data);
                                 if (timed) begin
-                                    if ((payload_phase == 0 && data > 35 && data != 8'hff) ||
+                                    if ((payload_phase == 0 && data > 35 && data < MUSIC_REPLAY) ||
                                         (payload_phase == 1 && data == 0)) bad <= 1;
                                     payload_phase <= payload_phase == 2 ? 0 : payload_phase + 1'b1;
                                 end else if (!valid_key(data)) bad <= 1;
@@ -184,7 +189,12 @@ always @(posedge clk) begin
             READ_GAP: state <= SELECT_GAP;
             SELECT_GAP: begin
                 gap_frames <= token;
-                keys <= event_key == 8'hff ? 36'd0 : 36'd1 << event_key[5:0];
+                case (event_key)
+                    MUSIC_REPLAY: keys <= playback ? 36'd0 : 36'd1 << 12;
+                    MUSIC_RECORD: keys <= 36'd1 << (playback ? 7 : 33);
+                    8'hff: keys <= 0;
+                    default: keys <= 36'd1 << event_key[5:0];
+                endcase
                 frames <= hold_frames;
                 shifting <= 0;
                 state <= HOLD_KEY;
@@ -205,8 +215,14 @@ always @(posedge clk) begin
                     frames <= LINE_FRAMES;
                     state <= LINE_WAIT;
                 end else if ({4'd0, position} + 16'd1 == length) begin
-                    complete <= 1;
-                    state <= IDLE;
+                    if (auto_repeat) begin
+                        position <= 0;
+                        shifted <= 0;
+                        state <= READ_KEY;
+                    end else begin
+                        complete <= 1;
+                        state <= IDLE;
+                    end
                 end
                 else begin
                     position <= position + 1'b1;
@@ -217,8 +233,14 @@ always @(posedge clk) begin
             LINE_WAIT: if (frame_tick) begin
                 if (frames > 1) frames <= frames - 1'b1;
                 else if ({4'd0, position} + 16'd1 == length) begin
-                    complete <= 1;
-                    state <= IDLE;
+                    if (auto_repeat) begin
+                        position <= 0;
+                        shifted <= 0;
+                        state <= READ_KEY;
+                    end else begin
+                        complete <= 1;
+                        state <= IDLE;
+                    end
                 end
                 else begin
                     position <= position + 1'b1;

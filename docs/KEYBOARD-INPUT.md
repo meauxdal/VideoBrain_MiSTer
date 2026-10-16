@@ -63,10 +63,18 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
 then load an example from `examples/music`. Each generated song erases the
-previous recording, enables Record, selects Middle, enters the notes, and
-ends with No-Record to stop recording idle time. `--replay` presses REPLAY.
-Afterward press physical T to replay the stored song again. Automatic repeated
-playback has not been established. This uses the cartridge's own recorder and
+previous recording, selects Middle, enters the notes, and ends with No-Record.
+**System > Music Teacher Input** selects **Record** (default) or **Playback**.
+Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
+Playback keeps Record off and ignores that replay request, playing the file live.
+Regenerate older music files to use this setting; their physical Record/Replay
+keys retain their original behavior.
+After recording, press physical T to replay the stored song again.
+**System > Auto-Repeat** restarts the file from the top until a keyboard key or
+opening the OSD cancels entry. Use Playback for continuous music; the loader
+does not wait for the cartridge's Replay routine. Use lower SHIFT and files
+generated with `--start-mode letters` so each music pass starts in the same mode.
+This uses the cartridge's own recorder and
 sound routines; the loader supplies no replacement audio engine.
 
 The monophonic MML subset accepts A-G, `#`/`+` sharp, `-` flat, O2-O6,
@@ -94,8 +102,10 @@ The converter keeps the current octave bank while it contains the next pitch.
 Bank changes add control-key time; they can appear as extra rests in recording.
 Use a single bank when precise rhythm matters. The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
-The compiler's 80 explicit note/rest limit does not prove the performance fits;
-key-off gaps may also consume entries. For long songs inspect the recording.
+Key-off gaps may also consume entries. For long songs inspect the recording.
+Playback bypasses recorder capacity; files still have a 1365-event limit,
+including control keys, octave changes and waits. The converter warns above
+79 explicit note/rest events that Record will truncate the song.
 
 ## Music hardware results
 
@@ -135,6 +145,12 @@ bytes, not event count; CRC is unchanged. Each three-byte event is matrix key
 0..35 (or FF for WAIT), held fields 1..255, released fields 0..255. Limit:
 4095 bytes / 1365 complete events. Raw SHIFT and function keys are valid in
 VBK2. APL-only VBK1 remains gated to the recognized Computational Language ROM.
+
+VBK2 also accepts FE for the music Record/No-Record selector (inside shifted
+mode), and FD for Replay (inside lower mode). The menu setting is latched at
+download: Record maps FE to Z and FD to T; Playback maps FE to COMMA and FD
+to a silent wait with the encoded duration. Older cores reject these events.
+Auto-Repeat applies to both VBK1 and VBK2 and can be disabled during entry.
 
 `make test-apl-source` runs both converters' tests and the loader RTL tests.
 Full simulator captures and Quartus builds are separate checks.

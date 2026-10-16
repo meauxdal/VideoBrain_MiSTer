@@ -1,0 +1,24 @@
+# Bach: Cello Suite No. 1, Prelude (BWV 1007), full
+
+All 42 measures, original cello register (C2 through G4), quarter note = 80.
+656 notes; 670 timed events including controls. About 2 minutes 9 seconds.
+The original `bach-cello-suite-1-prelude` files remain the four-measure excerpt.
+
+Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
+square). Set System > Music Teacher Input to Playback, then load
+`bach-cello-suite-1-prelude-full.vbk`. Auto-Repeat restarts the file until a
+keypress or opening the OSD. Record truncates the song at its 79-event limit.
+
+The tied D in measure 22 is held continuously. Fermatas use fixed timing.
+The final chord is rolled G2, B3, G4: two 32nd notes, then a whole note.
+Octave-bank changes add control-key time. Hardware playback needs checking.
+
+Regenerate from the repository root:
+
+```sh
+python3 verilator/keyboard_input.py examples/music/bach-cello-suite-1-prelude-full.mml --profile music --start-mode letters --min-hold 2 --gap 2
+```
+
+Score: [Mutopia, Andreas Scherer, public domain](https://www.mutopiaproject.org/ftp/BachJS/BWV1007/bwv1007/bwv1007-lys/).
+Pitches and durations checked against the edition's MIDI, with the ending
+adapted for monophonic playback.

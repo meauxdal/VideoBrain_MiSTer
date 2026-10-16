@@ -6,6 +6,7 @@ from fractions import Fraction
 from pathlib import Path
 import re
 import struct
+import sys
 
 from apl_source import LETTERS, NORMALIZE, SYMBOLS, encode
 
@@ -20,13 +21,15 @@ FUNCTIONS = {name: bit for name, bit in KEYS.items() if len(name) > 1}
 BASE_NOTES = [34, 30, 35, 26, 31, 27, 18, 23, 14, 15, 10, 32,
               29, 20, 25, 16, 21, 17, 8, 13, 4, 9, 0, 5, 6, 2, 3]
 FIELD_HZ = Fraction(14318181, 228 * 4) / Fraction(525, 2)
+MUSIC_REPLAY = 0xfd
+MUSIC_RECORD = 0xfe
 
 
 def packet(events):
     payload = bytearray()
     for key, hold, gap in events:
-        if key not in range(36) and key != 255:
-            raise ValueError("matrix key must be 0..35 or WAIT")
+        if key not in range(36) and key not in (MUSIC_REPLAY, MUSIC_RECORD, 255):
+            raise ValueError("event must be a matrix key, music control or WAIT")
         if not 1 <= hold <= 255 or not 0 <= gap <= 255:
             raise ValueError("hold must be 1..255 fields; gap must be 0..255")
         payload.extend((key, hold, gap))
@@ -117,7 +120,7 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
     events = []
     if start_mode == "letters":
         events.append((11, 8, 8))
-    events.extend([(19, 8, 64), (33, 8, 8), (11, 8, 8), (19, 8, 8)])
+    events.extend([(19, 8, 64), (MUSIC_RECORD, 8, 8), (11, 8, 8), (19, 8, 8)])
     octave, tempo, length, bank = 4, 120, 4, 0
     count = 0
     sounding = False
@@ -183,12 +186,14 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
             wait(events, page_wait)
     if not sounding:
         raise ValueError("music contains no notes")
-    if count > 80:
-        raise ValueError("music exceeds 80 explicit note/rest events")
     events.extend([(11, 8, 8), (7, 8, 8), (11, 8, 8)])
     if replay:
-        events.append((12, 8, 8))
-    return packet(events)
+        events.append((MUSIC_REPLAY, 8, 8))
+    data = packet(events)
+    if count > 79:
+        print(f"warning: {count} note/rest events; Record will truncate this song at the "
+              "79-event limit. Use Playback for the full file.", file=sys.stderr)
+    return data
 
 
 def main():

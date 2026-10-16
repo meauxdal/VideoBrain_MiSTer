@@ -7,6 +7,7 @@ reg [24:0] addr = 0;
 reg [7:0] data = 0;
 reg available = 1, symbols = 0, enabled = 0, cancel = 0;
 reg [1:0] speed = 0;
+reg music_playback = 0, auto_repeat = 0;
 wire busy, error, complete;
 wire [35:0] keys;
 apl_source_loader #(.LINE_FRAMES(3)) dut (.*);
@@ -225,6 +226,62 @@ initial begin
     init_packet(4095); packet[3] = "2";
     send_packet(4103, -1); finish_entry;
     if (error || !complete || presses != 1365) $fatal(1, "Maximum timed stream failed");
+    // Music controls select Record or No-Record and suppress replay in Playback.
+    packet[8] = 8'hfe; packet[9] = 3; packet[10] = 2;
+    packet[11] = 29; packet[12] = 5; packet[13] = 4;
+    packet[14] = 8'hfd; packet[15] = 7; packet[16] = 0;
+    init_packet(9); packet[3] = "2";
+    presses = 0;
+    send_packet(17, -1); finish_entry;
+    if (error || !complete || presses != 3 || observed[0] != 33 ||
+        observed[1] != 29 || observed[2] != 12)
+        $fatal(1, "Record controls failed");
+    music_playback = 1; presses = 0;
+    send_packet(17, -1);
+    music_playback = 0; // Mode is latched for the whole file.
+    finish_entry;
+    if (error || !complete || presses != 2 || observed[0] != 7 || observed[1] != 29)
+        $fatal(1, "Playback controls failed");
+
+    // Repeat must restart at byte zero, retain timing, and release on cancellation.
+    music_playback = 1; auto_repeat = 1; presses = 0;
+    frame_tick = 0;
+    send_packet(17, -1);
+    for (integer i = 0; i < 100 && presses < 6; i = i + 1) begin
+        repeat (20) tick;
+        frame_tick = 1; tick;
+        frame_tick = 0; tick;
+    end
+    if (!busy || error || complete || presses != 6)
+        $fatal(1, "Timed repeat failed");
+    for (integer i = 0; i < 6; i = i + 1)
+        if (observed[i] != (i % 2 == 0 ? 7 : 29)) $fatal(1, "Repeat order failed");
+    for (integer i = 2; i < 6; i = i + 1)
+        if (press_field[i] - press_field[i - 2] != 21) $fatal(1, "Repeat timing failed");
+    cancel = 1; tick; cancel = 0;
+    if (busy || keys != 0 || complete) $fatal(1, "Repeat cancel failed");
+    repeat (40) tick;
+    if (busy || presses != 6) $fatal(1, "Repeat restarted after cancel");
+
+    frame_tick = 1;
+    presses = 0; send_packet(17, -1);
+    for (integer i = 0; i < 500 && presses < 3; i = i + 1) tick;
+    enabled = 0; tick;
+    if (busy || keys != 0 || complete) $fatal(1, "Repeat OSD cancel failed");
+    enabled = 1; auto_repeat = 0; music_playback = 0;
+
+    // Both VBK1 completion paths must repeat, including final line waits.
+    available = 1;
+    for (integer line_end = 0; line_end < 2; line_end = line_end + 1) begin
+        packet[8] = line_end != 0 ? 8'h9b : 0;
+        init_packet(1); presses = 0; auto_repeat = 1;
+        send_packet(9, -1);
+        for (integer i = 0; i < 500 && presses < 3; i = i + 1) tick;
+        if (!busy || error || complete || presses != 3) $fatal(1, "VBK1 repeat failed");
+        auto_repeat = 0; finish_entry;
+        if (!complete || error) $fatal(1, "Repeat disable failed");
+    end
+
     $display("APL source loader tests passed");
     $finish;
 end

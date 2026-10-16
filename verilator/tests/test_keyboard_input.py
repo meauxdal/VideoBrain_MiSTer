@@ -1,11 +1,13 @@
 from pathlib import Path
+from contextlib import redirect_stderr
+import io
 import struct
 import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from apl_source import encode
-from keyboard_input import keyboard_text, music, physical_keys
+from keyboard_input import MUSIC_RECORD, MUSIC_REPLAY, keyboard_text, music, physical_keys
 
 
 def events(data):
@@ -67,11 +69,11 @@ class KeyboardTests(unittest.TestCase):
 
     def test_music_scale_record_and_replay(self):
         a = events(music('T120 O4 L4 C D E F G A B > C', 'letters', replay=True))
-        self.assertEqual(a[:5], [(11, 8, 8), (19, 8, 64), (33, 8, 8), (11, 8, 8), (19, 8, 8)])
+        self.assertEqual(a[:5], [(11, 8, 8), (19, 8, 64), (MUSIC_RECORD, 8, 8), (11, 8, 8), (19, 8, 8)])
         self.assertEqual([key for key, _, _ in a[5:-4]], [29, 25, 21, 17, 13, 9, 5, 6])
         self.assertEqual(a[5][1:], (22, 8))
         self.assertEqual(a[-4:-1], [(11, 8, 8), (7, 8, 8), (11, 8, 8)])
-        self.assertEqual(a[-1], (12, 8, 8))
+        self.assertEqual(a[-1], (MUSIC_REPLAY, 8, 8))
 
     def test_music_accidentals_banks_rests_and_page_wait(self):
         a = events(music('O2 C C# D- R4 O5 B', 'symbols', page_notes=2))
@@ -100,23 +102,39 @@ class KeyboardTests(unittest.TestCase):
         self.assertEqual([key for key, _, _ in body if key in (33, 19, 22)], [33, 19, 22])
 
     def test_music_range_example_packets(self):
-        directory = Path(__file__).resolve().parents[2] / 'examples' / 'music'
+        directory = Path(__file__).resolve().parents[2] / 'examples' / 'music-tests'
         for name, expected in (('scale', list(range(36, 84))),
                                ('octaves', [36, 48, 60, 72, 83, 36])):
             with self.subTest(name=name):
                 data = (directory / f'{name}.vbk').read_bytes()
                 a = events(data)
-                self.assertEqual(a[:5], [(11, 8, 8), (19, 8, 64), (33, 8, 8), (11, 8, 8), (19, 8, 8)])
-                self.assertEqual(a[-4:], [(11, 8, 8), (7, 8, 8), (11, 8, 8), (12, 8, 8)])
+                self.assertEqual(a[:5], [(11, 8, 8), (19, 8, 64), (MUSIC_RECORD, 8, 8), (11, 8, 8), (19, 8, 8)])
+                self.assertEqual(a[-4:], [(11, 8, 8), (7, 8, 8), (11, 8, 8), (MUSIC_REPLAY, 8, 8)])
                 self.assertEqual(music_pitches(a[5:-4]), expected)
                 self.assertEqual(data, music((directory / f'{name}.mml').read_text(), 'letters', replay=True))
 
     def test_music_rejects_unsupported_or_unsafe_timing(self):
-        for text in ('C,E,G', 'O7 C', 'O6 E', 'T120 C64', 'L0 C', 'R4', 'C ' * 81):
+        for text in ('C,E,G', 'O7 C', 'O6 E', 'T120 C64', 'L0 C', 'R4'):
             with self.assertRaises(ValueError, msg=text):
                 music(text, 'letters')
         with self.assertRaises(ValueError):
             music('C', None)
+
+    def test_music_playback_capacity(self):
+        warning = io.StringIO()
+        with redirect_stderr(warning):
+            music('C ' * 79, 'letters')
+        self.assertEqual(warning.getvalue(), '')
+        with redirect_stderr(warning):
+            a = events(music('C ' * 80, 'letters'))
+        self.assertEqual(len(a), 5 + 80 + 3)
+        self.assertIn('80 note/rest events; Record will truncate', warning.getvalue())
+        self.assertIn('79-event limit', warning.getvalue())
+        self.assertIn('Use Playback', warning.getvalue())
+        with redirect_stderr(io.StringIO()):
+            self.assertEqual(len(events(music('C ' * 1357, 'letters'))), 1365)
+        with self.assertRaisesRegex(ValueError, '1365'):
+            music('C ' * 1358, 'letters')
 
 
 if __name__ == '__main__':
