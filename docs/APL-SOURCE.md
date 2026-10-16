@@ -69,15 +69,28 @@ Unsupported characters are rejected with their source line and column.
 The limit is 4096 key tokens, including spaces and NEXT.
 
 The interpreter must be ready for input. **APL/S Type-in** selects Normal
-(4 fields per press and release), Fast (2/2), or Slow (8/8). Select before
-loading; the setting is latched per file. Normal is the default. Normal and
-Fast keep SHIFT and NEXT at 8/8; every speed retains the 64-field startup and
-line waits.
+(6 fields per press and release), Fast (5/5), or Slow (7/7). These are temporary
+test candidates: hardware entry at 8/8 is reliable; 4/4 sometimes loses a
+character. Select before loading; the setting is latched per file. Normal is
+the default. Every speed keeps SHIFT and NEXT at 8/8 and retains the 64-field
+startup and line waits.
 SHIFT must update the observed interpreter mode before the next character.
 Other keys and prompts have no acknowledgement. Fast needs APL/S hardware
 testing; Music Teacher's reliable 2/2 result does not establish it for APL/S.
 Long operations or interactive prompts need separate testing. Avoid typing
 during entry. VBK2 files, including music, retain their encoded timings.
+
+## Entry timing test
+
+`examples/apl/timing-100.vbk` submits `"AAABBBCCCDDDE"` 100 times. Each input
+row is exactly 15 characters, including quotes; the result is `AAABBBCCCDDDE`
+without quotes. Groups of three expose missed or repeated letters. The file
+runs immediate expressions without storing a program.
+
+Boot APL/S fresh, select a candidate speed, load the file and watch every row.
+Allow about 7-9 minutes per run. Any shortened group, missing quote, error or
+extra character is a failure, even if later rows look correct. Repeat at each
+speed; a clean final screen alone cannot establish zero misses across 100 rows.
 
 ## File format and simulator
 

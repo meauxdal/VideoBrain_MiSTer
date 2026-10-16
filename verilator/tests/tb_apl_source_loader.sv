@@ -172,10 +172,10 @@ initial begin
     init_packet(4096); send_packet(4104, -1); finish_entry;
     if (error) $fatal(1, "Maximum stream failed");
 
-    check_speed(0, 4);
-    check_speed(1, 2);
-    check_speed(2, 8);
-    check_speed(3, 4);
+    check_speed(0, 6);
+    check_speed(1, 5);
+    check_speed(2, 7);
+    check_speed(3, 6);
 
     // Timed physical events work without APL and never consult its mode.
     available = 0; presses = 0; speed = 2;

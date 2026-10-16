@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 module apl_source_loader #(
-    parameter [7:0] KEY_FRAMES = 4,
+    parameter [7:0] KEY_FRAMES = 6,
     parameter [7:0] LINE_FRAMES = 64
 )(
     input wire clk,
@@ -92,8 +92,8 @@ always @(posedge clk) begin
         payload_phase <= 0;
         // Latch speed per file; timed events retain their encoded durations.
         case (speed)
-            1: key_frames <= 2;
-            2: key_frames <= 8;
+            1: key_frames <= 5;
+            2: key_frames <= 7;
             default: key_frames <= KEY_FRAMES;
         endcase
     end else if (busy && ((!timed && state != RECEIVE && !available) ||
