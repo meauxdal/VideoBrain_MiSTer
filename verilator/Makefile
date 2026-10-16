@@ -134,6 +134,14 @@ test-cartridges:
 		$(RTL)/sys_bus.vhd tests/tb_cartridges.vhd
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error
 
+test-joystick:
+	@mkdir -p out/joystick_test
+	$(V) --binary --timing --assert --top-module tb_joystick \
+		--Mdir out/joystick_test $(RTL)/videobrain_joystick.sv tests/tb_joystick.sv
+	./out/joystick_test/Vtb_joystick
+
+.PHONY: test-joystick
+
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 

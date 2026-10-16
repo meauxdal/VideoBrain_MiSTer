@@ -1,11 +1,12 @@
 # Keyboard input files
 
-Choose **Enter Keyboard File**, select a `.vbk`, and close the OSD. Entry uses
+Choose **System > Enter Keyboard File**, select a `.vbk`, and close the OSD. Entry uses
 the actual keyboard matrix. Typing, opening the OSD, or resetting cancels it.
 The loader checks the complete file before pressing any key. Files cannot
 detect prompts or cartridge changes. Start at the intended input screen.
 
-APL/S VBK1 files retain their existing format, timing and live SHIFT handling.
+APL/S VBK1 files retain their format and live SHIFT handling. The APL/S Type-in
+speed setting applies to VBK1 only; VBK2 retains its encoded event timings.
 See [APL/S entry and loading without running](APL-SOURCE.md).
 Other profiles produce VBK2 and require the updated core.
 

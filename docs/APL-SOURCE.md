@@ -1,7 +1,7 @@
 # APL/S source entry
 
 Boot the Computational Language cartridge and wait for its input prompt.
-Load a `.vbk` file with **Enter Keyboard File**, then close the OSD. The core
+Load a `.vbk` file with **System > Enter Keyboard File**, then close the OSD. The core
 types the listing through the keyboard matrix without restoring machine RAM.
 Pressing a keyboard key or reopening the OSD cancels entry and releases the
 generated key. Cancellation leaves any partially entered program in place.
@@ -12,6 +12,25 @@ Ready-to-load controls are in `examples/apl`: `arithmetic.vbk` should produce
 Arithmetic and bars passed repeated hardware runs, including consecutive
 source entries and executions. The five Price first-batch programs also passed
 hardware testing. Other listings still need testing.
+
+## Starting the Price games
+
+Boot APL/S fresh, load a definition from `software/APL_S/price`, and wait for
+entry to finish. Type its launch name in letter mode, then press NEXT (PC F3).
+The name calls the stored program; no RUN command is needed. SHIFT toggles
+letter/symbol mode. Use symbol mode for numbers and NEXT after each answer.
+
+| File | Launch | Gameplay check |
+| --- | --- | --- |
+| `04-guess.vbk` | `GUES` | Answer `1` for the limit, then `1` for the guess. The score should be `1 1`. For a larger limit, follow TOO LOW/HIGH until correct. |
+| `08-acey.vbk` | `ACEY` | Starts with cash 100 and two cards. Bet `0`: the third card is revealed, win/loss is reported, and the next deal still has cash 100. Bet `1` to check cash changes to 99 or 101. Only a card strictly between the two wins. `99` at BET? exits. CARD is included in the file. |
+| `20-bulls.vbk` | `MOO4` | Enter `1 2 3 4` as one answer. Expect YOU WIN or WHITE/RED counts for exact/misplaced matches. Their sum must be 3 or 4. `99` exits. |
+| `22-roulette.vbk` | `RO` | Answer `3`, then `0` to bet on zero. The spin is 0..36; cash becomes 134 on zero, otherwise 99. At the next round, `3` then `99` exits. |
+
+Guess and Acey match the collection's listing images; Bulls and Roulette match
+its text listings. These checks exercise input, branches, arrays, subroutine
+calls and arithmetic. Source agreement does not verify emulated execution.
+Roulette preserves a reference quirk: 23 is absent from both betting lists.
 
 ## Converting a listing
 
@@ -49,10 +68,16 @@ ASCII `*` means exponentiation; it is not converted to multiplication.
 Unsupported characters are rejected with their source line and column.
 The limit is 4096 key tokens, including spaces and NEXT.
 
-The interpreter must be ready for input. Entry uses 8 video fields per press,
-8 per release and a 64-field wait after NEXT. These are fixed delays, not a
-prompt acknowledgement; listings that execute long operations or request user
-input need separate testing. Avoid typing during entry.
+The interpreter must be ready for input. **APL/S Type-in** selects Normal
+(4 fields per press and release), Fast (2/2), or Slow (8/8). Select before
+loading; the setting is latched per file. Normal is the default. Normal and
+Fast keep SHIFT and NEXT at 8/8; every speed retains the 64-field startup and
+line waits.
+SHIFT must update the observed interpreter mode before the next character.
+Other keys and prompts have no acknowledgement. Fast needs APL/S hardware
+testing; Music Teacher's reliable 2/2 result does not establish it for APL/S.
+Long operations or interactive prompts need separate testing. Avoid typing
+during entry. VBK2 files, including music, retain their encoded timings.
 
 ## File format and simulator
 
@@ -72,6 +97,7 @@ make headless
 
 The headless run checks completion, not the displayed arithmetic result.
 Inspect its capture. Building and running the full simulator may take time.
+The headless option `--source-speed normal|fast|slow` selects the same timing.
 
 For other titles and timed music, see [keyboard input](KEYBOARD-INPUT.md).
 The RAM dump loader and its diagnostic entry paths are commented out; dump

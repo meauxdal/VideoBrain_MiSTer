@@ -46,27 +46,35 @@ wire [1:0] ar = status[122:121];
 `include "build_id.v"
 localparam CONF_STR = {
 	"VideoBrain;;",
-	"-;",
 	"F1,BIN,Load Cartridge;",
-	"F2,BIN,Expander 1 ROM;",
-//	"H0F3,BIN,Load APL/S Dump;",
-//	"H1-APL/S dump load rejected;",
-	"F4,VBK,Enter Keyboard File;",
-	"H2-Keyboard entry active;",
-	"H3-Keyboard file rejected;",
-	"-;",
-	"O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
-	"O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
-	"O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"-;",
 	"O[5],Joystick,Off,On;",
-	"O[8],Stick Timing,Linear,Curve;",
-	"O[11:9],Cart Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
+	"D4O[8],Stick Timing,Linear,Curve;",
+	"D5O[15:14],Linear Preset,Auto,Tennis,Gladiator;",
+	"D4O[17:16],Paired Sticks,Off,1+2 / 3+4,Doubles;",
 	"-;",
-	"T[0],Reset;",
-	"R[0],Reset and close OSD;",
-	"J,Fire;",
-	"jn,A;",
+	"P1,Video;",
+	"P1-;",
+	"P1O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
+	"P1O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
+	"P1O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
+	"P2,System;",
+	"P2-;",
+	"P2F2,BIN,Load Expander 1 ROM;",
+	"P2O[11:9],Cart Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
+	"P2-;",
+//	"H0P2F3,BIN,Load APL/S Dump;",
+//	"H1P2-APL/S dump load rejected;",
+	"P2F4,VBK,Enter Keyboard File;",
+	"P2O[13:12],APL/S Type-in,Normal,Fast,Slow;",
+	"H2P2-Keyboard entry active;",
+	"H3P2-Keyboard file rejected;",
+	"P2-;",
+	"P2T[0],Reset;",
+	"-;",
+	"R[0],Reset and Close OSD;",
+	"J,Fire,Fire 2;",
+	"jn,A,B;",
 	"V,v",`BUILD_DATE
 };
 
@@ -77,6 +85,8 @@ wire  [10:0] ps2_key;
 wire  [31:0] joystick_0, joystick_1, joystick_2, joystick_3;
 wire [15:0] joystick_l_analog_0, joystick_l_analog_1;
 wire [15:0] joystick_l_analog_2, joystick_l_analog_3;
+wire [15:0] joystick_r_analog_0, joystick_r_analog_1;
+wire [15:0] joystick_r_analog_2, joystick_r_analog_3;
 
 wire        ioctl_download;
 wire        ioctl_wr;
@@ -95,8 +105,8 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.buttons(buttons),
 	.status(status),
-//	.status_menumask({12'd0, ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
-	.status_menumask({12'd0, ~source_error, ~source_busy, 2'b11}),
+//	.status_menumask({10'd0, !status[5] | status[8], !status[5], ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
+	.status_menumask({10'd0, !status[5] | status[8], !status[5], ~source_error, ~source_busy, 2'b11}),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -112,6 +122,10 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.joystick_l_analog_1(joystick_l_analog_1),
 	.joystick_l_analog_2(joystick_l_analog_2),
 	.joystick_l_analog_3(joystick_l_analog_3),
+	.joystick_r_analog_0(joystick_r_analog_0),
+	.joystick_r_analog_1(joystick_r_analog_1),
+	.joystick_r_analog_2(joystick_r_analog_2),
+	.joystick_r_analog_3(joystick_r_analog_3),
 	.ps2_key(ps2_key)
 );
 
@@ -225,28 +239,25 @@ always @(posedge clk_sys) begin
 	end
 end
 
-function automatic [7:0] axis_to_pot(input [7:0] axis);
-	axis_to_pot = ($signed(axis) >= -8'sd8 && $signed(axis) <= 8'sd8) ? 8'd128 : axis ^ 8'h80;
-endfunction
+wire [63:0] joy_pots;
+wire [3:0] joy_fire;
+wire [13:0] joy_timer_base;
+wire [6:0] joy_timer_step;
+wire joy_timer_auto;
 
-function automatic [7:0] stick_pot(input neg, input pos, input [7:0] axis);
-	stick_pot = (neg == pos) ? axis_to_pot(axis) : (neg ? 8'd0 : 8'd255);
-endfunction
-
-// Latch bit 2n selects stick n's vertical pot, 2n+1 its horizontal
-// (Tennis source: LDVJ = $01, left vertical joystick).
-wire [7:0] joy1_v = stick_pot(joystick_0[3], joystick_0[2], joystick_l_analog_0[15:8]);
-wire [7:0] joy1_h = stick_pot(joystick_0[1], joystick_0[0], joystick_l_analog_0[7:0]);
-wire [7:0] joy2_v = stick_pot(joystick_1[3], joystick_1[2], joystick_l_analog_1[15:8]);
-wire [7:0] joy2_h = stick_pot(joystick_1[1], joystick_1[0], joystick_l_analog_1[7:0]);
-wire [7:0] joy3_v = stick_pot(joystick_2[3], joystick_2[2], joystick_l_analog_2[15:8]);
-wire [7:0] joy3_h = stick_pot(joystick_2[1], joystick_2[0], joystick_l_analog_2[7:0]);
-wire [7:0] joy4_v = stick_pot(joystick_3[3], joystick_3[2], joystick_l_analog_3[15:8]);
-wire [7:0] joy4_h = stick_pot(joystick_3[1], joystick_3[0], joystick_l_analog_3[7:0]);
-wire [63:0] joy_pots = status[5] ? {joy4_h, joy4_v, joy3_h, joy3_v, joy2_h, joy2_v, joy1_h, joy1_v}
-                                 : {8{8'd128}};
-
-wire [3:0] joy_fire = status[5] ? {joystick_3[4], joystick_2[4], joystick_1[4], joystick_0[4]} : 4'b0000;
+videobrain_joystick joysticks (
+	.enabled(status[5]),
+	.paired(status[17:16]),
+	.preset(status[15:14]),
+	.buttons({joystick_3, joystick_2, joystick_1, joystick_0}),
+	.left_sticks({joystick_l_analog_3, joystick_l_analog_2, joystick_l_analog_1, joystick_l_analog_0}),
+	.right_sticks({joystick_r_analog_3, joystick_r_analog_2, joystick_r_analog_1, joystick_r_analog_0}),
+	.pots(joy_pots),
+	.fire(joy_fire),
+	.timer_base(joy_timer_base),
+	.timer_step(joy_timer_step),
+	.timer_auto(joy_timer_auto)
+);
 
 
 wire       ce_pix;
@@ -269,6 +280,7 @@ apl_source_loader source_loader (
 	.data(ioctl_dout),
 	.available(apl_available),
 	.symbols(apl_symbols),
+	.speed(status[13:12]),
 	.enabled(!OSD_STATUS),
 	.cancel(|kbd_matrix),
 	.busy(source_busy),
@@ -285,10 +297,10 @@ videobrain_core core
 	.kbd_matrix (source_busy ? source_keys : kbd_matrix),
 	.joy_fire   (joy_fire),
 	.joy_pots   (joy_pots),
-	.joy_timer_base (14'd2580),
-	.joy_timer_step (7'd7),
+	.joy_timer_base (joy_timer_base),
+	.joy_timer_step (joy_timer_step),
 	.joy_timer_curve (status[8]),
-	.joy_timer_auto (1'b1),
+	.joy_timer_auto (joy_timer_auto),
 	.audio_code (audio_code),
 	.audio_stb  (audio_stb),
 	.joy_enable (),

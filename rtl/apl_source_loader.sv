@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 module apl_source_loader #(
-    parameter [7:0] KEY_FRAMES = 8,
+    parameter [7:0] KEY_FRAMES = 4,
     parameter [7:0] LINE_FRAMES = 64
 )(
     input wire clk,
@@ -12,6 +12,7 @@ module apl_source_loader #(
     input wire [7:0] data,
     input wire available,
     input wire symbols,
+    input wire [1:0] speed,
     input wire enabled,
     input wire cancel,
     output wire busy,
@@ -34,6 +35,8 @@ reg [7:0] token;
 reg [7:0] frames = 0;
 reg shifting = 0, shifted = 0, started = 0;
 reg timed = 0;
+reg [7:0] key_frames = KEY_FRAMES;
+wire [7:0] control_frames = key_frames < 8 ? 8'd8 : key_frames;
 reg [1:0] payload_phase = 0;
 reg [7:0] event_key, hold_frames, gap_frames;
 
@@ -87,6 +90,12 @@ always @(posedge clk) begin
         complete <= 0;
         timed <= 0;
         payload_phase <= 0;
+        // Latch speed per file; timed events retain their encoded durations.
+        case (speed)
+            1: key_frames <= 2;
+            2: key_frames <= 8;
+            default: key_frames <= KEY_FRAMES;
+        endcase
     end else if (busy && ((!timed && state != RECEIVE && !available) ||
                          cancel || (started && !enabled))) begin
         state <= IDLE;
@@ -156,13 +165,13 @@ always @(posedge clk) begin
                         keys <= 36'd1 << 11;
                         shifting <= 1;
                         shifted <= 1;
-                        frames <= KEY_FRAMES;
+                        frames <= control_frames;
                         state <= HOLD_KEY;
                     end
                 end else begin
                     keys <= 36'd1 << token[5:0];
                     shifting <= 0;
-                    frames <= KEY_FRAMES;
+                    frames <= token == 8'h9b ? control_frames : key_frames;
                     state <= HOLD_KEY;
                 end
             end
@@ -184,7 +193,8 @@ always @(posedge clk) begin
                 if (frames > 1) frames <= frames - 1'b1;
                 else begin
                     keys <= 0;
-                    frames <= timed ? gap_frames : KEY_FRAMES;
+                    frames <= timed ? gap_frames :
+                              (shifting || token == 8'h9b ? control_frames : key_frames);
                     state <= RELEASE_KEY;
                 end
             end

@@ -17,7 +17,7 @@ peripherals are not implemented. Expander 2 and the Timeshare modem are
 not supported.
 
 The 2K firmware dump has CRC-32 `dac31abc`. Load it from the OSD's
-Expander 1 ROM entry, or put it in the VideoBrain games folder as `boot1.rom`.
+System > Load Expander 1 ROM entry, or put it in the VideoBrain games folder as `boot1.rom`.
 Keep the existing 4K BIOS in `boot0.rom`. Without an Expander ROM, its host
 outputs remain released. Reset restarts both processors and retains the ROM.
 

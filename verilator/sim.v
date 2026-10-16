@@ -32,6 +32,7 @@ module top(
    output        source_complete,
 
    input [10:0]  ps2_key,
+   input [1:0]   source_speed,
 
    input [35:0]  kbd_matrix /*verilator public_flat*/,
    input [3:0]   joy_fire /*verilator public_flat*/,
@@ -65,6 +66,7 @@ module top(
       .download(ioctl_download && ioctl_index == 5), .wr(ioctl_wr),
       .addr(ioctl_addr), .data(ioctl_dout), .available(apl_available),
       .symbols(apl_symbols), .enabled(1'b1), .cancel(|kbd_matrix),
+      .speed(source_speed),
       .busy(source_busy), .complete(source_complete), .error(source_error), .keys(source_keys)
    );
 

@@ -360,6 +360,7 @@ static void usage(const char* argv0) {
 // "  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
 // "  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
 "  --source FILE@F      enter a VBK keyboard file through RTL\n"
+"  --source-speed MODE  APL/S entry: normal (default), fast, slow\n"
 "  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman\n"
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
@@ -432,6 +433,7 @@ int main(int argc, char** argv) {
 //     long apl_frame = -1;
     std::string source_path;
     long source_frame = -1;
+    unsigned source_speed = 0;
     bool source_started = false, source_seen = false, source_done = false;
 //     bool apl_rtl = false, apl_started = false, apl_paused_seen = false, apl_resumed = false;
 //     long apl_start_cycle = -1;
@@ -471,6 +473,13 @@ int main(int argc, char** argv) {
         else if (a == "--res2")        res2 = need("--res2");
         else if (a == "--expander1")   expander1 = need("--expander1");
         else if (a == "--cart")        cart = need("--cart");
+        else if (a == "--source-speed") {
+            std::string mode = need("--source-speed");
+            if (mode == "normal") source_speed = 0;
+            else if (mode == "fast") source_speed = 1;
+            else if (mode == "slow") source_speed = 2;
+            else { fprintf(stderr, "error: invalid --source-speed\n"); return 1; }
+        }
         else if (a == "--source") {
             std::string value = need("--source");
             size_t at = value.rfind('@');
@@ -656,6 +665,7 @@ int main(int argc, char** argv) {
     top->ioctl_addr = 0; top->ioctl_dout = 0; top->ioctl_din = 0; top->ioctl_index = 0;
     top->ps2_key = 0;
     top->kbd_matrix = 0;
+    top->source_speed = source_speed;
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
     if (joy_timer_base < 0 || joy_timer_step < 0 || joy_timer_step > 127 ||

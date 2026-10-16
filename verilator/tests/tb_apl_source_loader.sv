@@ -6,9 +6,10 @@ reg reset = 1, frame_tick = 0, download = 0, wr = 0;
 reg [24:0] addr = 0;
 reg [7:0] data = 0;
 reg available = 1, symbols = 0, enabled = 0, cancel = 0;
+reg [1:0] speed = 0;
 wire busy, error, complete;
 wire [35:0] keys;
-apl_source_loader #(.KEY_FRAMES(2), .LINE_FRAMES(3)) dut (.*);
+apl_source_loader #(.LINE_FRAMES(3)) dut (.*);
 reg [7:0] packet [0:4103];
 reg [35:0] previous = 0;
 reg emulate_shift = 1;
@@ -17,9 +18,15 @@ reg [5:0] observed [0:8191];
 integer held_cycles [0:8191];
 integer field_count = 0;
 integer press_field [0:8191];
+integer release_field [0:8191];
+integer shift_delay = 0, shift_due = -1;
 
 always @(negedge clk) begin
     if (frame_tick) field_count = field_count + 1;
+    if (shift_due >= 0 && field_count >= shift_due) begin
+        symbols = !symbols;
+        shift_due = -1;
+    end
     if (keys != 0 && previous == 0) begin
         if ((keys & (keys - 1)) != 0) $fatal(1, "Multiple playback keys");
         for (integer i = 0; i < 36; i = i + 1)
@@ -27,8 +34,12 @@ always @(negedge clk) begin
         presses = presses + 1;
         held_cycles[presses - 1] = 0;
         press_field[presses - 1] = field_count;
-        if (keys[11] && emulate_shift) symbols = !symbols;
+        if (keys[11] && emulate_shift) begin
+            if (shift_delay == 0) symbols = !symbols;
+            else shift_due = field_count + shift_delay;
+        end
     end
+    if (keys == 0 && previous != 0) release_field[presses - 1] = field_count;
     if (keys != 0) held_cycles[presses - 1] = held_cycles[presses - 1] + 1;
     previous = keys;
 end
@@ -63,6 +74,32 @@ endtask
 task finish_entry;
     for (integer i = 0; i < 100000 && busy; i = i + 1) tick;
     if (busy || keys != 0) $fatal(1, "Playback failed to release");
+endtask
+
+task check_speed(input [1:0] setting, input integer duration);
+    integer held, released;
+    speed = setting; symbols = 0; presses = 0;
+    frame_tick = 0; shift_delay = 7;
+    packet[8] = 0; packet[9] = 8'h61; packet[10] = 8'h61; packet[11] = 8'h9b;
+    init_packet(4); send_packet(12, -1);
+    speed = 2'd3; // Changes after download must not affect this file.
+    for (integer i = 0; i < 250 && busy; i = i + 1) begin
+        repeat (32) tick;
+        frame_tick = 1; tick;
+        frame_tick = 0; tick;
+    end
+    if (busy || error || !complete || presses != 5 || observed[0] != 0 ||
+        observed[1] != 11 || observed[2] != 33 || observed[3] != 33 || observed[4] != 27)
+        $fatal(1, "Speed %0d lost or reordered keys", setting);
+    for (integer n = 0; n < 5; n = n + 1) begin
+        held = (n == 1 || n == 4) && duration < 8 ? 8 : duration;
+        if (release_field[n] - press_field[n] != held)
+            $fatal(1, "Speed %0d hold mismatch at %0d", setting, n);
+        released = n == 4 ? field_count : press_field[n + 1];
+        if (released - release_field[n] != held + (n == 4 ? 3 : 0))
+            $fatal(1, "Speed %0d gap or line wait mismatch at %0d", setting, n);
+    end
+    shift_delay = 0; speed = 0; frame_tick = 1;
 endtask
 
 initial begin
@@ -135,8 +172,13 @@ initial begin
     init_packet(4096); send_packet(4104, -1); finish_entry;
     if (error) $fatal(1, "Maximum stream failed");
 
+    check_speed(0, 4);
+    check_speed(1, 2);
+    check_speed(2, 8);
+    check_speed(3, 4);
+
     // Timed physical events work without APL and never consult its mode.
-    available = 0; presses = 0;
+    available = 0; presses = 0; speed = 2;
     packet[8] = 11; packet[9] = 3; packet[10] = 2;
     packet[11] = 35; packet[12] = 5; packet[13] = 4;
     packet[14] = 255; packet[15] = 7; packet[16] = 0;
