@@ -12,9 +12,10 @@ EDIT
 : _
 ```
 
-The 3870 timer/interrupt ports, cassette paths and serial
-peripherals are not implemented. Expander 2 and the Timeshare modem are
-not supported.
+The 3870 timer and interrupt control ports and digital cassette record path
+are implemented. Cassette playback, storage and serial peripherals are not
+implemented. Expander 2 and the Timeshare
+modem are not supported.
 
 The 2K firmware dump has CRC-32 `dac31abc`. Load it from the OSD's
 System > Load Expander 1 ROM entry, or put it in the VideoBrain games folder as `boot1.rom`.
@@ -28,7 +29,7 @@ outputs remain released. Reset restarts both processors and retains the ROM.
 | VideoBrain signal | Expander board connector | 3870 pin |
 |---|---|---|
 | CPU I/O-15 | 4 | P1.0, pin 37 |
-| CPU I/O-16 | 6 | P1.7, pin 25 |
+| CPU I/O-16 (bidirectional) | 6 | P1.7, pin 25 |
 | External interrupt | 5 | P1.1, pin 36 |
 | Reset | 2 | Reset |
 
@@ -36,13 +37,49 @@ outputs remain released. Reset restarts both processors and retains the ROM.
 The implementation uses the NTSC colorburst rate (3.579545 MHz) and the
 existing F8 CPU's half-cycle enables.
 
+The board connection table in `refs/seanriddle.com/vbexpander1.xlsx` shows
+U04.4 driving P0.2 from inverted P0.3. P0.2 also drives U04.2/12, whose
+outputs feed R13/R14, C16 and Record Data. `record_data` exposes this digital
+level before the analog network. P0.1 low enables the U07/U08 record remote;
+`record_enable` exposes that request. These outputs are currently unconnected
+at the core boundary. Playback input P0.7 remains released; no record-to-playback
+loopback is assumed.
+
+The MK3870 data book (pages 7-13) defines ports 6/7: binary modulo-N
+counting, prescales 2/5/10/20/40/100/200, interval, pulse width and event
+modes, and separate interrupt latches. Timer interrupts take priority at
+0x020; external interrupts use 0x0A0. The timer advances at half the crystal
+rate before prescaling. Port 6 reads the EXT INT pin in bit 7.
+
+EXT INT is currently held high; pulse width and event modes are tested at
+the timer module but await peripheral wiring in Expander 1. Parallel ports
+4/5 still provide latch readback only.
+
 The modem connector is separate from the host cable. `Set 2/Image (73).jpg`
 corrects its pins to receive 4, transmit 2, and signal ground 1.
 
 ## Validation
 
-`make -C verilator test-expander1` uses synthetic firmware to check download,
-execution, clock input, output polarity, reset and oversize rejection.
+`make -C verilator test-expander1` checks all timer prescales and modes,
+reload, readback, interrupt masking, priority and vector retention. Synthetic
+firmware checks download, host lines, CPU port readback, timer ISR entry and
+return, CPU interrupt masking, reset and oversize rejection.
+
+`make -C verilator test-expander1-record` additionally runs the original ROM
+with a simulated host. Override `EXPANDER1_ROM` if needed. It records one byte
+(`A5`), checks remote stop and success status, then checks rejection of a bad
+host checksum. The edge capture in `verilator/out/expander1/record.csv` stores
+simulation time, digital record level and remote enable. It is a diagnostic,
+not a persistence format. The checker verifies pulse widths, decodes the
+record and writes the raw bytes to `record.bin`:
+
+```text
+FF (16 bytes), 01 CD, 00 01, A5, 7E D6, 00
+```
+
+This proves a firmware record transaction without analog playback feedback.
+An APL/S workspace SAVE reaching TAPE OK still needs full-machine simulation
+and hardware validation. No MiSTer persistence mechanism has been selected.
 
 After rebuilding the headless simulator, test the actual firmware:
 
@@ -51,6 +88,6 @@ cd verilator
 make headless
 ./obj_dir_headless/Vtop \
   --cart "../software/converted/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
-  --expander1 "../software/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin" \
+  --expander1 "../software/BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin" \
   --frames 300 --shot-last --outdir out/expander1
 ```

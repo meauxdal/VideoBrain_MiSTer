@@ -21,7 +21,10 @@ profile only for unrecognized images.
 
 `--expander1 <file>` loads the separate 2K Expander 1 firmware. This support is
 experimental; see [limits and hardware evidence](../docs/EXPANDER1.md).
-`make test-expander1` tests its ROM loading, processor and host clock wiring.
+`make test-expander1` tests its ROM loading, host wiring, 3870 timer and
+interrupt execution.
+`make test-expander1-record` exercises original-ROM recording, decodes its
+digital capture and checks good/bad checksum status. It requires the firmware.
 
 ## Keyboard files
 

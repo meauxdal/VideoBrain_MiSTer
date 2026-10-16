@@ -29,6 +29,7 @@ VHD_SRC = \
 	$(RTL)/buffered_bus.vhd \
 	$(RTL)/sys_bus.vhd \
 	$(RTL)/videobrain_io.vhd \
+	$(RTL)/f3870_timer.vhd \
 	$(RTL)/expander1.vhd \
 	$(RTL)/videobrain_core.vhd
 
@@ -123,7 +124,9 @@ test-expander1:
 	$(GHDL) -a --std=08 --workdir=out/expander1 $(RTL)/f8/base_pack.vhd \
 		$(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
 		$(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd \
-		$(RTL)/expander1.vhd tests/tb_expander1.vhd
+		$(RTL)/f3870_timer.vhd $(RTL)/expander1.vhd \
+		tests/tb_f3870_timer.vhd tests/tb_expander1.vhd
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_f3870_timer --assert-level=error
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1 --assert-level=error
 
 test-cartridges:
@@ -133,6 +136,19 @@ test-cartridges:
 		$(RTL)/uv201/uv201_regs.vhd $(RTL)/buffered_bus.vhd \
 		$(RTL)/sys_bus.vhd tests/tb_cartridges.vhd
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error
+
+EXPANDER1_ROM ?= ../software/BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin
+
+test-expander1-record: test-expander1
+	$(GHDL) -a --std=08 --workdir=out/expander1 tests/tb_expander1_record.vhd
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_record \
+		"-gfirmware=$(EXPANDER1_ROM)" --assert-level=error --ieee-asserts=disable
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/check_expander1_record.py out/expander1/record.csv
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_record \
+		"-gfirmware=$(EXPANDER1_ROM)" -gbad_crc=true \
+		-gcapture_file=out/expander1/record-bad.csv --assert-level=error --ieee-asserts=disable
+
+.PHONY: test-expander1-record
 
 test-joystick:
 	@mkdir -p out/joystick_test
@@ -145,7 +161,7 @@ test-joystick:
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 
-.PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio test-cartridges clean
+.PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio test-expander1 test-cartridges clean
 
 # test-apl-ram: test-cartridges
 # 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \

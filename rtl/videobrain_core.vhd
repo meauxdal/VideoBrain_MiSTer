@@ -122,7 +122,7 @@ ARCHITECTURE rtl OF videobrain_core IS
 
   SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
   SIGNAL kbd_b_in_n : uv8;
-  SIGNAL expander_data_n, expander_interrupt_n : std_logic;
+  SIGNAL expander_data_n, expander_clock_n, expander_interrupt_n : std_logic;
   SIGNAL port1_wr_l : std_logic;
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
@@ -361,7 +361,8 @@ BEGIN
   f8_po_b_n <= po_b_n_l;
   joy_enable <= joy_enable_l;
 
-  pi_b_n_l <= kbd_b_in_n AND unsigned'("11" &
+  pi_b_n_l <= kbd_b_in_n AND unsigned'('1' &
+                    (po_b_n_l(6) AND expander_clock_n) &
                     (po_b_n_l(5) AND expander_data_n) & "11111");
 
   u_expander1 : ENTITY work.expander1
@@ -370,6 +371,8 @@ BEGIN
       clk => clk, reset_na => reset_na,
       host_data_n => po_b_n_l(5), host_clock_n => po_b_n_l(6),
       data_n => expander_data_n, interrupt_n => expander_interrupt_n,
+      clock_n => expander_clock_n,
+      record_data => OPEN, record_enable => OPEN,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index
       );

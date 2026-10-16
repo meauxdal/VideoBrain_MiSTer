@@ -14,7 +14,10 @@ ENTITY expander1 IS
     host_data_n  : IN std_logic;
     host_clock_n : IN std_logic;
     data_n       : OUT std_logic;
+    clock_n      : OUT std_logic;
     interrupt_n  : OUT std_logic;
+    record_data  : OUT std_logic;
+    record_enable : OUT std_logic;
     dl_addr  : IN unsigned(15 DOWNTO 0);
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
@@ -35,12 +38,15 @@ ARCHITECTURE rtl OF expander1 IS
   SIGNAL romc : uv5;
   SIGNAL tick : std_logic;
   SIGNAL phase : uint4;
-  SIGNAL po_a_n, po_b_n, pi_b_n : uv8;
+  SIGNAL po_a_n, pi_a_n, po_b_n, pi_b_n : uv8;
   SIGNAL addr : unsigned(13 DOWNTO 0);
   SIGNAL rdata : uv8;
   SIGNAL io_addr, io_wdata, io_rdata : uv8;
   SIGNAL io_wr : std_logic;
   SIGNAL port4, port5 : uv8 := (OTHERS => '0');
+  SIGNAL ce_phi, int_req, int_start, int_ack : std_logic;
+  SIGNAL timer_rdata : uv8;
+  SIGNAL int_vector : uv16;
 BEGIN
   cpu_reset_na <= reset_na AND loaded;
   -- The board's 3.58 MHz crystal clocks the 3870's internal divide by two.
@@ -86,16 +92,34 @@ BEGIN
   -- Transfer Set 1, Image (33): P1.0=data, P1.7=clock, P1.1=host IRQ.
   pi_b_n <= po_b_n AND unsigned'(host_clock_n & "111111" & host_data_n);
   data_n <= po_b_n(0) WHEN port1_ready = '1' ELSE '1';
+  clock_n <= po_b_n(7) WHEN port1_ready = '1' ELSE '1';
   interrupt_n <= po_b_n(1) WHEN port1_ready = '1' ELSE '1';
-  io_rdata <= port4 WHEN io_addr = 4 ELSE port5 WHEN io_addr = 5 ELSE x"00";
+  -- U04.4 drives P0.2 from inverted P0.3; U04.2/12 feed R13/R14.
+  pi_a_n <= po_a_n(7 DOWNTO 3) &
+            (po_a_n(2) AND NOT po_a_n(3)) & po_a_n(1 DOWNTO 0);
+  record_data <= NOT pi_a_n(2) WHEN port1_ready = '1' ELSE '0';
+  -- P0.1 low releases U07.6, lighting the U08 remote-control optocoupler.
+  record_enable <= NOT po_a_n(1) WHEN port1_ready = '1' ELSE '0';
+  io_rdata <= port4 WHEN io_addr = 4 ELSE port5 WHEN io_addr = 5 ELSE timer_rdata;
 
-  -- TODO: Implement 3870 timer/interrupt ports 6/7 and peripheral wiring.
+  ce_phi <= ce WHEN phase MOD 2 = 1 ELSE '0';
+  int_ack <= '1' WHEN ce = '1' AND romc = ROMC_13 AND phase = 6 ELSE '0';
+
+  -- TODO: Connect EXT INT and parallel ports to the peripheral circuitry.
+  u_timer : ENTITY work.f3870_timer
+    PORT MAP (
+      clk => clk, reset_na => cpu_reset_na, ce_phi => ce_phi,
+      io_addr => io_addr, io_wr => io_wr, io_wdata => io_wdata,
+      io_rdata => timer_rdata, ext_int => '1', int_req => int_req,
+      int_vector => int_vector, int_start => int_start, int_ack => int_ack
+      );
+
   u_cpu : ENTITY work.f8_cpu
     PORT MAP (
       dr => dr, dw => dw, dv => OPEN, romc => romc, tick => tick,
-      phase => phase, po_a_n => po_a_n, pi_a_n => po_a_n,
+      phase => phase, po_a_n => po_a_n, pi_a_n => pi_a_n,
       po_b_n => po_b_n, pi_b_n => pi_b_n, port1_wr => port1_wr,
-      clk => clk, ce => ce, reset_na => cpu_reset_na, intreq => '0',
+      clk => clk, ce => ce, reset_na => cpu_reset_na, intreq => int_req,
       acco => OPEN, visaro => OPEN, iozcso => OPEN
       );
 
@@ -107,7 +131,7 @@ BEGIN
       ext_rdata => rdata, ext_req => OPEN, ext_class => OPEN,
       ext_grant => '1', io_addr => io_addr, io_rd => OPEN, io_wr => io_wr,
       io_wdata => io_wdata, io_rdata => io_rdata,
-      int_vector => x"0000", int_ack => OPEN,
+      int_vector => int_vector, int_ack => int_start,
       pc0o => OPEN, pc1o => OPEN, dc0o => OPEN
       );
 END ARCHITECTURE rtl;

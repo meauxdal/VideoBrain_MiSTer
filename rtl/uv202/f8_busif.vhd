@@ -315,8 +315,7 @@ BEGIN
           WHEN ROMC_1B =>
             IF phase = 2 THEN
               io_rd_l <= '1';
-            END IF;
-            IF phase = 6 THEN
+              -- The CPU samples DATA in phase 3.
               dr_l <= io_rdata;
               dv_l <= '1';
             END IF;

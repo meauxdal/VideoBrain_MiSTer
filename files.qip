@@ -21,6 +21,7 @@ set_global_assignment -name VHDL_FILE rtl/f3853.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/buffered_bus.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/sys_bus.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/videobrain_io.vhd -hdl_version VHDL_2008
+set_global_assignment -name VHDL_FILE rtl/f3870_timer.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/expander1.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/videobrain_core.vhd -hdl_version VHDL_2008
 
