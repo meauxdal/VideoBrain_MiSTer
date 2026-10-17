@@ -26,6 +26,40 @@
 
 static Vtop* top = nullptr;
 static vluint64_t main_time = 0;
+
+static std::vector<uint32_t> read_tape(const std::string& path) {
+    FILE* f = fopen(path.c_str(), "rb");
+    if (!f) { fprintf(stderr, "error: cannot read %s\n", path.c_str()); exit(1); }
+    uint8_t header[512];
+    auto le32 = [](const uint8_t* p) {
+        return uint32_t(p[0]) | uint32_t(p[1]) << 8 |
+               uint32_t(p[2]) << 16 | uint32_t(p[3]) << 24;
+    };
+    if (fread(header, 1, sizeof(header), f) != sizeof(header) ||
+        memcmp(header, "VBT1", 4) || le32(header + 4) != 14318180) {
+        fprintf(stderr, "error: invalid VBT1 header\n"); exit(1);
+    }
+    uint32_t count = le32(header + 8);
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    if (size < 512 || count == 0 || count > uint64_t(size - 512) / 4) {
+        fprintf(stderr, "error: invalid VBT1 interval count\n"); exit(1);
+    }
+    fseek(f, 512, SEEK_SET);
+    std::vector<uint32_t> samples(count);
+    for (uint32_t& sample : samples) {
+        uint8_t bytes[4];
+        if (fread(bytes, 1, 4, f) != 4) {
+            fprintf(stderr, "error: truncated VBT1 data\n"); exit(1);
+        }
+        sample = le32(bytes);
+        if ((sample & 0x7fffffff) < 2) {
+            fprintf(stderr, "error: invalid VBT1 duration\n"); exit(1);
+        }
+    }
+    fclose(f);
+    return samples;
+}
 double sc_time_stamp() { return (double)main_time; }
 
 // obj_ram survives ghdl synth as one flat 1152-bit vector rather than an
@@ -357,6 +391,8 @@ static void usage(const char* argv0) {
 "  --res2 FILE          RES2 ROM, ioctl index 1\n"
 "  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
 "  --record FILE        diagnostic cassette edges (MCLK cycle, level, remote)\n"
+"  --playback FILE      replay VBT1 waveform at the Expander cassette input\n"
+"  --expander-trace FILE  log host signals and VideoBrain PC\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
 // "  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
 // "  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
@@ -431,7 +467,7 @@ int main(int argc, char** argv) {
     std::string res2 = "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
 //    std::string cart, expander1, apl_path, outdir = "out", prefix, dump_path, audio_path;
     std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
-    std::string record_path;
+    std::string record_path, playback_path, expander_trace_path;
 //     long apl_frame = -1;
     std::string source_path;
     long source_frame = -1;
@@ -475,6 +511,8 @@ int main(int argc, char** argv) {
         else if (a == "--res2")        res2 = need("--res2");
         else if (a == "--expander1")   expander1 = need("--expander1");
         else if (a == "--record")      record_path = need("--record");
+        else if (a == "--playback")    playback_path = need("--playback");
+        else if (a == "--expander-trace") expander_trace_path = need("--expander-trace");
         else if (a == "--cart")        cart = need("--cart");
         else if (a == "--source-speed") {
             std::string mode = need("--source-speed");
@@ -657,9 +695,27 @@ int main(int argc, char** argv) {
         fprintf(rf, "cycle,level,enabled\n");
     }
     int last_record_data = -1, last_record_enable = -1;
+    std::vector<uint32_t> tape_samples;
+    if (!playback_path.empty()) {
+        if (expander1.empty()) {
+            fprintf(stderr, "error: --playback requires --expander1\n"); return 1;
+        }
+        tape_samples = read_tape(playback_path);
+    }
+    size_t tape_index = 0;
+    uint32_t tape_remaining = 0;
+    bool tape_remote = false;
+    FILE* ef = nullptr;
+    if (!expander_trace_path.empty()) {
+        ef = fopen(expander_trace_path.c_str(), "w");
+        if (!ef) { fprintf(stderr, "error: cannot write Expander trace\n"); return 2; }
+        fprintf(ef, "cycle,pc,host_data_n,host_clock_n,data_n,clock_n,interrupt_n,record,playback\n");
+    }
+    unsigned last_expander_pins = ~0u;
 
     Verilated::commandArgs(argc, argv);
     top = new Vtop();
+    top->playback_data = 1;
 
     IoctlDriver io;
     io.quiet = quiet;
@@ -833,8 +889,45 @@ int main(int argc, char** argv) {
 //             apl_writes++;
 //         }
 
+        if (!tape_samples.empty()) {
+            bool remote = top->playback_enable && !top->reset;
+            if (remote != tape_remote)
+                printf("[tape] cycle=%ld %s interval=%zu/%zu\n", cycles,
+                       remote ? "start" : "stop", tape_index, tape_samples.size());
+            if (!remote) {
+                tape_index = 0;
+                tape_remaining = 0;
+                top->playback_data = 1;
+            } else {
+                if (!tape_remaining) {
+                    if (tape_index < tape_samples.size()) {
+                        uint32_t sample = tape_samples[tape_index++];
+                        top->playback_data = sample >> 31;
+                        tape_remaining = sample & 0x7fffffff;
+                    } else top->playback_data = 1;
+                }
+                if (tape_remaining) tape_remaining--;
+            }
+            tape_remote = remote;
+        }
+
         top->clk_sys = 1;
         top->eval();
+
+        if (ef) {
+            unsigned host = (CORE(po_b_n_l) >> 5) & 3;
+            unsigned pins = host | CORE(expander_data_n) << 2 |
+                            CORE(expander_clock_n) << 3 | CORE(expander_interrupt_n) << 4 |
+                            top->record_enable << 5 | top->playback_enable << 6;
+            if (pins != last_expander_pins) {
+                fprintf(ef, "%ld,%04X,%u,%u,%u,%u,%u,%u,%u\n", cycles,
+                        unsigned(top->rootp->top__DOT__pc0), host & 1, host >> 1,
+                        unsigned(CORE(expander_data_n)), unsigned(CORE(expander_clock_n)),
+                        unsigned(CORE(expander_interrupt_n)), unsigned(top->record_enable),
+                        unsigned(top->playback_enable));
+                last_expander_pins = pins;
+            }
+        }
 
         if (rf && (top->record_data != last_record_data ||
                    top->record_enable != last_record_enable)) {
@@ -1183,6 +1276,7 @@ int main(int argc, char** argv) {
     if (df != stdout) fclose(df);
     if (af) fclose(af);
     if (rf) fclose(rf);
+    if (ef) fclose(ef);
     delete top;
     return 0;
 }

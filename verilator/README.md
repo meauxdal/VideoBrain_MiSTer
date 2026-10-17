@@ -26,6 +26,13 @@ interrupt execution.
 `make test-expander1-record` exercises original-ROM recording, decodes its
 digital capture and checks good/bad checksum status. It requires the firmware.
 
+`make replay-apl-tape` boots APL/S and LOADs `refs/tape-observations/apls-test.vbt`,
+with a final screenshot and host signal trace in `out/expander1/apl-load`.
+Override `APL_TAPE` for another image. This is a long run. The headless
+`--playback FILE` option replays the VBT1 waveform directly at the Expander
+input, bypassing SD service; each playback remote request restarts the image.
+`--expander-trace FILE` logs host signal changes and the VideoBrain PC.
+
 ## Keyboard files
 
 Use [APL/S source entry](../docs/APL-SOURCE.md) or

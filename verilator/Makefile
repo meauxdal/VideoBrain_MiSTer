@@ -184,6 +184,20 @@ capture-apl-save: headless
 
 .PHONY: capture-apl-save
 
+APL_TAPE ?= ../refs/tape-observations/apls-test.vbt
+
+replay-apl-tape: headless
+	@mkdir -p out/expander1/apl-load
+	PYTHONDONTWRITEBYTECODE=1 python3 apl_source.py tests/apl_load.txt out/expander1/apl-load/load.vbk
+	$(HL_EXE) \
+		--cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
+		--expander1 "$(EXPANDER1_ROM)" --playback "$(APL_TAPE)" \
+		--expander-trace out/expander1/apl-load/host.csv \
+		--source out/expander1/apl-load/load.vbk@210 --frames 2200 \
+		--shot-last --prefix load --outdir out/expander1/apl-load
+
+.PHONY: replay-apl-tape
+
 test-joystick:
 	@mkdir -p out/joystick_test
 	$(V) --binary --timing --assert --top-module tb_joystick \

@@ -32,6 +32,8 @@ module top(
    output        source_complete,
    output        record_data,
    output        record_enable,
+   input         playback_data,
+   output        playback_enable,
 
    input [10:0]  ps2_key,
    input [1:0]   source_speed,
@@ -105,8 +107,8 @@ module top(
       .joy_enable (joy_enable),
       .expander_record_data (record_data),
       .expander_record_enable (record_enable),
-      .expander_playback_data (1'b1),
-      .expander_playback_enable (),
+      .expander_playback_data (playback_data),
+      .expander_playback_enable (playback_enable),
       .f8_po_a_n  (po_a_n),
       .f8_po_b_n  (po_b_n),
 
