@@ -4,6 +4,7 @@ import wave
 from pathlib import Path
 
 import numpy as np
+from audio_filter_design import coefficients, RATE, SCALE
 
 
 events_path, samples_path, output_dir = sys.argv[1:4]
@@ -43,9 +44,14 @@ for note_range in notes:
     response = (1 / 1024) / (1 - (1 - 1 / 1024) * z)
     response *= (1 / 512) / (1 - (1 - 1 / 512) * z)
     response *= ((1 / 256) / (1 - (1 - 1 / 256) * z)) ** 2
+    response *= np.sum(coefficients() / SCALE *
+                       np.exp(-2j * np.pi * frequencies[peak] / RATE * np.arange(161)))
+    omega = 2 * np.pi * frequencies[peak] / 14318181
+    response *= np.sin(128 * omega / 2) / (128 * np.sin(omega / 2))
+    response *= ((1 / 128) / (1 - (1 - 1 / 128) * z)) ** 4
     assert abs(gain - 20 * np.log10(abs(response))) < 0.05
     assert change < -20
-    assert data[:, 1].min() >= -8194 and data[:, 1].max() <= 4096
+    assert data[:, 1].min() >= -8256 and data[:, 1].max() <= 4160
     for column, name in [(0, "raw"), (1, "filtered")]:
         with wave.open(str(output / f"music_{key}_{name}.wav"), "wb") as wav:
             wav.setnchannels(1)

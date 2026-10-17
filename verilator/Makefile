@@ -115,9 +115,14 @@ test-render: $(GEN_V)
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_render --assert-level=error
 
 test-audio:
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/audio_filter_design.py
 	$V -cc --exe --build --top-module videobrain_audio --Mdir out/obj_audio \
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio.cpp)
-	./out/obj_audio/Vvideobrain_audio
+	./out/obj_audio/Vvideobrain_audio --sweep out/audio_sweep.bin
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_audio_alias.py out/audio_sweep.bin
+	$V -cc --exe --build --top-module videobrain_audio_fir --Mdir out/obj_audio_fir \
+		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio_fir.cpp)
+	./out/obj_audio_fir/Vvideobrain_audio_fir $(RTL)/videobrain_audio.sv
 
 test-expander1:
 	@mkdir -p out/expander1

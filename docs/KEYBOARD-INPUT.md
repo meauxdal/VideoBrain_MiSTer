@@ -117,6 +117,13 @@ including control keys, octave changes and waits. The converter warns above
 MT1 provides no cassette save/load or Expander 1 commands; its recording is held
 in the machine's RAM. Keep the source or VBK file to enter a song again.
 
+For an experimental static-staff ROM, run
+`python3 verilator/patch_music_teacher.py ORIGINAL.bin OUTPUT.bin` with the
+original ED01 cartridge. Use Program 1 normally, with existing VBK files.
+The patch skips note/rest drawing and recurring page redraws, retaining pitch
+setup, recording, and sound routines. Program 2's visual teaching is affected.
+Playback improvement and recording behavior need hardware verification.
+
 ## Music hardware results
 
 Hardware testing reported on 2026-10-15:
