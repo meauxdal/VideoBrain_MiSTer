@@ -2,7 +2,7 @@
 
 ## Use
 
-Set Joystick=On and Stick Timing=Linear in the OSD. Linear is the default.
+Set Input > Joystick=Connected and Stick Timing=Linear in the OSD. Linear is the default.
 Linear Preset=Auto selects by cartridge CRC-32 and size. Tennis and Gladiator
 force the corresponding linear timing; Gladiator is also Auto's fallback for
 other cartridges. Curve ignores Linear Preset, which is grayed out in that mode.
@@ -31,7 +31,8 @@ MiSTer's upstream interface provides both analog sticks and button reports.
 If either own axis is outside the center deadband, the own stick controls both
 axes; otherwise the paired right stick takes over. Digital directions retain
 priority over the own analog axis. Own Fire and paired Fire 2 are ORed,
-independently of movement. Disabling Joystick centers all pots and releases fire.
+independently of movement. Joystick=Disconnected releases fire and opens all
+pot charging paths, preventing timer expiry while preserving EJOY/reset behavior.
 
 The Pinball manual (printed p. 5) assigns joystick 1's button to the left
 flipper and joystick 2's to the right. Controller 1's Fire/Fire 2 can therefore

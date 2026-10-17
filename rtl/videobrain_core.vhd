@@ -21,6 +21,7 @@ ENTITY videobrain_core IS
     kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
     joy_pots   : IN std_logic_vector(63 DOWNTO 0);
+    joy_connected : IN std_logic := '1';
     joy_timer_base : IN unsigned(13 DOWNTO 0);
     joy_timer_step : IN unsigned(6 DOWNTO 0);
     joy_timer_curve : IN std_logic;
@@ -431,7 +432,8 @@ BEGIN
         joy_armed <= '0';
         joy_timer_active <= '1';
         out_v := '1';
-      ELSIF joy_timer_active = '1' THEN
+      -- Unplugged pots leave the timing capacitor without a charging path.
+      ELSIF joy_timer_active = '1' AND joy_connected = '1' THEN
         IF joy_timer = 0 THEN
           joy_timer_active <= '0';
           out_v := '0';

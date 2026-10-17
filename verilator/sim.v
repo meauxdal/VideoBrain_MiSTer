@@ -94,6 +94,7 @@ module top(
       .kbd_matrix (source_busy ? source_keys : kbd_matrix),
       .joy_fire   (joy_fire),
       .joy_pots   (joy_pots),
+      .joy_connected (1'b1),
       .joy_timer_base (joy_timer_base),
       .joy_timer_step (joy_timer_step),
       .joy_timer_curve (joy_timer_curve),

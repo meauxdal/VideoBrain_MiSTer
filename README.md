@@ -12,7 +12,7 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 
 ## Joystick
 
-Set Joystick=On in the OSD. Stick Timing=Linear and Linear Preset=Auto are the defaults; Tennis and Gladiator presets can also be selected manually. Curve remains available. Paired Sticks lets the right stick and Fire 2 control the paired joystick: 1+2 / 3+4, or Doubles for 1+3 / 2+4. In Gladiator, push fully forward, then make a full-extreme circle on each controller at first-game start. See [joystick timing and verification](docs/JOYSTICK.md).
+Set Input > Joystick=Connected in the OSD. Stick Timing=Linear and Linear Preset=Auto are the defaults; Tennis and Gladiator presets can also be selected manually. Curve remains available. Paired Sticks lets the right stick and Fire 2 control the paired joystick: 1+2 / 3+4, or Doubles for 1+3 / 2+4. In Gladiator, push fully forward, then make a full-extreme circle on each controller at first-game start. See [joystick timing and verification](docs/JOYSTICK.md).
 
 ## Installing
 
