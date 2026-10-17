@@ -28,7 +28,7 @@ for note_range in notes:
     window = np.hanning(len(data))[:, None]
     spectrum = np.fft.rfft(centered * window, axis=0)
     frequencies = np.fft.rfftfreq(len(data), 1 / rate)
-    peak = np.argmax(np.abs(spectrum[1:int(2000 * len(data) / rate), 0])) + 1
+    peak = np.argmax(np.abs(spectrum[1:int(24000 * len(data) / rate), 0])) + 1
     gain = 20 * np.log10(abs(spectrum[peak, 1] / spectrum[peak, 0]))
     inband = spectrum.copy()
     inband[frequencies >= 24000] = 0
@@ -42,6 +42,7 @@ for note_range in notes:
     z = np.exp(-2j * np.pi * frequencies[peak] / 14318181)
     response = (1 / 1024) / (1 - (1 - 1 / 1024) * z)
     response *= (1 / 512) / (1 - (1 - 1 / 512) * z)
+    response *= ((1 / 256) / (1 - (1 - 1 / 256) * z)) ** 2
     assert abs(gain - 20 * np.log10(abs(response))) < 0.05
     assert change < -20
     assert data[:, 1].min() >= -8194 and data[:, 1].max() <= 4096

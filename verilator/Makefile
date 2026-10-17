@@ -137,7 +137,7 @@ test-cartridges:
 		$(RTL)/sys_bus.vhd tests/tb_cartridges.vhd
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error
 
-EXPANDER1_ROM ?= ../software/BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin
+EXPANDER1_ROM ?= ../software/0 BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin
 
 test-expander1-record: test-expander1
 	$(GHDL) -a --std=08 --workdir=out/expander1 tests/tb_expander1_record.vhd
@@ -149,6 +149,19 @@ test-expander1-record: test-expander1
 		-gcapture_file=out/expander1/record-bad.csv --assert-level=error --ieee-asserts=disable
 
 .PHONY: test-expander1-record
+
+capture-apl-save: headless
+	@mkdir -p out/expander1/apl-save
+	PYTHONDONTWRITEBYTECODE=1 python3 apl_source.py tests/apl_save.txt out/expander1/apl-save/save.vbk
+	$(HL_EXE) \
+		--cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
+		--expander1 "$(EXPANDER1_ROM)" \
+		--source out/expander1/apl-save/save.vbk@210 --frames 7000 \
+		--record out/expander1/apl-save/record.csv \
+		--shot-last --prefix save --outdir out/expander1/apl-save
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/check_expander1_record.py out/expander1/apl-save/record.csv --workspace
+
+.PHONY: capture-apl-save
 
 test-joystick:
 	@mkdir -p out/joystick_test

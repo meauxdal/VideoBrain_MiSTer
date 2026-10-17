@@ -29,6 +29,8 @@ ENTITY videobrain_core IS
     audio_code : OUT std_logic_vector(1 DOWNTO 0);
     audio_stb  : OUT std_logic;
     joy_enable : OUT std_logic;
+    expander_record_data : OUT std_logic;
+    expander_record_enable : OUT std_logic;
 
     f8_po_a_n : OUT uv8;
     f8_po_b_n : OUT uv8;
@@ -372,7 +374,7 @@ BEGIN
       host_data_n => po_b_n_l(5), host_clock_n => po_b_n_l(6),
       data_n => expander_data_n, interrupt_n => expander_interrupt_n,
       clock_n => expander_clock_n,
-      record_data => OPEN, record_enable => OPEN,
+      record_data => expander_record_data, record_enable => expander_record_enable,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index
       );

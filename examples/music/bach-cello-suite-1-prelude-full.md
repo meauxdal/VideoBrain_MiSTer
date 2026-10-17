@@ -1,7 +1,7 @@
 # Bach: Cello Suite No. 1, Prelude (BWV 1007), full
 
 All 42 measures, original cello register (C2 through G4), quarter note = 80.
-656 notes; 670 timed events including controls. About 2 minutes 9 seconds.
+656 notes; 670 timed events including controls. About 2 minutes 10 seconds.
 The original `bach-cello-suite-1-prelude` files remain the four-measure excerpt.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
@@ -10,7 +10,8 @@ square). Set System > Music Teacher Input to Playback, then load
 keypress or opening the OSD. Record truncates the song at its 79-event limit.
 
 The tied D in measure 22 is held continuously. Fermatas use fixed timing.
-The final chord is rolled G2, B3, G4: two 32nd notes, then a whole note.
+The final chord is rolled G2, B3, G4: a half note, a 32nd, then a whole note.
+The bass G lingers before the upper notes resolve, following the supplied clip.
 Octave-bank changes add control-key time. Hardware playback needs checking.
 
 Regenerate from the repository root:

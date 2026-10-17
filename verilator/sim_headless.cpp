@@ -356,6 +356,7 @@ static void usage(const char* argv0) {
 "  --res1 FILE          RES1 ROM, ioctl index 0\n"
 "  --res2 FILE          RES2 ROM, ioctl index 1\n"
 "  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
+"  --record FILE        diagnostic cassette edges (MCLK cycle, level, remote)\n"
 "  --cart FILE          cartridge image, ioctl index 2 (2K images are mirrored)\n"
 // "  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
 // "  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
@@ -426,10 +427,11 @@ static std::string basename_noext(const std::string& p) {
 }
 
 int main(int argc, char** argv) {
-    std::string res1 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
-    std::string res2 = "../software/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
+    std::string res1 = "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
+    std::string res2 = "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
 //    std::string cart, expander1, apl_path, outdir = "out", prefix, dump_path, audio_path;
     std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
+    std::string record_path;
 //     long apl_frame = -1;
     std::string source_path;
     long source_frame = -1;
@@ -472,6 +474,7 @@ int main(int argc, char** argv) {
         else if (a == "--res1")        res1 = need("--res1");
         else if (a == "--res2")        res2 = need("--res2");
         else if (a == "--expander1")   expander1 = need("--expander1");
+        else if (a == "--record")      record_path = need("--record");
         else if (a == "--cart")        cart = need("--cart");
         else if (a == "--source-speed") {
             std::string mode = need("--source-speed");
@@ -646,6 +649,14 @@ int main(int argc, char** argv) {
         if (!af) { fprintf(stderr, "error: cannot write %s\n", audio_path.c_str()); return 2; }
         fprintf(af, "cycle,frame,pc,code,hpos,vpos,cmd,yint,s23,s24,s25,s26\n");
     }
+
+    FILE* rf = nullptr;
+    if (!record_path.empty()) {
+        rf = fopen(record_path.c_str(), "w");
+        if (!rf) { fprintf(stderr, "error: cannot write %s\n", record_path.c_str()); return 2; }
+        fprintf(rf, "cycle,level,enabled\n");
+    }
+    int last_record_data = -1, last_record_enable = -1;
 
     Verilated::commandArgs(argc, argv);
     top = new Vtop();
@@ -824,6 +835,14 @@ int main(int argc, char** argv) {
 
         top->clk_sys = 1;
         top->eval();
+
+        if (rf && (top->record_data != last_record_data ||
+                   top->record_enable != last_record_enable)) {
+            fprintf(rf, "%ld,%u,%u\n", cycles,
+                    (unsigned)top->record_data, (unsigned)top->record_enable);
+            last_record_data = top->record_data;
+            last_record_enable = top->record_enable;
+        }
 
         if (source_started) {
             if (top->source_error) {
@@ -1163,6 +1182,7 @@ int main(int argc, char** argv) {
     top->final();
     if (df != stdout) fclose(df);
     if (af) fclose(af);
+    if (rf) fclose(rf);
     delete top;
     return 0;
 }

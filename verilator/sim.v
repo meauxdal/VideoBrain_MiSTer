@@ -30,6 +30,8 @@ module top(
    output        source_busy,
    output        source_error,
    output        source_complete,
+   output        record_data,
+   output        record_enable,
 
    input [10:0]  ps2_key,
    input [1:0]   source_speed,
@@ -99,6 +101,8 @@ module top(
       .audio_code (audio_code),
       .audio_stb  (audio_stb),
       .joy_enable (joy_enable),
+      .expander_record_data (record_data),
+      .expander_record_enable (record_enable),
       .f8_po_a_n  (po_a_n),
       .f8_po_b_n  (po_b_n),
 

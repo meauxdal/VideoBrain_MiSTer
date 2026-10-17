@@ -1,6 +1,8 @@
 #include "Vvideobrain_audio.h"
 #include "verilated.h"
 #include <cassert>
+#include <cmath>
+#include <complex>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -23,6 +25,36 @@ static void reset() {
     assert(tick() == 0);
     dut.reset = 0;
     dut.stb = 0;
+}
+
+static void check_response(int period, double max_gain_db) {
+    reset();
+    const double pi = std::acos(-1.0);
+    const double omega = 2 * pi / period;
+    const int settle = (30000 / period + 1) * period;
+    std::complex<double> raw_sum = 0, filtered_sum = 0;
+    dut.stb = 1;
+    for (int i = 0; i < settle + period * 32; ++i) {
+        dut.code = (i % period < period / 2) ? 0 : 3;
+        int sample = tick();
+        assert(sample >= -8194 && sample <= 4096);
+        if (i < settle) continue;
+        auto phase = std::polar(1.0, -omega * (i % period));
+        raw_sum += static_cast<double>(dut.code * 4096 - 8192) * phase;
+        filtered_sum += static_cast<double>(sample) * phase;
+    }
+    auto z = std::polar(1.0, -omega);
+    std::complex<double> response = 1;
+    for (int shift : {10, 9, 8, 8}) {
+        double alpha = 1.0 / (1 << shift);
+        response *= alpha / (1.0 - (1.0 - alpha) * z);
+    }
+    double gain_db = 20 * std::log10(std::abs(filtered_sum / raw_sum));
+    double expected_db = 20 * std::log10(std::abs(response));
+    std::printf("%.1f Hz: %.2f dB (expected %.2f dB)\n",
+                14318181.0 / period, gain_db, expected_db);
+    assert(std::abs(gain_db - expected_db) < (period > 1000 ? 0.1 : 1.5));
+    assert(gain_db < max_gain_db);
 }
 
 int main(int argc, char** argv) {
@@ -50,6 +82,14 @@ int main(int argc, char** argv) {
     reset();
     for (int i = 0; i < 2000; ++i) assert(tick() == 0);
     puts("Audio reset, latch, range and DC tests passed");
+
+    check_response(28636, 0);
+    check_response(14318, 0);
+    check_response(7158, 0);
+    check_response(596, -53);
+    check_response(448, -62);
+    check_response(298, -75);
+    puts("Audio passband and stopband tests passed");
 
     if (argc != 3) return 0;
     struct Event { unsigned long long cycle; int code; };

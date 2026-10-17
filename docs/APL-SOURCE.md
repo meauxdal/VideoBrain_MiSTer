@@ -113,7 +113,7 @@ generated from the observed interpreter mode; raw SHIFT tokens are rejected.
 cd verilator
 make test-apl-source
 make headless
-./obj_dir_headless/Vtop --cart "../software/converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" --source ../examples/apl/arithmetic.vbk@210 --frames 700 --shot-last --outdir out/apl/source
+./obj_dir_headless/Vtop --cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" --source ../examples/apl/arithmetic.vbk@210 --frames 700 --shot-last --outdir out/apl/source
 ```
 
 The headless run checks completion, not the displayed arithmetic result.

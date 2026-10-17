@@ -41,8 +41,8 @@ The board connection table in `refs/seanriddle.com/vbexpander1.xlsx` shows
 U04.4 driving P0.2 from inverted P0.3. P0.2 also drives U04.2/12, whose
 outputs feed R13/R14, C16 and Record Data. `record_data` exposes this digital
 level before the analog network. P0.1 low enables the U07/U08 record remote;
-`record_enable` exposes that request. These outputs are currently unconnected
-at the core boundary. Playback input P0.7 remains released; no record-to-playback
+`record_enable` exposes that request. The core exposes both for simulator
+capture. Playback input P0.7 remains released; no record-to-playback
 loopback is assumed.
 
 The MK3870 data book (pages 7-13) defines ports 6/7: binary modulo-N
@@ -78,8 +78,28 @@ FF (16 bytes), 01 CD, 00 01, A5, 7E D6, 00
 ```
 
 This proves a firmware record transaction without analog playback feedback.
-An APL/S workspace SAVE reaching TAPE OK still needs full-machine simulation
-and hardware validation. No MiSTer persistence mechanism has been selected.
+On October 16, 2026, hardware testing confirmed `A=7`, SAVE ending with
+TAPE OK, and continued arithmetic using A afterward. This validates transaction
+completion and continued interpreter operation; captured data and LOAD/VERIFY
+remain unverified. Full-machine SAVE capture is still pending.
+No MiSTer persistence mechanism has been selected.
+
+The headless simulator's `--record FILE` captures digital edges and remote
+changes as `cycle,level,enabled`, with cycles at 14.31818 MHz. This is a
+diagnostic trace, not a persistence format.
+
+`make -C verilator capture-apl-save` builds the simulator, enters `A=7` and
+`SAVE` through the keyboard, captures 7000 video fields, and decodes the trace.
+This is a long run: SAVE writes the entire workspace, including unused space
+(APL/S manual, printed page 44). Inspect the final screenshot for TAPE OK.
+Outputs are under `verilator/out/expander1/apl-save`. The decoder checks timing
+index 00, record framing, big-endian payload length and CRC-16/CCITT (initial
+0000, length and payload, low CRC byte first). Its raw `.bin` includes framing.
+
+Digital replay still needs the playback circuit's polarity and pulse shaping
+at P0.7, playback remote control, and original-ROM LOAD/VERIFY tests. Record
+edges alone do not establish the playback input waveform. Storage format and
+MiSTer persistence remain open choices.
 
 After rebuilding the headless simulator, test the actual firmware:
 
@@ -87,7 +107,7 @@ After rebuilding the headless simulator, test the actual firmware:
 cd verilator
 make headless
 ./obj_dir_headless/Vtop \
-  --cart "../software/converted/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
-  --expander1 "../software/BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin" \
+  --cart "../software/1 Cartridges/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
+  --expander1 "../software/0 BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin" \
   --frames 300 --shot-last --outdir out/expander1
 ```
