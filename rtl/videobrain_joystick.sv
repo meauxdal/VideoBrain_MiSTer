@@ -1,4 +1,8 @@
 module videobrain_joystick (
+	input          clk,
+	input          reset,
+	input          frame_tick,
+	input          calibrate,
 	input          enabled,
 	input    [1:0] paired,
 	input    [1:0] preset,
@@ -22,6 +26,38 @@ endfunction
 
 wire paired_enabled = (paired == 2'd1 || paired == 2'd2);
 
+reg calibrate_d = 0;
+reg [2:0] calibration_phase = 0;
+reg [4:0] calibration_frames = 0;
+reg [15:0] calibration_pots;
+
+always @(posedge clk) begin
+	calibrate_d <= calibrate;
+	if (reset || !enabled) begin
+		calibration_phase <= 0;
+		calibration_frames <= 0;
+	end else if (calibrate && !calibrate_d) begin
+		calibration_phase <= 1;
+		calibration_frames <= 0;
+	end else if (frame_tick && calibration_phase != 0) begin
+		// Hold each direction, then center, for 30 video frames.
+		if (calibration_frames == 5'd29) begin
+			calibration_frames <= 0;
+			calibration_phase <= (calibration_phase == 3'd5) ? 3'd0 : calibration_phase + 3'd1;
+		end else calibration_frames <= calibration_frames + 5'd1;
+	end
+end
+
+always @* begin
+	case (calibration_phase)
+		3'd1: calibration_pots = 16'h8000;
+		3'd2: calibration_pots = 16'h80ff;
+		3'd3: calibration_pots = 16'h0080;
+		3'd4: calibration_pots = 16'hff80;
+		default: calibration_pots = 16'h8080;
+	endcase
+end
+
 genvar i;
 generate
 for (i = 0; i < 4; i = i + 1) begin : sticks
@@ -43,6 +79,7 @@ for (i = 0; i < 4; i = i + 1) begin : sticks
 	};
 	// An active own stick takes priority over both paired axes.
 	assign pots[i*16 +: 16] = !enabled ? 16'h8080 :
+		(calibration_phase != 0) ? calibration_pots :
 		(paired_enabled && own_pots == 16'h8080) ? paired_pots : own_pots;
 	assign fire[i] = enabled && (own_buttons[4] || (paired_enabled && paired_fire));
 end

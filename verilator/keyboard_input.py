@@ -123,6 +123,7 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
     events.extend([(19, 8, 64), (MUSIC_RECORD, 8, 8), (11, 8, 8), (19, 8, 8)])
     octave, tempo, length, bank = 4, 120, 4, 0
     count = 0
+    notes = 0
     sounding = False
     position = 0
     text = text.removeprefix("\ufeff").upper()
@@ -181,6 +182,7 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
             raise ValueError(f"note {count+1}: needs {hold} held fields; choose a slower/faster tempo or length")
         events.append((BASE_NOTES[pitch - bank - 48], hold, gap))
         sounding = True
+        notes += 1
         count += 1
         if page_notes and count % page_notes == 0:
             wait(events, page_wait)
@@ -190,9 +192,9 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
     if replay:
         events.append((MUSIC_REPLAY, 8, 8))
     data = packet(events)
-    if count > 79:
-        print(f"warning: {count} note/rest events; Record will truncate this song at the "
-              "79-event limit. Use Playback for the full file.", file=sys.stderr)
+    if notes > 79:
+        print(f"warning: {notes} notes; Record will truncate this song at the "
+              "79-note limit. Use Playback for the full file.", file=sys.stderr)
     return data
 
 

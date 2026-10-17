@@ -39,6 +39,8 @@ reg [7:0] frames = 0;
 reg shifting = 0, shifted = 0, started = 0;
 reg timed = 0;
 reg playback = 0;
+reg recording = 0;
+reg [6:0] music_notes = 0;
 reg [7:0] key_frames = KEY_FRAMES;
 wire [7:0] control_frames = key_frames < 8 ? 8'd8 : key_frames;
 reg [1:0] payload_phase = 0;
@@ -61,6 +63,15 @@ function automatic valid_key(input [7:0] value);
         else valid_key = value[5:0] < 35 && value[5:0] != 11 &&
                          value[5:0] != 15 && value[5:0] != 19 &&
                          value[5:0] != 23 && value[5:0] != 27 && value[5:0] != 31;
+    end
+endfunction
+
+function automatic music_note(input [7:0] value);
+    begin
+        case (value)
+            1, 7, 11, 12, 19, 22, 24, 28, 33: music_note = 0;
+            default: music_note = value < 36;
+        endcase
     end
 endfunction
 
@@ -95,6 +106,8 @@ always @(posedge clk) begin
         timed <= 0;
         payload_phase <= 0;
         playback <= music_playback;
+        recording <= 0;
+        music_notes <= 0;
         // Latch speed per file; timed events retain their encoded durations.
         case (speed)
             1: key_frames <= 6;
@@ -189,15 +202,28 @@ always @(posedge clk) begin
             READ_GAP: state <= SELECT_GAP;
             SELECT_GAP: begin
                 gap_frames <= token;
-                case (event_key)
-                    MUSIC_REPLAY: keys <= playback ? 36'd0 : 36'd1 << 12;
-                    MUSIC_RECORD: keys <= 36'd1 << (playback ? 7 : 33);
-                    8'hff: keys <= 0;
-                    default: keys <= 36'd1 << event_key[5:0];
-                endcase
-                frames <= hold_frames;
                 shifting <= 0;
-                state <= HOLD_KEY;
+                if (recording && music_notes == 79 && event_key != 11) begin
+                    // Skip the remaining music up to the closing SHIFT/No-Record.
+                    keys <= 0;
+                    frames <= 0;
+                    state <= RELEASE_KEY;
+                end else begin
+                    case (event_key)
+                        MUSIC_REPLAY: keys <= playback ? 36'd0 : 36'd1 << 12;
+                        MUSIC_RECORD: begin
+                            keys <= 36'd1 << (playback ? 7 : 33);
+                            recording <= !playback;
+                            music_notes <= 0;
+                        end
+                        8'hff: keys <= 0;
+                        default: keys <= 36'd1 << event_key[5:0];
+                    endcase
+                    if (recording && music_note(event_key)) music_notes <= music_notes + 1'b1;
+                    if (event_key == 11 && music_notes != 0) recording <= 0;
+                    frames <= hold_frames;
+                    state <= HOLD_KEY;
+                end
             end
             HOLD_KEY: if (frame_tick) begin
                 if (frames > 1) frames <= frames - 1'b1;

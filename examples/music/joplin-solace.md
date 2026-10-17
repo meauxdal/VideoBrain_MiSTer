@@ -16,7 +16,7 @@ Playback quantizes timing to fields and adds octave-bank control time.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
 square). Select System > Music Teacher Input > Playback, then load
-`joplin-solace.vbk`. Record truncates at 79 events. Hardware playback untested.
+`joplin-solace.vbk`. Record truncates input at 79 notes. Hardware playback untested.
 
 Regenerate from the repository root:
 

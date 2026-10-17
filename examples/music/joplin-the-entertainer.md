@@ -13,7 +13,7 @@ resolution. Octave-bank changes add control-key time.
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
 square). Select System > Music Teacher Input > Playback, then load
 `joplin-the-entertainer.vbk`. Auto-Repeat loops until a keypress or opening
-the OSD. Record truncates the song at its 79-event limit.
+the OSD. Record truncates input at 79 notes.
 
 Regenerate from the repository root:
 

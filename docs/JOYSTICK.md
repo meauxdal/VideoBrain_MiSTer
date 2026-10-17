@@ -8,9 +8,11 @@ force the corresponding linear timing; Gladiator is also Auto's fallback for
 other cartridges. Curve ignores Linear Preset, which is grayed out in that mode.
 Check older saved configurations: releases before the linear presets used the
 opposite Linear/Curve option order.
-For Gladiator, push fully forward, then make a full-extreme circle on each
-controller at first-game start. Repeat after a reset or a new game where
-required by the software. Automatic trim does not replace software calibration.
+At first-game start, use Input > Calibrate Sticks to send full Up, Down,
+Left, Right, then center to all four emulated joysticks, including paired
+sticks. Each position lasts 30 video frames. Use it while the game is reading
+joysticks; repeat after a reset or new game when required by the software.
+Joystick must be Connected. Automatic trim does not replace software calibration.
 
 Analog inputs have a -8..8 center deadband. Digital directions override
 analog: up/left select pot 0, down/right select 255. The channel order is

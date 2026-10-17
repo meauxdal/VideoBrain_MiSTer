@@ -77,6 +77,53 @@ task finish_entry;
     if (busy || keys != 0) $fatal(1, "Playback failed to release");
 endtask
 
+task check_music_limit(input integer notes, input bit playback_mode, input bit repeat_song);
+    integer offset, entered, expected;
+    // Generated music preamble, rests/bank changes, and No-Record/Replay tail.
+    packet[8] = 11; packet[11] = 19; packet[14] = 8'hfe;
+    packet[17] = 11; packet[20] = 19;
+    offset = 23;
+    for (integer n = 0; n < notes; n = n + 1) begin
+        packet[offset] = 255; packet[offset + 3] = 22; packet[offset + 6] = 29;
+        offset = offset + 9;
+    end
+    packet[offset] = 11; packet[offset + 3] = 7;
+    packet[offset + 6] = 11; packet[offset + 9] = 8'hfd;
+    offset = offset + 12;
+    for (integer n = 8; n < offset; n = n + 3) begin
+        packet[n + 1] = 2; packet[n + 2] = 1;
+    end
+    init_packet(offset - 8); packet[3] = "2";
+    entered = !playback_mode && notes > 79 ? 79 : notes;
+    expected = 5 + entered * 2 + (playback_mode ? 3 : 4);
+    music_playback = playback_mode; auto_repeat = repeat_song; presses = 0;
+    send_packet(offset, -1);
+    if (repeat_song) begin
+        for (integer i = 0; i < 10000 && presses < expected * 2; i = i + 1) tick;
+        if (!busy || error || complete || presses != expected * 2)
+            $fatal(1, "Music cutoff repeat failed");
+        cancel = 1; tick; cancel = 0;
+    end else begin
+        finish_entry;
+        if (error || !complete || presses != expected)
+            $fatal(1, "Music cutoff failed: notes=%0d playback=%0d presses=%0d expected=%0d",
+                   notes, playback_mode, presses, expected);
+    end
+    for (integer pass = 0; pass < (repeat_song ? 2 : 1); pass = pass + 1) begin
+        offset = pass * expected;
+        if (observed[offset + 2] != (playback_mode ? 7 : 33))
+            $fatal(1, "Music recording selector failed");
+        for (integer n = 0; n < entered; n = n + 1)
+            if (observed[offset + 5 + n * 2] != 22 || observed[offset + 6 + n * 2] != 29)
+                $fatal(1, "Music note/bank order failed");
+        offset = offset + 5 + entered * 2;
+        if (observed[offset] != 11 || observed[offset + 1] != 7 || observed[offset + 2] != 11 ||
+            (!playback_mode && observed[offset + 3] != 12))
+            $fatal(1, "Music closing controls lost at cutoff");
+    end
+    auto_repeat = 0; music_playback = 0;
+endtask
+
 task check_speed(input [1:0] setting, input integer duration);
     integer held, released;
     speed = setting; symbols = 0; presses = 0;
@@ -269,6 +316,12 @@ initial begin
     enabled = 0; tick;
     if (busy || keys != 0 || complete) $fatal(1, "Repeat OSD cancel failed");
     enabled = 1; auto_repeat = 0; music_playback = 0;
+
+    check_music_limit(78, 0, 0);
+    check_music_limit(79, 0, 0);
+    check_music_limit(80, 0, 0);
+    check_music_limit(90, 0, 1);
+    check_music_limit(90, 1, 0);
 
     // Both VBK1 completion paths must repeat, including final line waits.
     available = 1;

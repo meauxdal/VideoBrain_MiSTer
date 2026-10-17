@@ -7,7 +7,7 @@ The original `bach-cello-suite-1-prelude` files remain the four-measure excerpt.
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
 square). Set System > Music Teacher Input to Playback, then load
 `bach-cello-suite-1-prelude-full.vbk`. Auto-Repeat restarts the file until a
-keypress or opening the OSD. Record truncates the song at its 79-event limit.
+keypress or opening the OSD. Record truncates input at 79 notes.
 
 The tied D in measure 22 is held continuously. Fermatas use fixed timing.
 The final chord is rolled G2, B3, G4: a half note, a 32nd, then a whole note.

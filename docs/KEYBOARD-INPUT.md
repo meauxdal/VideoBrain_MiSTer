@@ -64,7 +64,7 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
 then load an example from `examples/music`. Each generated song erases the
 previous recording, selects Middle, enters the notes, and ends with No-Record.
-**System > Music Teacher Input** selects **Record** (default) or **Playback**.
+**System > Music Teacher Input** selects **Playback** (default) or **Record**.
 Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
 Playback keeps Record off and ignores that replay request, playing the file live.
 Regenerate older music files to use this setting; their physical Record/Replay
@@ -102,10 +102,16 @@ The converter keeps the current octave bank while it contains the next pitch.
 Bank changes add control-key time; they can appear as extra rests in recording.
 Use a single bank when precise rhythm matters. The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
-Key-off gaps may also consume entries. For long songs inspect the recording.
+Key-off gaps may also consume entries. The loader enters at most 79 note keys in
+Record mode, skipping the remaining music and delays before No-Record and optional
+Replay. Rests and bank changes do not count toward this input limit, but may leave
+fewer notes in the cartridge's recording.
 Playback bypasses recorder capacity; files still have a 1365-event limit,
 including control keys, octave changes and waits. The converter warns above
-79 explicit note/rest events that Record will truncate the song.
+79 notes that Record will truncate the song.
+
+MT1 provides no cassette save/load or Expander 1 commands; its recording is held
+in the machine's RAM. Keep the source or VBK file to enter a song again.
 
 ## Music hardware results
 

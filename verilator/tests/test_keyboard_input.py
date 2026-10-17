@@ -124,12 +124,13 @@ class KeyboardTests(unittest.TestCase):
         warning = io.StringIO()
         with redirect_stderr(warning):
             music('C ' * 79, 'letters')
+            music('C R ' * 79, 'letters')
         self.assertEqual(warning.getvalue(), '')
         with redirect_stderr(warning):
             a = events(music('C ' * 80, 'letters'))
         self.assertEqual(len(a), 5 + 80 + 3)
-        self.assertIn('80 note/rest events; Record will truncate', warning.getvalue())
-        self.assertIn('79-event limit', warning.getvalue())
+        self.assertIn('80 notes; Record will truncate', warning.getvalue())
+        self.assertIn('79-note limit', warning.getvalue())
         self.assertIn('Use Playback', warning.getvalue())
         with redirect_stderr(io.StringIO()):
             self.assertEqual(len(events(music('C ' * 1357, 'letters'))), 1365)

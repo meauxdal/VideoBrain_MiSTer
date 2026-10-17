@@ -54,6 +54,7 @@ localparam CONF_STR = {
 	"D4P3O[8],Stick Timing,Linear,Curve;",
 	"D5P3O[15:14],Linear Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
+	"D4P3T[20],Calibrate Sticks;",
 	"P1,Video;",
 	"P1-;",
 	"P1O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
@@ -62,14 +63,14 @@ localparam CONF_STR = {
 	"P2,System;",
 	"P2-;",
 	"P2F2,BIN,Load Expander 1 ROM;",
-	"P2O[11:9],Cart Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
+	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
 	"P2-;",
-//  Failed attempt to make MAME APL/S RAM dumps compatible
+//  Failed attempt to make extant APL/S RAM dumps compatible
 //  They load but don't execute properly
 //	"H0P2F3,BIN,Load APL/S RAM Dump;",
 //	"H1P2-APL/S dump rejected;",
-	"P2F4,VBK,Enter Keyboard File;",
-	"P2O[18],Music Teacher Input,Record,Playback;",
+	"P2F4,VBK,Load Keyboard Input File;",
+	"P2O[18],Music Input,Playback,Record;",
 	"P2O[19],Auto-Repeat,Off,On;",
 	"P2O[13:12],Type-in Speed,Normal,Fast,Slow;",
 	"H2P2-Keyboard entry active;",
@@ -251,6 +252,10 @@ wire [6:0] joy_timer_step;
 wire joy_timer_auto;
 
 videobrain_joystick joysticks (
+	.clk(clk_sys),
+	.reset(reset),
+	.frame_tick(vid_vs && !source_vs_d),
+	.calibrate(status[20]),
 	.enabled(status[5]),
 	.paired(status[17:16]),
 	.preset(status[15:14]),
@@ -286,7 +291,7 @@ apl_source_loader source_loader (
 	.available(apl_available),
 	.symbols(apl_symbols),
 	.speed(status[13:12]),
-	.music_playback(status[18]),
+	.music_playback(~status[18]),
 	.auto_repeat(status[19]),
 	.enabled(!OSD_STATUS),
 	.cancel(|kbd_matrix),

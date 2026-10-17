@@ -1,5 +1,9 @@
 module tb_joystick;
 
+reg clk = 0;
+reg reset = 0;
+reg frame_tick = 0;
+reg calibrate = 0;
 reg enabled = 0;
 reg [1:0] paired = 0;
 reg [1:0] preset = 0;
@@ -14,6 +18,29 @@ wire timer_auto;
 int partners[1:2][0:3] = '{'{1, 0, 3, 2}, '{2, 3, 0, 1}};
 
 videobrain_joystick dut (.*);
+
+task tick;
+	#1 clk = 1;
+	#1 clk = 0;
+	#1;
+endtask
+
+task frame;
+	frame_tick = 1;
+	tick();
+	frame_tick = 0;
+	tick();
+endtask
+
+function automatic [63:0] calibration_position(input int phase);
+	case (phase)
+		1: calibration_position = {4{16'h8000}};
+		2: calibration_position = {4{16'h80ff}};
+		3: calibration_position = {4{16'h0080}};
+		4: calibration_position = {4{16'hff80}};
+		default: calibration_position = {4{16'h8080}};
+	endcase
+endfunction
 
 initial begin
 	buttons = '1;
@@ -107,7 +134,58 @@ initial begin
 		assert (timer_base == (p == 1 ? 2644 : 2580)) else $fatal(1, "Preset base");
 		assert (timer_step == (p == 1 ? 24 : 7)) else $fatal(1, "Preset step");
 	end
-	$display("Joystick routing and presets passed");
+	// Calibration overrides live axes on all ports, regardless of pairing.
+	buttons = '1;
+	left_sticks = {8{8'h10}};
+	right_sticks = '1;
+	for (int mode = 0; mode < 4; mode++) begin
+		paired = 2'(mode);
+		calibrate = 1;
+		tick();
+		for (int phase = 1; phase <= 5; phase++) begin
+			for (int f = 0; f < 30; f++) begin
+				assert (pots == calibration_position(phase) && fire == 4'hf)
+					else $fatal(1, "Calibration mode %0d phase %0d frame %0d", mode, phase, f);
+				tick();
+				assert (pots == calibration_position(phase)) else $fatal(1, "Hold between frames");
+				frame();
+			end
+		end
+		assert (pots == {8{8'h90}}) else $fatal(1, "Live axes restored");
+		frame();
+		assert (pots == {8{8'h90}}) else $fatal(1, "Held trigger must not repeat");
+		calibrate = 0;
+		tick();
+	end
+
+	calibrate = 1;
+	tick();
+	assert (pots == calibration_position(1)) else $fatal(1, "Second activation");
+	calibrate = 0;
+	frame();
+	calibrate = 1;
+	tick();
+	repeat (29) frame();
+	assert (pots == calibration_position(1)) else $fatal(1, "Restart frame count");
+	frame();
+	assert (pots == calibration_position(2)) else $fatal(1, "Restart advances");
+	reset = 1;
+	tick();
+	assert (pots == {8{8'h90}}) else $fatal(1, "Reset cancels calibration");
+	reset = 0;
+	tick();
+	assert (pots == {8{8'h90}}) else $fatal(1, "Reset with held trigger");
+	calibrate = 0;
+	tick();
+	calibrate = 1;
+	tick();
+	enabled = 0;
+	tick();
+	assert (pots == {8{8'h80}} && fire == 0) else $fatal(1, "Disconnect cancels calibration");
+	enabled = 1;
+	tick();
+	assert (pots == {8{8'h90}}) else $fatal(1, "Reconnect leaves calibration idle");
+	$display("Joystick routing, presets and calibration passed");
 	$finish;
 end
 

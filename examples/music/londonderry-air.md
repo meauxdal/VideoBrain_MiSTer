@@ -17,7 +17,7 @@ at 70. Slurs and articulation dots use the common two-field key-off gap.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no
 light square). Set System > Music Teacher Input to Playback, then load
-`londonderry-air.vbk`. Record truncates at 79 events; this file needs Playback.
+`londonderry-air.vbk`. Record truncates input at 79 notes; this file needs Playback.
 98 note/rest events; 106 timed events including controls; about 53 seconds.
 Hardware playback remains to be checked.
 
