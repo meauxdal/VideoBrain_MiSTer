@@ -13,10 +13,12 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 ## Experimental 240p
 
 Video > 240p (Experimental) defaults to Off. On presents each successive field
-as a progressive picture, retaining native 263/262-line timing, all visible rows,
-and software-visible field parity. This is variable-length progressive timing,
-not fixed 263-line timing. Display compatibility, joystick gameplay and SAVE
-raster effects still need MiSTer verification.
+as a progressive picture with fixed 263-line timing and 242 visible rows, at
+about 59.695 Hz. Field parity still toggles; horizontal and joystick timer clocks
+are unchanged. Vertical rollover moves by one line on alternate fields.
+Joystick reads spanning rollover can change raw values and rejection; see the
+[measurement notes](verilator/joystick_verification.md#experimental-240p).
+HDMI stability, joystick gameplay and SAVE raster effects need MiSTer verification.
 
 ## Joystick
 

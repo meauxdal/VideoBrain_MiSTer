@@ -13,6 +13,7 @@ ENTITY uv202_timing IS
     clk        : IN  std_logic;
     reset_na   : IN  std_logic;
     brclk_ena  : IN  std_logic;
+    progressive : IN std_logic := '0';
 
     hblank     : OUT std_logic;
     vblank     : OUT std_logic;
@@ -60,10 +61,10 @@ ARCHITECTURE rtl OF uv202_timing IS
 
 BEGIN
 
-  lines_this_field <= to_unsigned(LINES_ODD_FIELD, 9) WHEN field_l = '0' ELSE
+  lines_this_field <= to_unsigned(LINES_ODD_FIELD, 9) WHEN progressive = '1' OR field_l = '0' ELSE
                        to_unsigned(LINES_EVEN_FIELD, 9);
 
-  PROCESS(vpos_l, field_l, lines_this_field)
+  PROCESS(vpos_l, field_l, progressive)
     VARIABLE post_eq_start : unsigned(8 DOWNTO 0);
   BEGIN
     IF vpos_l < to_unsigned(VSYNC_LINES, 9) THEN
@@ -71,7 +72,7 @@ BEGIN
     ELSIF vpos_l < to_unsigned(VSYNC_LINES + EQ_LINES_PRE, 9) THEN
       line_kind <= LK_EQ;
     ELSE
-      IF field_l = '0' THEN
+      IF progressive = '1' OR field_l = '0' THEN
         post_eq_start := to_unsigned(VSYNC_LINES + EQ_LINES_PRE + NORMAL_LINES_ODD, 9);
       ELSE
         post_eq_start := to_unsigned(VSYNC_LINES + EQ_LINES_PRE + NORMAL_LINES_EVEN, 9);

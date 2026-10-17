@@ -90,6 +90,7 @@ module top(
    videobrain_core core(
       .clk        (clk_sys),
       .reset_na   (~reset),
+      .progressive(1'b0),
 
       .kbd_matrix (source_busy ? source_keys : kbd_matrix),
       .joy_fire   (joy_fire),

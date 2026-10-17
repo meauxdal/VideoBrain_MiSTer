@@ -7,6 +7,7 @@ USE work.uv201_pack.ALL;
 ENTITY video_test_source IS
   PORT (
     clk, reset_na : IN std_logic;
+    progressive : IN std_logic := '0';
     ce_pix, field, de, hs, vs, hb, vb : OUT std_logic;
     hpos : OUT unsigned(7 DOWNTO 0);
     vpos : OUT unsigned(8 DOWNTO 0);
@@ -27,6 +28,7 @@ BEGIN
 
   timing : ENTITY work.uv202_timing
     PORT MAP (clk => clk, reset_na => reset_na, brclk_ena => brclk_ena,
+              progressive => progressive,
               hblank => hblank, vblank => vblank, field => field_l,
               hpos => x, vpos => y, burst => OPEN, csync => OPEN,
               scanline => OPEN, line_start => OPEN,

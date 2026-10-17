@@ -282,7 +282,7 @@ wire audio_stb;
 reg source_vs_d = 0;
 always @(posedge clk_sys) source_vs_d <= vid_vs;
 
-// Switch before VSYNC; retain native field timing and software-visible parity.
+// Switch before VSYNC; keep software-visible field parity toggling.
 reg progressive = 0;
 reg field_d = 0;
 always @(posedge clk_sys) begin
@@ -316,6 +316,7 @@ videobrain_core core
 (
 	.clk        (clk_sys),
 	.reset_na   (~reset),
+	.progressive(progressive),
 
 	.kbd_matrix (source_busy ? source_keys : kbd_matrix),
 	.joy_fire   (joy_fire),

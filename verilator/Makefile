@@ -190,6 +190,19 @@ test-video:
 
 .PHONY: test-video
 
+out/joystick_timing/core.v: $(VHD_SRC)
+	@mkdir -p out/joystick_timing
+	$(GHDL) -a --std=08 --workdir=out/joystick_timing -Wno-hide $(VHD_SRC)
+	$(GHDL) synth --std=08 --workdir=out/joystick_timing --out=verilog $(VHD_TOP) > $@.tmp
+	@mv $@.tmp $@
+
+test-joystick-timing: out/joystick_timing/core.v
+	iverilog -g2012 -s tb_joystick_timing -o out/joystick_timing/test \
+		tests/tb_joystick_timing.sv out/joystick_timing/core.v
+	vvp out/joystick_timing/test
+
+.PHONY: test-joystick-timing
+
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 

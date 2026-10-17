@@ -17,6 +17,7 @@ ENTITY videobrain_core IS
   PORT (
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
+    progressive : IN std_logic := '0';
 
     kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
@@ -271,6 +272,7 @@ BEGIN
       clk            => clk,
       reset_na       => reset_na,
       cpu_req        => ext_req,
+      progressive    => progressive,
       cpu_class      => ext_class,
       cpu_grant      => ext_grant,
       cpu_wack       => OPEN,

@@ -15,6 +15,7 @@ ENTITY uv202_top IS
   PORT (
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
+    progressive : IN std_logic := '0';
 
     cpu_req    : IN  std_logic;
     cpu_class  : IN  bus_access_t;
@@ -78,6 +79,7 @@ BEGIN
       clk            => clk,
       reset_na       => reset_na,
       brclk_ena      => brclk_ena_l,
+      progressive    => progressive,
       hblank         => hblank,
       vblank         => vblank,
       burst          => burst,
