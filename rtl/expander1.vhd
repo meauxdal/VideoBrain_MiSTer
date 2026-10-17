@@ -18,6 +18,8 @@ ENTITY expander1 IS
     interrupt_n  : OUT std_logic;
     record_data  : OUT std_logic;
     record_enable : OUT std_logic;
+    playback_data : IN std_logic := '1';
+    playback_enable : OUT std_logic;
     dl_addr  : IN unsigned(15 DOWNTO 0);
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
@@ -95,11 +97,13 @@ BEGIN
   clock_n <= po_b_n(7) WHEN port1_ready = '1' ELSE '1';
   interrupt_n <= po_b_n(1) WHEN port1_ready = '1' ELSE '1';
   -- U04.4 drives P0.2 from inverted P0.3; U04.2/12 feed R13/R14.
-  pi_a_n <= po_a_n(7 DOWNTO 3) &
+  pi_a_n <= (po_a_n(7) AND playback_data) & po_a_n(6 DOWNTO 3) &
             (po_a_n(2) AND NOT po_a_n(3)) & po_a_n(1 DOWNTO 0);
   record_data <= NOT pi_a_n(2) WHEN port1_ready = '1' ELSE '0';
   -- P0.1 low releases U07.6, lighting the U08 remote-control optocoupler.
   record_enable <= NOT po_a_n(1) WHEN port1_ready = '1' ELSE '0';
+  -- P0.0 drives the U07/U02 playback remote-control optocoupler.
+  playback_enable <= NOT po_a_n(0) WHEN port1_ready = '1' ELSE '0';
   io_rdata <= port4 WHEN io_addr = 4 ELSE port5 WHEN io_addr = 5 ELSE timer_rdata;
 
   ce_phi <= ce WHEN phase MOD 2 = 1 ELSE '0';
