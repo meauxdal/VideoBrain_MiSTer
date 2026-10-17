@@ -22,9 +22,10 @@ task mount_image;
 endtask
 task arm_recording;
     @(negedge clk);
+    arm = 0;
+    @(negedge clk);
     arm = 1;
     @(negedge clk);
-    arm = 0;
 endtask
 task run_record(input integer edges);
     @(negedge clk);
@@ -48,9 +49,17 @@ initial begin
     if (!error || card.writes != 0) $fatal(1,"Unarmed recording wrote media");
     arm_recording();
     if (!armed || error) $fatal(1,"Arm failed");
+    repeat(3) @(negedge clk);
+    if (!armed) $fatal(1,"Arm did not stay on");
+    arm = 0;
+    @(negedge clk);
+    if (armed) $fatal(1,"Disarm failed");
+    arm_recording();
     record_data = 1;
     run_record(1700);
     if (error || armed || card.word_at(8) != 1701) $fatal(1,"SAVE failed");
+    repeat(3) @(negedge clk);
+    if (armed) $fatal(1,"Consumed arm re-enabled recording");
     for (integer i = 0; i < 1701; i = i + 1)
         if (card.word_at(512+i*4) != {~i[0],31'd40})
             $fatal(1,"Saved interval %0d: %x",i,card.word_at(512+i*4));

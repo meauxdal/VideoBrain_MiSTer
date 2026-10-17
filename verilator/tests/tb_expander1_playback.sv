@@ -58,7 +58,6 @@ initial begin
     @(negedge clk);
     arm = 1;
     @(negedge clk);
-    arm = 0;
     wait(armed);
     host_clock_n = 0;
     transfer(2,reply);

@@ -49,8 +49,7 @@ localparam CONF_STR = {
 	"F1,BIN,Load Cartridge;",
 	"P5,Tape;",
 	"d8P5S0,VBT,Mount Tape;",
-	"D6P5T[22],Arm Recording;",
-	"H7P5-Recording armed;",
+	"D6P5O[22],Arm Recording,Off,On;",
 	"H8P5-Tape busy;",
 	"H9P5-Tape error;",
 	"-;",
@@ -115,6 +114,12 @@ wire tape_buff_wr, tape_mounted, tape_readonly;
 wire [63:0] tape_size;
 wire tape_record_data, tape_record_enable, tape_playback_data, tape_playback_enable;
 wire tape_busy, tape_writable, tape_armed, tape_error;
+reg tape_arm_status_d = 0, tape_arm_mismatch_d = 0;
+wire tape_arm_mismatch = status[22] == tape_arm_status_d && status[22] != tape_armed;
+always @(posedge clk_sys) begin
+	tape_arm_status_d <= status[22];
+	tape_arm_mismatch_d <= tape_arm_mismatch;
+end
 wire [31:0] sd_lba[1];
 wire [5:0] sd_blk_cnt[1];
 wire [7:0] sd_buff_din[1];
@@ -133,6 +138,8 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.buttons(buttons),
 	.status(status),
+	.status_in({status[127:23], tape_armed, status[21:0]}),
+	.status_set(tape_arm_mismatch && !tape_arm_mismatch_d),
 //	.status_menumask({10'd0, !status[5] | status[8], !status[5], ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
 	.status_menumask({6'd0, ~tape_error, ~tape_busy, ~tape_armed, ~tape_writable,
 	                 !status[5] | status[8], !status[5], ~source_error, ~source_busy, 2'b11}),

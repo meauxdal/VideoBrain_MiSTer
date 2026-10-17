@@ -1,8 +1,9 @@
 # Tape images
 
 Load Expander 1 firmware. Copy `examples/tape/blank.vbt` to the SD card with a
-new name, then choose **Tape > Mount Tape**. Select **Arm Recording** before
-issuing the cartridge's SAVE command. Arming permits one recording, replacing
+new name, then choose **Tape > Mount Tape**. Set **Arm Recording** to **On** before
+issuing the cartridge's SAVE command. It returns to **Off** when recording starts;
+select **Off** before SAVE to cancel arming. Arming permits one recording, replacing
 the mounted tape's contents. Wait for **Tape busy** and the user LED to clear
 before unmounting or switching cores. **Tape error** means persistence failed,
 even if the cartridge reports TAPE OK.

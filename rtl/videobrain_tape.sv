@@ -156,9 +156,9 @@ always @(posedge clk) begin
             request(READ_DATA, 1 + (transferred >> 7), transferred[9:0]);
     end
 
-    if (arm && !arm_d && writable) begin
-        armed <= !armed;
-        error <= 0;
+    if (arm != arm_d) begin
+        armed <= arm && writable;
+        if (arm && writable) error <= 0;
     end
 
     if (record_enable && !record_d) begin
