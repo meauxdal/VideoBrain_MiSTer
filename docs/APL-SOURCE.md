@@ -1,7 +1,7 @@
 # APL/S source entry
 
 Boot the Computational Language cartridge and wait for its input prompt.
-Load a `.vbk` file with **Keyboard Entry > Load Keyboard Input File**, then close the OSD. The core
+Load a `.vbk` file with **Keyboard Entry > Load Keyboard File**, then close the OSD. The core
 types the listing through the keyboard matrix without restoring machine RAM.
 Pressing a keyboard key or reopening the OSD cancels entry and releases the
 generated key. Cancellation leaves any partially entered program in place.
@@ -68,7 +68,7 @@ ASCII `*` means exponentiation; it is not converted to multiplication.
 Unsupported characters are rejected with their source line and column.
 The limit is 4096 key tokens, including spaces and NEXT.
 
-The interpreter must be ready for input. **APL/S Type-in** selects Normal
+The interpreter must be ready for input. **Keyboard Entry > APL/S Entry Speed** selects Normal
 (8 fields per press and release), Fast (6/6), or Slow (10/10). Continuous-entry
 hardware testing confirmed 6/6 through automatic line clearances; 4/4 can lose
 characters. Select before loading; the setting is latched per file. Normal is
@@ -93,8 +93,8 @@ extra character is a failure, even if later rows look correct. Repeat at each
 speed; a clean final screen alone cannot establish zero misses across 100 rows.
 
 `examples/apl/timing-continuous-100.vbk` types the same quoted phrase 100 times
-continuously, with no NEXT (PC F3) or line waits. It uses the selected APL/S
-Type-in speed. Regenerate it with:
+continuously, with no NEXT (PC F3) or line waits. It uses the selected
+APL/S Entry Speed. Regenerate it with:
 
 ```sh
 python3 verilator/apl_source.py examples/apl/timing-continuous-100.txt --hold-final

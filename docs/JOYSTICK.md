@@ -8,11 +8,13 @@ force the corresponding linear timing; Gladiator is also Auto's fallback for
 other cartridges. Curve ignores Linear Preset, which is grayed out in that mode.
 Check older saved configurations: releases before the linear presets used the
 opposite Linear/Curve option order.
-At first-game start, use Input > Calibrate Sticks to send full Up, Down,
+At first-game start, use Input > Calibrate Sticks to virtually supply exact full Up, Down,
 Left, Right, then center to all four emulated joysticks, including paired
-sticks. Each position lasts 30 video frames. Use it while the game is reading
-joysticks; repeat after a reset or new game when required by the software.
-Joystick must be Connected. Automatic trim does not replace software calibration.
+sticks. Each position lasts 30 video frames. Use it while the software is actively
+reading those channels; repeat after a reset or new game when required by the software.
+Joystick must be Connected. Reset or disconnect cancels the sequence; live axes
+resume afterward when connected. Fire buttons remain live during calibration.
+Automatic trim does not replace software calibration.
 
 Analog inputs have a -8..8 center deadband. Digital directions override
 analog: up/left select pot 0, down/right select 255. The channel order is
@@ -76,7 +78,7 @@ coverage remains pending.
 
 Auto's detected preset persists through machine reset and is cleared when a
 new cartridge starts loading. Manual preset selection stays in the OSD.
-Mapper fallback settings do not select joystick presets.
+System > Mapper Fallback does not select joystick presets.
 Physical pot resistance and UV201 counter phase remain unmeasured.
 
 ## Curve
@@ -119,7 +121,12 @@ Gladiator shot with both Linear and Curve. In game mode 1, pure left/right
 should hold the bow vertically in hand and fire horizontally. This specific
 check remains unverified; no aiming-specific fix has been established.
 
-Run the short input-routing and preset-selection regressions from WSL in verilator/:
+The short `make test-joystick` simulation passed, covering routing, presets,
+all calibration positions and durations, reset/disconnect cancellation and live
+input restoration. Calibration has no hardware gameplay verification or Quartus
+build verification.
+
+Run the short input-routing, preset-selection and calibration regressions from WSL in verilator/:
 
 ```sh
 make test-joystick test-cartridges

@@ -15,7 +15,7 @@ need reattacks because MML has no ties. Their total durations are unchanged.
 Playback quantizes timing to fields and adds octave-bank control time.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
-square). Select Keyboard Entry > Music Input > Playback, then load
+square). Select Keyboard Entry > Music Mode > Playback, then load
 `joplin-solace.vbk`. Record truncates input at 79 notes. Hardware playback untested.
 
 Regenerate from the repository root:

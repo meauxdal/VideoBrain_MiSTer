@@ -1,12 +1,16 @@
 # Keyboard input files
 
-Choose **Keyboard Entry > Load Keyboard Input File**, select a `.vbk`, and close the OSD. Entry uses
+Choose **Keyboard Entry > Load Keyboard File**, select a `.vbk`, and close the OSD. Entry uses
 the actual keyboard matrix. Typing, opening the OSD, or resetting cancels it.
 The loader checks the complete file before pressing any key. Files cannot
 detect prompts or cartridge changes. Start at the intended input screen.
 
-APL/S VBK1 files retain their format and live SHIFT handling. The APL/S Type-in
-speed setting applies to VBK1 only; VBK2 retains its encoded event timings.
+The OSD submenus are Input, Video, Keyboard Entry, System, in that order.
+Keyboard Entry contains file loading, Music Mode, Auto-Repeat, APL/S Entry Speed,
+and the status messages "Keyboard entry active" and "Keyboard file rejected".
+
+APL/S VBK1 files retain their format and live SHIFT handling. **Keyboard Entry >
+APL/S Entry Speed** applies to VBK1 only; VBK2 retains its encoded event timings.
 See [APL/S entry and loading without running](APL-SOURCE.md).
 Other profiles produce VBK2 and require the updated core.
 
@@ -64,7 +68,7 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
 then load an example from `examples/music`. Each generated song erases the
 previous recording, selects Middle, enters the notes, and ends with No-Record.
-**Keyboard Entry > Music Input** selects **Playback** (default) or **Record**.
+**Keyboard Entry > Music Mode** selects **Playback** (default) or **Record**.
 Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
 Playback keeps Record off and ignores that replay request, playing the file live.
 Regenerate older music files to use this setting; their physical Record/Replay

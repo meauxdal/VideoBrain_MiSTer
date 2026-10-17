@@ -16,7 +16,7 @@ half-note/eighth-note tie is one held half note at 56, exactly five eighths
 at 70. Slurs and articulation dots use the common two-field key-off gap.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no
-light square). Set Keyboard Entry > Music Input to Playback, then load
+light square). Set Keyboard Entry > Music Mode to Playback, then load
 `londonderry-air.vbk`. Record truncates input at 79 notes; this file needs Playback.
 98 note/rest events; 106 timed events including controls; about 53 seconds.
 Hardware playback remains to be checked.

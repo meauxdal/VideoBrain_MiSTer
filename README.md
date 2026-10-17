@@ -12,7 +12,7 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 
 ## Joystick
 
-Set Input > Joystick=Connected in the OSD. Stick Timing=Linear and Linear Preset=Auto are the defaults; Tennis and Gladiator presets can also be selected manually. Curve remains available. Paired Sticks lets the right stick and Fire 2 control the paired joystick: 1+2 / 3+4, or Doubles for 1+3 / 2+4. In Gladiator, push fully forward, then make a full-extreme circle on each controller at first-game start. See [joystick timing and verification](docs/JOYSTICK.md).
+Set Input > Joystick=Connected in the OSD. Stick Timing=Linear and Linear Preset=Auto are the defaults; Tennis and Gladiator presets can also be selected manually. Curve remains available. Paired Sticks lets the right stick and Fire 2 control the paired joystick: 1+2 / 3+4, or Doubles for 1+3 / 2+4. At first-game start, use Input > Calibrate Sticks while the game is reading the joystick channels. See [joystick timing and verification](docs/JOYSTICK.md).
 
 ## Installing
 
@@ -44,7 +44,7 @@ Copy the resulting .bin files from software/converted to the VideoBrain games fo
 
 ## APL/S source entry
 
-Boot APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin and wait for its input prompt. Choose **Keyboard Entry > Load Keyboard Input File**, select a `.vbk` file and close the OSD. The core types the listing through the keyboard. Ready-to-load controls and their text sources are in `examples/apl`. See [conversion, cancellation and limits](docs/APL-SOURCE.md). For other programs and Music Teacher 1, see [keyboard input](docs/KEYBOARD-INPUT.md).
+Boot APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin and wait for its input prompt. Choose **Keyboard Entry > Load Keyboard File**, select a `.vbk` file and close the OSD. The core types the listing through the keyboard. Ready-to-load controls and their text sources are in `examples/apl`. See [conversion, cancellation and limits](docs/APL-SOURCE.md). For other programs and Music Teacher 1, see [keyboard input](docs/KEYBOARD-INPUT.md).
 
 ## Keyboard
 

@@ -13,7 +13,7 @@ One octave-bank change adds 16 fields. The file takes about 26 seconds,
 including controls and the closing silence, and can auto-repeat.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
-square). Set Keyboard Entry > Music Input to Playback, then load
+square). Set Keyboard Entry > Music Mode to Playback, then load
 `bach-jesu-joy-figure.vbk`. Keyboard Entry > Auto-Repeat repeats until a keypress or
 opening the OSD. Hardware playback has not been checked.
 

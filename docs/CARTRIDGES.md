@@ -7,7 +7,7 @@ First-screen results do not establish full gameplay or peripheral coverage.
     verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
 Known raw dumps are identified by CRC-32 and use the matching slot behavior.
-`--cart-type` and the OSD's Fallback setting apply only to unrecognized
+`--cart-type` and the OSD's System > Mapper Fallback setting apply only to unrecognized
 images: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman.
 APL and Information Manager
 assembled by `tools/convert_software.py` are also identified automatically.
