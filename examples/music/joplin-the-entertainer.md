@@ -11,7 +11,7 @@ Long ties use local tempo commands to preserve their held duration at field
 resolution. Octave-bank changes add control-key time.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
-square). Select System > Music Teacher Input > Playback, then load
+square). Select Keyboard Entry > Music Input > Playback, then load
 `joplin-the-entertainer.vbk`. Auto-Repeat loops until a keypress or opening
 the OSD. Record truncates input at 79 notes.
 

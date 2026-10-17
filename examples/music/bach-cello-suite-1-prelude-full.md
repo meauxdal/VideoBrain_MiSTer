@@ -5,7 +5,7 @@ All 42 measures, original cello register (C2 through G4), quarter note = 80.
 The original `bach-cello-suite-1-prelude` files remain the four-measure excerpt.
 
 Load Music Teacher 1, select Program 1 / Play-Record and lower SHIFT (no light
-square). Set System > Music Teacher Input to Playback, then load
+square). Set Keyboard Entry > Music Input to Playback, then load
 `bach-cello-suite-1-prelude-full.vbk`. Auto-Repeat restarts the file until a
 keypress or opening the OSD. Record truncates input at 79 notes.
 

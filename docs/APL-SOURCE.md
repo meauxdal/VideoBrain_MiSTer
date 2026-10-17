@@ -1,7 +1,7 @@
 # APL/S source entry
 
 Boot the Computational Language cartridge and wait for its input prompt.
-Load a `.vbk` file with **System > Enter Keyboard File**, then close the OSD. The core
+Load a `.vbk` file with **Keyboard Entry > Load Keyboard Input File**, then close the OSD. The core
 types the listing through the keyboard matrix without restoring machine RAM.
 Pressing a keyboard key or reopening the OSD cancels entry and releases the
 generated key. Cancellation leaves any partially entered program in place.

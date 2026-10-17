@@ -1,6 +1,6 @@
 # Keyboard input files
 
-Choose **System > Enter Keyboard File**, select a `.vbk`, and close the OSD. Entry uses
+Choose **Keyboard Entry > Load Keyboard Input File**, select a `.vbk`, and close the OSD. Entry uses
 the actual keyboard matrix. Typing, opening the OSD, or resetting cancels it.
 The loader checks the complete file before pressing any key. Files cannot
 detect prompts or cartridge changes. Start at the intended input screen.
@@ -64,13 +64,13 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
 then load an example from `examples/music`. Each generated song erases the
 previous recording, selects Middle, enters the notes, and ends with No-Record.
-**System > Music Teacher Input** selects **Playback** (default) or **Record**.
+**Keyboard Entry > Music Input** selects **Playback** (default) or **Record**.
 Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
 Playback keeps Record off and ignores that replay request, playing the file live.
 Regenerate older music files to use this setting; their physical Record/Replay
 keys retain their original behavior.
 After recording, press physical T to replay the stored song again.
-**System > Auto-Repeat** restarts the file from the top until a keyboard key or
+**Keyboard Entry > Auto-Repeat** restarts the file from the top until a keyboard key or
 opening the OSD cancels entry. Use Playback for continuous music; the loader
 does not wait for the cartridge's Replay routine. Use lower SHIFT and files
 generated with `--start-mode letters` so each music pass starts in the same mode.
