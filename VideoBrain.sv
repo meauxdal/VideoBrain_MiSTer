@@ -26,7 +26,7 @@ assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
 
-assign VGA_F1 = vid_field;
+assign VGA_F1 = progressive ? 1'b0 : vid_field;
 assign VGA_SCALER  = 0;
 assign VGA_DISABLE = 0;
 assign HDMI_FREEZE = 0;
@@ -57,6 +57,7 @@ localparam CONF_STR = {
 	"D4P3T[20],Calibrate Sticks;",
 	"P1,Video;",
 	"P1-;",
+	"P1O[21],240p (Experimental),Off,On;",
 	"P1O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"P1O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
 	"P1O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
@@ -281,6 +282,15 @@ wire audio_stb;
 reg source_vs_d = 0;
 always @(posedge clk_sys) source_vs_d <= vid_vs;
 
+// Switch before VSYNC; retain native field timing and software-visible parity.
+reg progressive = 0;
+reg field_d = 0;
+always @(posedge clk_sys) begin
+	field_d <= vid_field;
+	if (reset) progressive <= 0;
+	else if (vid_field != field_d) progressive <= status[21];
+end
+
 apl_source_loader source_loader (
 	.clk(clk_sys),
 	.reset(reset),
@@ -368,12 +378,12 @@ videobrain_core core
 
 assign CLK_VIDEO = clk_sys;
 
-// Measure both interlaced fields before scandoubling and HQ2x.
+// Measure each progressive picture or both native interlaced fields.
 video_freak video_freak
 (
 	.CLK_VIDEO(CLK_VIDEO),
 	.CE_PIXEL(ce_pix),
-	.VGA_VS(vid_vs & ~vid_field),
+	.VGA_VS(vid_vs & (progressive | ~vid_field)),
 	.HDMI_WIDTH(HDMI_WIDTH),
 	.HDMI_HEIGHT(HDMI_HEIGHT),
 	.VGA_DE(),

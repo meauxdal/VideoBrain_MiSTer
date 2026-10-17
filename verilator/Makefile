@@ -171,6 +171,20 @@ test-joystick:
 
 .PHONY: test-joystick
 
+test-video:
+	@mkdir -p out/video
+	$(GHDL) -a --std=08 --workdir=out/video $(RTL)/f8/base_pack.vhd \
+		$(RTL)/uv201/uv201_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
+		$(RTL)/uv202/uv202_clkgen.vhd $(RTL)/uv202/uv202_timing.vhd \
+		$(RTL)/uv201/uv201_render.vhd tests/video_test_source.vhd
+	$(GHDL) synth --std=08 --workdir=out/video --out=verilog video_test_source > out/video/source.v
+	iverilog -g2012 -i -I.. -s tb_video -o out/video/test \
+		tests/tb_video.sv out/video/source.v ../VideoBrain.sv \
+		../sys/video_freak.sv
+	vvp out/video/test
+
+.PHONY: test-video
+
 clean:
 	rm -rf obj_dir $(HL_DIR) $(GEN) $(WORK)
 

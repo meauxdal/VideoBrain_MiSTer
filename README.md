@@ -10,6 +10,14 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 - Preliminary Expander 1 support (no Expander 2 / modem / tape support currently)
 - Integer scaling and scandoubler support
 
+## Experimental 240p
+
+Video > 240p (Experimental) defaults to Off. On presents each successive field
+as a progressive picture, retaining native 263/262-line timing, all visible rows,
+and software-visible field parity. This is variable-length progressive timing,
+not fixed 263-line timing. Display compatibility, joystick gameplay and SAVE
+raster effects still need MiSTer verification.
+
 ## Joystick
 
 Set Input > Joystick=Connected in the OSD. Stick Timing=Linear and Linear Preset=Auto are the defaults; Tennis and Gladiator presets can also be selected manually. Curve remains available. Paired Sticks lets the right stick and Fire 2 control the paired joystick: 1+2 / 3+4, or Doubles for 1+3 / 2+4. At first-game start, use Input > Calibrate Sticks while the game is reading the joystick channels. See [joystick timing and verification](docs/JOYSTICK.md).
