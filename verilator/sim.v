@@ -105,6 +105,8 @@ module top(
       .joy_enable (joy_enable),
       .expander_record_data (record_data),
       .expander_record_enable (record_enable),
+      .expander_playback_data (1'b1),
+      .expander_playback_enable (),
       .f8_po_a_n  (po_a_n),
       .f8_po_b_n  (po_b_n),
 

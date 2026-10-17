@@ -5,48 +5,21 @@ always #34.920639 clk = ~clk;
 reg reset_na = 0;
 reg host_data_n = 1, host_clock_n = 1;
 wire data_n, clock_n, interrupt_n, record_data, record_enable, playback_enable;
-reg playback_data = 1;
+wire playback_data;
 reg [15:0] dl_addr = 0;
 reg [7:0] dl_data = 0;
 reg dl_wr = 0;
 expander1 dut(.*,.dl_index(8'd3));
 reg [7:0] firmware[2048];
-integer durations[2048];
-integer count = 0, elapsed = 0;
-reg recording = 0, level = 1;
-always @(posedge clk) begin
-    if (record_enable) begin
-        if (!recording) begin
-            elapsed = 1;
-            level = record_data;
-            recording = 1;
-        end else if (level != record_data) begin
-            durations[count] = elapsed;
-            count = count + 1;
-            elapsed = 1;
-            level = record_data;
-        end else elapsed = elapsed + 1;
-    end else recording = 0;
-end
-initial begin
-    @(posedge playback_enable);
-    playback_data = !$test$plusargs("invert");
-    $display("Playback start, %0d edges", count);
-    for (integer i = 0; i < count; i = i + 1) begin
-        repeat(durations[i]) @(posedge clk);
-        playback_data <= !playback_data;
-    end
-    $display("Playback done, addr %x",dut.addr);
-end
-integer probes = 0;
-reg [13:0] last_addr;
-always @(posedge clk) begin
-    last_addr <= dut.addr;
-    if (playback_enable && dut.addr != last_addr && dut.addr == 'h385 && probes < 24) begin
-        $display("RX sample %t pi %x", $time, dut.pi_a_n);
-        probes <= probes + 1;
-    end
-end
+reg img_mounted = 0, arm = 0;
+wire busy, writable, armed, error;
+wire [31:0] sd_lba;
+wire sd_rd, sd_wr, sd_ack, sd_buff_wr;
+wire [13:0] sd_buff_addr;
+wire [7:0] sd_buff_dout, sd_buff_din;
+videobrain_tape tape(.*,.reset(!reset_na),.img_readonly(1'b0),.img_size(64'd16384),
+                     .sd_buff_addr(sd_buff_addr[8:0]));
+tape_sd_model card(.*);
 task transfer(input [7:0] value, output [7:0] result);
     for (integer i = 7; i >= 0; i = i - 1) begin
         @(negedge interrupt_n);
@@ -62,6 +35,10 @@ reg [7:0] reply;
 string path;
 integer file_handle, size;
 initial begin
+    @(negedge clk);
+    img_mounted = 1;
+    @(negedge clk);
+    img_mounted = 0;
     if (!$value$plusargs("firmware=%s",path)) $fatal(1,"Supply firmware");
     file_handle = $fopen(path,"rb");
     size = $fread(firmware,file_handle);
@@ -77,6 +54,12 @@ initial begin
     dl_wr = 0;
     reset_na = 1;
     #100000;
+    wait(writable);
+    @(negedge clk);
+    arm = 1;
+    @(negedge clk);
+    arm = 0;
+    wait(armed);
     host_clock_n = 0;
     transfer(2,reply);
     transfer(0,reply);
@@ -88,17 +71,34 @@ initial begin
     transfer('h7e,reply);
     transfer('hd6,reply);
     @(negedge record_enable);
+    wait(!busy);
+    if (error || card.word_at(8) != 685) $fatal(1,"Tape SAVE failed");
+    file_handle = $fopen("out/expander1/roundtrip.vbt","wb");
+    if (!file_handle) $fatal(1,"Cannot create tape image");
+    for (integer i = 0; i < 16384; i = i + 1)
+        $fwrite(file_handle,"%c",card.media[i]);
+    $fclose(file_handle);
+    for (integer i = 0; i < 16384; i = i + 1) card.media[i] = 0;
+    file_handle = $fopen("out/expander1/roundtrip.vbt","rb");
+    size = $fread(card.media,file_handle);
+    $fclose(file_handle);
+    if (size != 16384) $fatal(1,"Cannot reload tape image");
     reset_na = 0;
     host_data_n = 1;
     host_clock_n = 1;
     #1000;
     reset_na = 1;
+    @(negedge clk);
+    img_mounted = 1;
+    @(negedge clk);
+    img_mounted = 0;
+    wait(!busy);
     #100000;
     host_clock_n = 0;
     transfer(1,reply);
-    transfer(0,reply);
     transfer(1,reply);
-    transfer(0,reply);
+    transfer(1,reply);
+    transfer(1,reply);
     transfer(0,reply);
     if (reply != 0) $fatal(1,"Length high %x",reply);
     transfer(0,reply);
@@ -112,7 +112,8 @@ initial begin
     @(negedge playback_enable);
     @(negedge interrupt_n);
     if (data_n || !clock_n) $fatal(1,"Playback status");
-    $display("Original ROM SAVE/LOAD passed");
+    if (error) $fatal(1,"Tape LOAD failed");
+    $display("Original ROM SAVE/LOAD through remounted SD image passed");
     $finish;
 end
 initial begin

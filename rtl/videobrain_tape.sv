@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module videobrain_tape #(
     parameter CLOCK_HZ = 14318180
 )(
@@ -19,9 +20,9 @@ module videobrain_tape #(
     output reg sd_rd = 0,
     output reg sd_wr = 0,
     input wire sd_ack,
-    input wire [13:0] sd_buff_addr,
+    input wire [8:0] sd_buff_addr,
     input wire [7:0] sd_buff_dout,
-    output reg [7:0] sd_buff_din,
+    output wire [7:0] sd_buff_din,
     input wire sd_buff_wr
 );
 
@@ -43,6 +44,10 @@ reg record_d = 0, playback_d = 0, arm_d = 0;
 // Four KiB absorbs SD service latency without changing the tape clock.
 reg [31:0] samples[1024];
 reg [31:0] play_sample;
+reg [31:0] sd_sample;
+reg [1:0] sd_byte;
+reg [7:0] header_byte;
+wire [9:0] core_index = capture ? produced[9:0] : consumed[9:0];
 wire [9:0] buffer_index = io_base + {3'd0, sd_buff_addr[8:2]};
 wire capture = mode == RECORD && !reset && !img_mounted && !error &&
                (!record_enable || record_data != level || &elapsed);
@@ -50,10 +55,11 @@ wire capture_room = produced < capacity && produced - transferred < 1024;
 wire [31:0] write_length = operation == COMMIT ? produced : 32'hffffffff;
 assign busy = mode != IDLE || io_state != 0 || mount_pending;
 assign writable = mounted && recognized && !readonly && !busy;
+assign sd_buff_din = operation == WRITE_DATA ? sd_sample[sd_byte*8 +: 8] : header_byte;
 
 always @(posedge clk) begin
-    play_sample <= samples[consumed[9:0]];
-    if (capture && capture_room) samples[produced[9:0]] <= {level, elapsed};
+    play_sample <= samples[core_index];
+    if (capture && capture_room) samples[core_index] <= {level, elapsed};
     if (sd_buff_wr && operation == READ_DATA && io_state != 0) begin
         case (sd_buff_addr[1:0])
             0: samples[buffer_index][7:0] <= sd_buff_dout;
@@ -62,17 +68,14 @@ always @(posedge clk) begin
             3: samples[buffer_index][31:24] <= sd_buff_dout;
         endcase
     end
-    sd_buff_din <= 0;
-    if (operation == WRITE_DATA)
-        sd_buff_din <= samples[buffer_index] >> (sd_buff_addr[1:0] * 8);
-    else begin
-        case (sd_buff_addr[8:2])
-            0: sd_buff_din <= MAGIC >> (sd_buff_addr[1:0] * 8);
-            1: sd_buff_din <= CLOCK_HZ >> (sd_buff_addr[1:0] * 8);
-            2: sd_buff_din <= write_length >> (sd_buff_addr[1:0] * 8);
-            default: sd_buff_din <= 0;
-        endcase
-    end
+    sd_sample <= samples[buffer_index];
+    sd_byte <= sd_buff_addr[1:0];
+    case (sd_buff_addr[8:2])
+        0: header_byte <= MAGIC[sd_buff_addr[1:0]*8 +: 8];
+        1: header_byte <= 8'(CLOCK_HZ >> (sd_buff_addr[1:0] * 8));
+        2: header_byte <= write_length[sd_buff_addr[1:0]*8 +: 8];
+        default: header_byte <= 0;
+    endcase
 end
 
 task request(input [2:0] op, input [31:0] lba, input [9:0] base);
@@ -193,7 +196,7 @@ always @(posedge clk) begin
             mode <= IDLE;
             playback_data <= 1;
         end else if (!playing) begin
-            if (transferred >= 256 || transferred >= length) playing <= 1;
+            if (transferred >= 1024 || transferred >= length) playing <= 1;
         end else if (remaining != 0) remaining <= remaining - 1'b1;
         else if (consumed < length) begin
             if (consumed < transferred && play_sample[30:0] >= 2) begin
@@ -219,7 +222,7 @@ always @(posedge clk) begin
         readonly <= img_readonly;
         recognized <= 0;
         valid <= 0;
-        capacity <= ((img_size[31:9] - 1'b1) << 7);
+        capacity <= (({9'd0, img_size[31:9]} - 1'b1) << 7);
         mount_pending <= img_size >= 1024 && img_size[63:32] == 0;
         error <= img_size != 0 && (img_size < 1024 || img_size[63:32] != 0);
     end

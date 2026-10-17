@@ -155,6 +155,22 @@ test-expander1-record: test-expander1
 
 .PHONY: test-expander1-record
 
+test-tape:
+	@mkdir -p out/expander1
+	$(V) --binary --timing -Wno-fatal --top-module tb_tape \
+		--Mdir out/expander1/obj_tape $(RTL)/videobrain_tape.sv \
+		tests/tape_sd_model.sv tests/tb_tape.sv
+	./out/expander1/obj_tape/Vtb_tape
+
+test-expander1-playback: test-expander1 test-tape
+	$(GHDL) synth --std=08 --workdir=out/expander1 --out=verilog expander1 > out/expander1/expander1.v
+	$(V) --binary --timing -Wno-fatal --top-module tb_expander1_playback \
+		--Mdir out/expander1/obj_playback out/expander1/expander1.v \
+		$(RTL)/videobrain_tape.sv tests/tape_sd_model.sv tests/tb_expander1_playback.sv
+	./out/expander1/obj_playback/Vtb_expander1_playback "+firmware=$(EXPANDER1_ROM)"
+
+.PHONY: test-tape test-expander1-playback
+
 capture-apl-save: headless
 	@mkdir -p out/expander1/apl-save
 	PYTHONDONTWRITEBYTECODE=1 python3 apl_source.py tests/apl_save.txt out/expander1/apl-save/save.vbk

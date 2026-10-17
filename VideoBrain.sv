@@ -47,6 +47,12 @@ wire [1:0] ar = status[122:121];
 localparam CONF_STR = {
 	"VideoBrain;;",
 	"F1,BIN,Load Cartridge;",
+	"P5,Tape;",
+	"d8P5S0,VBT,Mount Tape;",
+	"D6P5T[22],Arm Recording;",
+	"H7P5-Recording armed;",
+	"H8P5-Tape busy;",
+	"H9P5-Tape error;",
 	"-;",
 	"P3,Input;",
 	"P3-;",
@@ -101,6 +107,20 @@ wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
 wire [15:0] ioctl_index;
+wire [31:0] tape_lba;
+wire tape_rd, tape_wr, tape_ack;
+wire [13:0] tape_buff_addr;
+wire [7:0] tape_buff_dout, tape_buff_din;
+wire tape_buff_wr, tape_mounted, tape_readonly;
+wire [63:0] tape_size;
+wire tape_record_data, tape_record_enable, tape_playback_data, tape_playback_enable;
+wire tape_busy, tape_writable, tape_armed, tape_error;
+wire [31:0] sd_lba[1];
+wire [5:0] sd_blk_cnt[1];
+wire [7:0] sd_buff_din[1];
+assign sd_lba[0] = tape_lba;
+assign sd_blk_cnt[0] = 0;
+assign sd_buff_din[0] = tape_buff_din;
 
 hps_io #(.CONF_STR(CONF_STR)) hps_io
 (
@@ -114,7 +134,21 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.buttons(buttons),
 	.status(status),
 //	.status_menumask({10'd0, !status[5] | status[8], !status[5], ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
-	.status_menumask({10'd0, !status[5] | status[8], !status[5], ~source_error, ~source_busy, 2'b11}),
+	.status_menumask({6'd0, ~tape_error, ~tape_busy, ~tape_armed, ~tape_writable,
+	                 !status[5] | status[8], !status[5], ~source_error, ~source_busy, 2'b11}),
+
+	.img_mounted(tape_mounted),
+	.img_readonly(tape_readonly),
+	.img_size(tape_size),
+	.sd_lba(sd_lba),
+	.sd_blk_cnt(sd_blk_cnt),
+	.sd_rd(tape_rd),
+	.sd_wr(tape_wr),
+	.sd_ack(tape_ack),
+	.sd_buff_addr(tape_buff_addr),
+	.sd_buff_dout(tape_buff_dout),
+	.sd_buff_din(sd_buff_din),
+	.sd_buff_wr(tape_buff_wr),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -312,6 +346,32 @@ apl_source_loader source_loader (
 	.keys(source_keys)
 );
 
+videobrain_tape tape
+(
+	.clk(clk_sys),
+	.reset(reset),
+	.img_mounted(tape_mounted),
+	.img_readonly(tape_readonly),
+	.img_size(tape_size),
+	.arm(status[22]),
+	.record_data(tape_record_data),
+	.record_enable(tape_record_enable),
+	.playback_enable(tape_playback_enable),
+	.playback_data(tape_playback_data),
+	.busy(tape_busy),
+	.writable(tape_writable),
+	.armed(tape_armed),
+	.error(tape_error),
+	.sd_lba(tape_lba),
+	.sd_rd(tape_rd),
+	.sd_wr(tape_wr),
+	.sd_ack(tape_ack),
+	.sd_buff_addr(tape_buff_addr[8:0]),
+	.sd_buff_dout(tape_buff_dout),
+	.sd_buff_din(tape_buff_din),
+	.sd_buff_wr(tape_buff_wr)
+);
+
 videobrain_core core
 (
 	.clk        (clk_sys),
@@ -329,6 +389,10 @@ videobrain_core core
 	.audio_code (audio_code),
 	.audio_stb  (audio_stb),
 	.joy_enable (),
+	.expander_record_data (tape_record_data),
+	.expander_record_enable (tape_record_enable),
+	.expander_playback_data (tape_playback_data),
+	.expander_playback_enable (tape_playback_enable),
 	.f8_po_a_n  (),
 	.f8_po_b_n  (),
 
@@ -443,6 +507,6 @@ videobrain_audio audio
 assign AUDIO_L = audio_sample;
 assign AUDIO_R = audio_sample;
 
-assign LED_USER = ioctl_download | source_busy;
+assign LED_USER = ioctl_download | source_busy | tape_busy;
 
 endmodule

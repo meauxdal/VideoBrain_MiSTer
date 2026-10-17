@@ -7,7 +7,8 @@ An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (385
 - All cartridges reach their expected first screen
 - Joystick works (timing is approximate)
 - 15.7 kHz analog video
-- Preliminary Expander 1 support (no Expander 2 / modem / tape support currently)
+- Expander 1 tape SAVE/LOAD through [SD tape images](docs/TAPE.md) (awaiting MiSTer verification)
+- No Expander 2 / modem support
 - Integer scaling and scandoubler support
 
 ## Experimental 240p
