@@ -42,9 +42,8 @@ reg level = 1, playing = 0;
 reg record_d = 0, playback_d = 0, arm_d = 0;
 
 // Four KiB absorbs SD service latency without changing the tape clock.
-reg [31:0] samples[1024];
-reg [31:0] play_sample;
-reg [31:0] sd_sample;
+wire [31:0] play_sample;
+wire [31:0] sd_sample;
 reg [1:0] sd_byte;
 reg [7:0] header_byte;
 wire [9:0] core_index = capture ? produced[9:0] : consumed[9:0];
@@ -52,23 +51,36 @@ wire [9:0] buffer_index = io_base + {3'd0, sd_buff_addr[8:2]};
 wire capture = mode == RECORD && !reset && !img_mounted && !error &&
                (!record_enable || record_data != level || &elapsed);
 wire capture_room = produced < capacity && produced - transferred < 1024;
+wire [31:0] capture_sample = {level, elapsed};
 wire [31:0] write_length = operation == COMMIT ? produced : 32'hffffffff;
 assign busy = mode != IDLE || io_state != 0 || mount_pending;
 assign writable = mounted && recognized && !readonly && !busy;
 assign sd_buff_din = operation == WRITE_DATA ? sd_sample[sd_byte*8 +: 8] : header_byte;
 
-always @(posedge clk) begin
-    play_sample <= samples[core_index];
-    if (capture && capture_room) samples[core_index] <= {level, elapsed};
-    if (sd_buff_wr && operation == READ_DATA && io_state != 0) begin
-        case (sd_buff_addr[1:0])
-            0: samples[buffer_index][7:0] <= sd_buff_dout;
-            1: samples[buffer_index][15:8] <= sd_buff_dout;
-            2: samples[buffer_index][23:16] <= sd_buff_dout;
-            3: samples[buffer_index][31:24] <= sd_buff_dout;
-        endcase
+// Each byte bank has one core port and one SD port.
+genvar b;
+generate
+    for (b = 0; b < 4; b = b + 1) begin : buffer_bank
+        reg [7:0] samples[1024];
+        reg [7:0] core_q, sd_q;
+        assign play_sample[b*8 +: 8] = core_q;
+        assign sd_sample[b*8 +: 8] = sd_q;
+
+        always @(posedge clk) begin
+            core_q <= samples[core_index];
+            if (capture && capture_room)
+                samples[core_index] <= capture_sample[b*8 +: 8];
+        end
+        always @(posedge clk) begin
+            sd_q <= samples[buffer_index];
+            if (sd_buff_wr && operation == READ_DATA && io_state != 0 &&
+                sd_buff_addr[1:0] == b)
+                samples[buffer_index] <= sd_buff_dout;
+        end
     end
-    sd_sample <= samples[buffer_index];
+endgenerate
+
+always @(posedge clk) begin
     sd_byte <= sd_buff_addr[1:0];
     case (sd_buff_addr[8:2])
         0: header_byte <= MAGIC[sd_buff_addr[1:0]*8 +: 8];
