@@ -44,13 +44,7 @@ Copy the resulting .bin files from software/converted to the VideoBrain games fo
 
 ## APL/S source entry
 
-Boot APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin and wait for its input prompt.
-Choose **System > Enter Keyboard File**, select a `.vbk` file and close the OSD. The core
-types the listing through the keyboard. Ready-to-load controls and their text
-sources are in `examples/apl`. See [conversion, cancellation and limits](docs/APL-SOURCE.md).
-Arithmetic, bars and the five Price first-batch programs passed hardware tests.
-The RAM dump path is commented out; its code and files remain preserved.
-For other programs and Music Teacher 1, see [keyboard input](docs/KEYBOARD-INPUT.md).
+Boot APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin and wait for its input prompt. Choose **System > Enter Keyboard File**, select a `.vbk` file and close the OSD. The core types the listing through the keyboard. Ready-to-load controls and their text sources are in `examples/apl`. See [conversion, cancellation and limits](docs/APL-SOURCE.md). For other programs and Music Teacher 1, see [keyboard input](docs/KEYBOARD-INPUT.md).
 
 ## Keyboard
 
