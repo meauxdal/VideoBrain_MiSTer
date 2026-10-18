@@ -48,6 +48,8 @@ task initialize_remotes;
 endtask
 string path;
 integer file_handle, size;
+reg [7:0] payload[2] = '{8'ha5,8'h5a};
+reg [15:0] crc[2] = '{16'hd67e,16'hc88e};
 initial begin
     @(negedge clk);
     img_mounted = 1;
@@ -75,19 +77,28 @@ initial begin
     wait(armed);
     initialize_remotes();
     if (!armed) $fatal(1,"Remote initialization consumed recording arm");
-    host_clock_n = 0;
-    transfer(2,reply);
-    transfer(0,reply);
-    transfer(1,reply);
-    transfer(0,reply);
-    transfer(0,reply);
-    transfer(1,reply);
-    transfer('ha5,reply);
-    transfer('h7e,reply);
-    transfer('hd6,reply);
-    @(negedge record_enable);
-    wait(!busy);
-    if (error || card.word_at(8) != 685) $fatal(1,"Tape SAVE failed");
+    for (integer record = 0; record < 2; record = record + 1) begin
+        host_data_n = 1;
+        host_clock_n = 0;
+        transfer(2,reply);
+        transfer(0,reply);
+        transfer(1,reply);
+        transfer(0,reply);
+        transfer(0,reply);
+        transfer(1,reply);
+        transfer(payload[record],reply);
+        transfer(crc[record][7:0],reply);
+        transfer(crc[record][15:8],reply);
+        @(negedge record_enable);
+        @(negedge interrupt_n);
+        #1;
+        if (data_n || !clock_n) $fatal(1,"Recording status %0d",record);
+        @(posedge interrupt_n);
+        wait(!busy);
+        if (error || !armed) $fatal(1,"Tape SAVE %0d failed",record);
+        if (record == 0 && card.word_at(8) != 685) $fatal(1,"First recording length");
+    end
+    if (card.word_at(8) <= 685) $fatal(1,"Second recording did not append");
     file_handle = $fopen("out/expander1/roundtrip.vbt","wb");
     if (!file_handle) $fatal(1,"Cannot create tape image");
     for (integer i = 0; i < 16384; i = i + 1)
@@ -109,31 +120,37 @@ initial begin
     img_mounted = 0;
     wait(!busy);
     #100000;
-    initialize_remotes();
-    host_clock_n = 0;
-    transfer(1,reply);
-    transfer(1,reply);
-    transfer(1,reply);
-    transfer(1,reply);
-    transfer(0,reply);
-    if (reply != 0) $fatal(1,"Length high %x",reply);
-    transfer(0,reply);
-    if (reply != 1) $fatal(1,"Length low %x",reply);
-    transfer(0,reply);
-    if (reply != 'ha5) $fatal(1,"Payload %x",reply);
-    transfer(0,reply);
-    if (reply != 'h7e) $fatal(1,"CRC low %x",reply);
-    transfer(0,reply);
-    if (reply != 'hd6) $fatal(1,"CRC high %x",reply);
-    @(negedge playback_enable);
-    @(negedge interrupt_n);
-    if (data_n || !clock_n) $fatal(1,"Playback status");
-    if (error) $fatal(1,"Tape LOAD failed");
-    $display("Original ROM SAVE/LOAD through remounted SD image passed");
+    for (integer record = 0; record < 2; record = record + 1) begin
+        wait(!busy);
+        initialize_remotes();
+        host_clock_n = 0;
+        transfer(1,reply);
+        transfer(1,reply);
+        transfer(1,reply);
+        transfer(1,reply);
+        transfer(0,reply);
+        if (reply != 0) $fatal(1,"Length high %x",reply);
+        transfer(0,reply);
+        if (reply != 1) $fatal(1,"Length low %x",reply);
+        transfer(0,reply);
+        if (reply != payload[record]) $fatal(1,"Payload %0d: %x",record,reply);
+        transfer(0,reply);
+        if (reply != crc[record][7:0]) $fatal(1,"CRC low %x",reply);
+        transfer(0,reply);
+        if (reply != crc[record][15:8]) $fatal(1,"CRC high %x",reply);
+        @(negedge playback_enable);
+        @(negedge interrupt_n);
+        if (data_n || !clock_n) $fatal(1,"Playback status %0d",record);
+        @(posedge interrupt_n);
+        host_data_n = 1;
+        #100000;
+        if (error) $fatal(1,"Tape LOAD %0d failed",record);
+    end
+    $display("Original ROM two-record SAVE/LOAD through remounted SD image passed");
     $finish;
 end
 initial begin
-    #1600000000;
+    #3200000000;
     $fatal(1,"Timeout, addr %x playback %b",dut.addr,playback_enable);
 end
 endmodule

@@ -704,14 +704,16 @@ int main(int argc, char** argv) {
     }
     size_t tape_index = 0;
     uint32_t tape_remaining = 0;
+    unsigned tape_level = 1;
     bool tape_remote = false;
     FILE* ef = nullptr;
     if (!expander_trace_path.empty()) {
         ef = fopen(expander_trace_path.c_str(), "w");
         if (!ef) { fprintf(stderr, "error: cannot write Expander trace\n"); return 2; }
-        fprintf(ef, "cycle,pc,host_data_n,host_clock_n,data_n,clock_n,interrupt_n,record,playback\n");
+        fprintf(ef, "cycle,pc,host_data_n,host_clock_n,data_n,clock_n,interrupt_n,record,playback,ack,video_irq,joy_irq,pi_b,acc,flags,r0,r1,r2,r3,r4,r5,sreg_wr,sreg_wa,sreg_wd\n");
     }
     unsigned last_expander_pins = ~0u;
+    bool last_expander_ack = false, last_expander_write = false;
 
     Verilated::commandArgs(argc, argv);
     top = new Vtop();
@@ -895,18 +897,22 @@ int main(int argc, char** argv) {
                 printf("[tape] cycle=%ld %s interval=%zu/%zu\n", cycles,
                        remote ? "start" : "stop", tape_index, tape_samples.size());
             if (!remote) {
-                tape_index = 0;
-                tape_remaining = 0;
                 top->playback_data = 1;
             } else {
                 if (!tape_remaining) {
                     if (tape_index < tape_samples.size()) {
                         uint32_t sample = tape_samples[tape_index++];
-                        top->playback_data = sample >> 31;
+                        tape_level = sample >> 31;
                         tape_remaining = sample & 0x7fffffff;
-                    } else top->playback_data = 1;
+                    } else tape_level = 1;
                 }
+                top->playback_data = tape_level;
                 if (tape_remaining) tape_remaining--;
+            }
+            if (top->reset) {
+                tape_index = 0;
+                tape_remaining = 0;
+                tape_level = 1;
             }
             tape_remote = remote;
         }
@@ -915,18 +921,31 @@ int main(int argc, char** argv) {
         top->eval();
 
         if (ef) {
+            unsigned pc = top->rootp->top__DOT__pc0;
             unsigned host = (CORE(po_b_n_l) >> 5) & 3;
             unsigned pins = host | CORE(expander_data_n) << 2 |
                             CORE(expander_clock_n) << 3 | CORE(expander_interrupt_n) << 4 |
                             top->record_enable << 5 | top->playback_enable << 6;
-            if (pins != last_expander_pins) {
-                fprintf(ef, "%ld,%04X,%u,%u,%u,%u,%u,%u,%u\n", cycles,
-                        unsigned(top->rootp->top__DOT__pc0), host & 1, host >> 1,
+            bool ack = CORE(int_ack);
+            bool receive_write = CPU(sreg_wr) && CPU(sreg_wa) == 4 &&
+                                 pc >= 0x39e3 && pc < 0x3a5a;
+            if (pins != last_expander_pins || (ack && !last_expander_ack) ||
+                (receive_write && !last_expander_write)) {
+                fprintf(ef, "%ld,%04X,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%u,%u,%02X\n", cycles,
+                        pc, host & 1, host >> 1,
                         unsigned(CORE(expander_data_n)), unsigned(CORE(expander_clock_n)),
                         unsigned(CORE(expander_interrupt_n)), unsigned(top->record_enable),
-                        unsigned(top->playback_enable));
+                        unsigned(top->playback_enable), unsigned(ack), unsigned(CORE(yint_irq)),
+                        unsigned(CORE(joy_int)), unsigned(CORE(pi_b_n_l)),
+                        unsigned(CPU(acc)), unsigned(CPU(iozcs)),
+                        unsigned(CPU(scratch_regs)[0]), unsigned(CPU(scratch_regs)[1]),
+                        unsigned(CPU(scratch_regs)[2]), unsigned(CPU(scratch_regs)[3]),
+                        unsigned(CPU(scratch_regs)[4]), unsigned(CPU(scratch_regs)[5]),
+                        unsigned(CPU(sreg_wr)), unsigned(CPU(sreg_wa)), unsigned(CPU(sreg_wd)));
                 last_expander_pins = pins;
             }
+            last_expander_ack = ack;
+            last_expander_write = receive_write;
         }
 
         if (rf && (top->record_data != last_record_data ||

@@ -193,7 +193,7 @@ replay-apl-tape: headless
 		--cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
 		--expander1 "$(EXPANDER1_ROM)" --playback "$(APL_TAPE)" \
 		--expander-trace out/expander1/apl-load/host.csv \
-		--source out/expander1/apl-load/load.vbk@210 --frames 2200 \
+		--source out/expander1/apl-load/load.vbk@210 --frames 1600 \
 		--shot-last --prefix load --outdir out/expander1/apl-load
 
 .PHONY: replay-apl-tape

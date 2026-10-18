@@ -62,12 +62,25 @@ initial begin
     repeat(3) @(negedge clk);
     if (busy || error || !armed) $fatal(1,"Both remotes started a transfer");
     run_record(1700);
-    if (error || armed || card.word_at(8) != 1701) $fatal(1,"SAVE failed");
-    repeat(3) @(negedge clk);
-    if (armed) $fatal(1,"Consumed arm re-enabled recording");
+    if (error || !armed || card.word_at(8) != 1701) $fatal(1,"SAVE failed");
+    record_data = 0;
+    run_record(5);
+    if (error || !armed || card.word_at(8) != 1707) $fatal(1,"Append failed");
     for (integer i = 0; i < 1701; i = i + 1)
         if (card.word_at(512+i*4) != {~i[0],31'd40})
             $fatal(1,"Saved interval %0d: %x",i,card.word_at(512+i*4));
+    for (integer i = 0; i < 6; i = i + 1)
+        if (card.word_at(512+(1701+i)*4) != {i[0],31'd40})
+            $fatal(1,"Appended interval %0d",i);
+
+    @(negedge clk);
+    playback_enable = 1;
+    wait(dut.playing);
+    @(negedge clk);
+    if (armed || error) $fatal(1,"Playback did not disarm recording");
+    playback_enable = 0;
+    @(negedge clk);
+    wait(!busy);
 
     reset = 1;
     repeat(3) @(negedge clk);
@@ -82,10 +95,19 @@ initial begin
     record_enable = 0;
     wait(dut.playing);
     @(negedge clk);
-    for (integer i = 0; i < 1701; i = i + 1) begin
-        repeat(40) begin
+    for (integer i = 0; i < 1707; i = i + 1) begin
+        for (integer j = 0; j < 40; j = j + 1) begin
             @(negedge clk);
             if (playback_data != ~i[0]) $fatal(1,"Playback interval %0d",i);
+            if (i == 65 && j == 19) begin
+                playback_enable = 0;
+                @(negedge clk);
+                wait(!busy);
+                repeat(20) @(negedge clk);
+                playback_enable = 1;
+                wait(dut.playing);
+                @(negedge clk);
+            end
         end
     end
     playback_enable = 0;
@@ -121,7 +143,7 @@ initial begin
     mount_image();
     arm_recording();
     run_record(200);
-    if (!error || card.word_at(8) != 32'hffffffff)
+    if (!error || armed || card.word_at(8) != 32'hffffffff)
         $fatal(1,"Full image published");
     img_size = 16384;
     mount_image();
@@ -134,7 +156,7 @@ initial begin
     end
     record_enable = 0;
     wait(!busy);
-    if (!error || card.word_at(8) != 32'hffffffff)
+    if (!error || armed || card.word_at(8) != 32'hffffffff)
         $fatal(1,"Buffer overflow published");
 
     {card.media[11],card.media[10],card.media[9],card.media[8]} = 32'd2000;

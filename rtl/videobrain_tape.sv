@@ -7,6 +7,7 @@ module videobrain_tape #(
     input wire img_mounted,
     input wire img_readonly,
     input wire [63:0] img_size,
+    input wire rewind,
     input wire arm,
     input wire record_data,
     input wire record_enable,
@@ -38,8 +39,14 @@ reg [31:0] header_magic = 0, header_clock = 0, header_length = 0;
 reg [31:0] produced = 0, transferred = 0, consumed = 0;
 reg [9:0] io_base = 0;
 reg [30:0] elapsed = 1, remaining = 0;
-reg level = 1, playing = 0;
+reg level = 1, playing = 0, playback_started = 0;
 reg record_d = 0, playback_d = 0, arm_d = 0;
+reg rewind_d = 0, rewind_pending = 0;
+
+wire rewind_request = rewind && !rewind_d && mounted && valid &&
+                      !armed && !mount_pending && !reset && !img_mounted &&
+                      (mode == IDLE || mode == PLAY) &&
+                      (io_state == 0 || operation == READ_DATA);
 
 // APL/S enables both remotes at startup, then selects one for a transfer.
 wire record_remote = record_enable && !playback_enable;
@@ -59,7 +66,7 @@ wire sd_write = sd_buff_wr && operation == READ_DATA && io_state != 0;
 wire [9:0] write_index = capture_write ? produced[9:0] : buffer_index;
 wire [9:0] read_index = mode == PLAY ? consumed[9:0] : buffer_index;
 wire [31:0] write_length = operation == COMMIT ? produced : 32'hffffffff;
-assign busy = mode != IDLE || io_state != 0 || mount_pending;
+assign busy = mode != IDLE || io_state != 0 || mount_pending || rewind_pending;
 assign writable = mounted && recognized && !readonly && !busy;
 assign sd_buff_din = operation == WRITE_DATA ? buffer_sample[sd_byte*8 +: 8] : header_byte;
 
@@ -105,6 +112,7 @@ always @(posedge clk) begin
     record_d <= record_remote;
     playback_d <= playback_remote;
     arm_d <= arm;
+    rewind_d <= rewind;
 
     if (sd_buff_wr && operation == HEADER && io_state != 0) begin
         case (sd_buff_addr[8:2])
@@ -142,7 +150,7 @@ always @(posedge clk) begin
         endcase
     end
 
-    if (io_state == 0) begin
+    if (io_state == 0 && !rewind_pending && !rewind_request) begin
         if (mount_pending) begin
             mount_pending <= 0;
             header_magic <= 0;
@@ -162,21 +170,28 @@ always @(posedge clk) begin
 
     if (arm != arm_d) begin
         armed <= arm && writable;
-        if (arm && writable) error <= 0;
+        if (arm && writable) begin
+            produced <= 0;
+            playback_started <= 0;
+            error <= 0;
+        end
     end
 
-    if (record_remote && !record_d) begin
-        armed <= 0;
+    if (record_remote && !record_d && !rewind_pending && !rewind_request) begin
         if (armed && writable) begin
             mode <= RECORD;
-            produced <= 0;
-            transferred <= 0;
+            // Rewrite the last partial sector when appending another record.
+            transferred <= produced & 32'hffffff80;
             elapsed <= 1;
             level <= record_data;
+            playback_started <= 0;
             valid <= 0;
             error <= 0;
             request(INVALIDATE, 0, 0);
-        end else error <= 1;
+        end else begin
+            armed <= 0;
+            error <= 1;
+        end
     end
     if (mode == RECORD) begin
         if (capture) begin
@@ -186,19 +201,23 @@ always @(posedge clk) begin
                 level <= record_data;
                 if (!record_remote) mode <= FLUSH;
             end else begin
+                armed <= 0;
                 error <= 1;
                 mode <= IDLE;
             end
         end else elapsed <= elapsed + 1'b1;
     end
 
-    if (playback_remote && !playback_d) begin
+    if (playback_remote && !playback_d && !rewind_pending && !rewind_request) begin
         armed <= 0;
         if (!busy && valid && length != 0) begin
             mode <= PLAY;
-            transferred <= 0;
-            consumed <= 0;
-            remaining <= 0;
+            if (!playback_started) begin
+                transferred <= 0;
+                consumed <= 0;
+                remaining <= 0;
+            end
+            playback_started <= 1;
             playing <= 0;
             error <= 0;
         end else error <= 1;
@@ -206,12 +225,19 @@ always @(posedge clk) begin
     if (mode == PLAY) begin
         if (!playback_remote) begin
             mode <= IDLE;
+            playing <= 0;
             playback_data <= 1;
         end else if (!playing) begin
-            if (transferred >= 1024 || transferred >= length) playing <= 1;
-        end else if (remaining != 0) remaining <= remaining - 1'b1;
+            if ((consumed == 0 && transferred >= 1024) ||
+                (consumed != 0 && transferred - consumed >= 128) ||
+                transferred >= length) playing <= 1;
+        end else if (remaining != 0) begin
+            playback_data <= level;
+            remaining <= remaining - 1'b1;
+        end
         else if (consumed < length) begin
             if (consumed < transferred && buffer_sample[30:0] >= 2) begin
+                level <= buffer_sample[31];
                 playback_data <= buffer_sample[31];
                 remaining <= buffer_sample[30:0] - 1'b1;
                 consumed <= consumed + 1'b1;
@@ -223,10 +249,34 @@ always @(posedge clk) begin
         end else playback_data <= 1;
     end
 
+    // Stop playback, then rewind after any outstanding SD read.
+    if (rewind_request) begin
+        rewind_pending <= 1;
+        mode <= IDLE;
+        playing <= 0;
+        playback_data <= 1;
+    end
+
+    if (rewind_pending && io_state == 0) begin
+        rewind_pending <= 0;
+        transferred <= 0;
+        consumed <= 0;
+        remaining <= 0;
+        playback_started <= 0;
+        playing <= 0;
+        playback_data <= 1;
+        level <= 1;
+        mode <= IDLE;
+        error <= 0;
+    end
+
     // Finish any outstanding SD handshake after a machine reset or media change.
     if (reset || img_mounted) begin
+        rewind_pending <= 0;
         mode <= IDLE;
         armed <= 0;
+        playback_started <= 0;
+        playing <= 0;
         playback_data <= 1;
     end
     if (img_mounted) begin
