@@ -250,6 +250,7 @@ clean:
 
 test-apl-source:
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_source.py
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_next_sweep.py
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_keyboard_input.py
 	@mkdir -p out/source_test
 	$(V) --binary --timing -Wno-fatal --top-module tb_apl_source_loader \
@@ -257,6 +258,17 @@ test-apl-source:
 	./out/source_test/Vtb_apl_source_loader
 
 .PHONY: test-apl-source
+
+replay-clock-source: headless
+	@mkdir -p out/clock-source
+	$(HL_EXE) \
+		--cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
+		--source "../software/2 VideoBrain Keyboard Input Files (vbk)/21-apl_s-games-james-price/21-clock.vbk@210" \
+		--source-speed normal --source-trace --frames 14000 --max-cycles 6000000000 \
+		--shot-every 500 --shot-last --prefix clock --outdir out/clock-source \
+		> out/clock-source/run.log 2>&1
+
+.PHONY: replay-clock-source
 
 test-download-reset:
 	@mkdir -p out/download_reset

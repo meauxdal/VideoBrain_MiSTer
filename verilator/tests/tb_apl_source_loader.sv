@@ -77,6 +77,33 @@ task finish_entry;
     if (busy || keys != 0) $fatal(1, "Playback failed to release");
 endtask
 
+task check_clock;
+    integer file_handle, count, expected, mode;
+    file_handle = $fopen("../software/2 VideoBrain Keyboard Input Files (vbk)/21-apl_s-games-james-price/21-clock.vbk", "rb");
+    if (!file_handle) $fatal(1, "Cannot open Clock VBK");
+    count = $fread(packet, file_handle);
+    $fclose(file_handle);
+    if (count != 445 || {packet[5], packet[4]} != 437)
+        $fatal(1, "Unexpected Clock VBK size");
+    symbols = 0; presses = 0; speed = 0;
+    send_packet(count, -1); finish_entry;
+    if (error || !complete) $fatal(1, "Clock entry stopped at payload byte %0d", dut.position);
+    expected = 0; mode = 0;
+    for (integer n = 8; n < count; n = n + 1) begin
+        if (!packet[n][7] && packet[n][6] != mode) begin
+            if (expected >= presses || observed[expected] != 11)
+                $fatal(1, "Clock lost SHIFT at payload byte %0d", n - 8);
+            expected = expected + 1;
+            mode = packet[n][6];
+        end
+        if (expected >= presses || observed[expected] != packet[n][5:0])
+            $fatal(1, "Clock key mismatch at payload byte %0d", n - 8);
+        expected = expected + 1;
+    end
+    if (presses != expected) $fatal(1, "Clock emitted extra keys");
+    $display("Clock VBK: all 437 tokens emitted through final NEXT");
+endtask
+
 task check_music_limit(input integer notes, input bit playback_mode, input bit repeat_song);
     integer offset, entered, expected;
     // Generated music preamble, rests/bank changes, and No-Record/Replay tail.
@@ -122,6 +149,34 @@ task check_music_limit(input integer notes, input bit playback_mode, input bit r
             $fatal(1, "Music closing controls lost at cutoff");
     end
     auto_repeat = 0; music_playback = 0;
+endtask
+
+task check_line_wait(input integer count, input bit next_shift, input [1:0] setting);
+    integer next_index, expected_wait, control;
+    speed = setting; symbols = 0; presses = 0; frame_tick = 0;
+    for (integer n = 0; n < count; n = n + 1)
+        packet[8 + n] = n % 2 == 0 ? 8'h61 : 8'h93;
+    packet[8 + count] = 8'h9b;
+    packet[9 + count] = next_shift ? 0 : 8'h61;
+    packet[10 + count] = 8'h9b;
+    init_packet(count + 3); send_packet(count + 11, -1);
+    for (integer i = 0; i < 10000 && busy; i = i + 1) begin
+        repeat (4) tick;
+        frame_tick = 1; tick;
+        frame_tick = 0; tick;
+    end
+    if (busy || error || !complete || presses != count + 4 + int'(next_shift))
+        $fatal(1, "Line length %0d lost keys", count);
+    next_index = count + 2;
+    if (observed[count + 1] != 27 || observed[next_index] != (next_shift ? 11 : 33))
+        $fatal(1, "Line length %0d key order mismatch", count);
+    control = setting == 2 ? 10 : 8;
+    expected_wait = 3 + (count > 16 ? ((count > 125 ? 125 : count) - 16) * 4 : 0);
+    if (press_field[next_index] - release_field[count + 1] != control + expected_wait)
+        $fatal(1, "Line length %0d post-NEXT wait mismatch", count);
+    if (field_count - release_field[presses - 1] != control + 3)
+        $fatal(1, "Line length was not cleared after NEXT");
+    speed = 0; frame_tick = 1;
 endtask
 
 task check_speed(input [1:0] setting, input integer duration);
@@ -224,6 +279,13 @@ initial begin
     check_speed(1, 6);
     check_speed(2, 10);
     check_speed(3, 8);
+
+    check_line_wait(16, 1, 0);
+    check_line_wait(17, 0, 1);
+    check_line_wait(46, 1, 0);
+    check_line_wait(46, 0, 2);
+    check_line_wait(125, 1, 1);
+    check_line_wait(140, 0, 0);
 
     // Timed physical events work without APL and never consult its mode.
     available = 0; presses = 0; speed = 2;
@@ -335,10 +397,11 @@ initial begin
         if (!complete || error) $fatal(1, "Repeat disable failed");
     end
 
+    check_clock;
     $display("APL source loader tests passed");
     $finish;
 end
 initial begin
-    #2000000; $fatal(1, "Test timed out");
+    #5000000; $fatal(1, "Test timed out");
 end
 endmodule

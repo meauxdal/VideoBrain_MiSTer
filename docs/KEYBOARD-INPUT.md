@@ -2,6 +2,7 @@
 
 Choose **Keyboard Entry > Load Keyboard File**, select a `.vbk`, and close the OSD. Entry uses
 the actual keyboard matrix. Typing, opening the OSD, or resetting cancels it.
+Loading a keyboard file does not reset the machine; confirmed on APL/S in RC7.
 The loader checks the complete file before pressing any key. Files cannot
 detect prompts or cartridge changes. Start at the intended input screen.
 

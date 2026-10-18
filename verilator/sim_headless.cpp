@@ -398,6 +398,9 @@ static void usage(const char* argv0) {
 // "  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
 "  --source FILE@F      enter a VBK keyboard file through RTL\n"
 "  --source-speed MODE  APL/S entry: normal (default), fast, slow\n"
+"  --source-trace       log generated keys and interpreter mode\n"
+"  --source-snoop FILE  passive CSV: keys, mode, RAM writes, I/O, scratch writes\n"
+"  --source-snoop-from N  start at loader payload position N (default 0)\n"
 "  --cart-type N        fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman\n"
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
@@ -474,6 +477,10 @@ int main(int argc, char** argv) {
     long source_frame = -1;
     unsigned source_speed = 0;
     bool source_started = false, source_seen = false, source_done = false;
+    bool source_trace = false;
+    std::string source_snoop_path;
+    unsigned source_snoop_from = 0;
+    uint64_t last_source_keys = 0;
 //     bool apl_rtl = false, apl_started = false, apl_paused_seen = false, apl_resumed = false;
 //     long apl_start_cycle = -1;
 //     unsigned apl_writes = 0, apl_bank = 0;
@@ -516,6 +523,9 @@ int main(int argc, char** argv) {
         else if (a == "--playback")    playback_path = need("--playback");
         else if (a == "--expander-trace") expander_trace_path = need("--expander-trace");
         else if (a == "--cart")        cart = need("--cart");
+        else if (a == "--source-trace") source_trace = true;
+        else if (a == "--source-snoop") source_snoop_path = need("--source-snoop");
+        else if (a == "--source-snoop-from") source_snoop_from = strtoul(need("--source-snoop-from"), nullptr, 0);
         else if (a == "--source-speed") {
             std::string mode = need("--source-speed");
             if (mode == "normal") source_speed = 0;
@@ -717,6 +727,16 @@ int main(int argc, char** argv) {
     }
     unsigned last_expander_pins = ~0u;
     bool last_expander_ack = false, last_expander_write = false;
+    FILE* sf = nullptr;
+    if (!source_snoop_path.empty()) {
+        sf = fopen(source_snoop_path.c_str(), "w");
+        if (!sf) { fprintf(stderr, "error: cannot write source snoop\n"); return 2; }
+        fprintf(sf, "cycle,frame,event,pos,keys,symbols,pc,pc1,dc0,acc,flags,isar,columns,col8,addr,data,registers\n");
+    }
+    bool snooping = false;
+    uint64_t snoop_keys = 0;
+    unsigned snoop_symbols = 0;
+    unsigned snoop_ram = ~0u, snoop_reg = ~0u, snoop_read = ~0u, snoop_write = ~0u;
 
     Verilated::commandArgs(argc, argv);
     top = new Vtop();
@@ -920,6 +940,47 @@ int main(int argc, char** argv) {
             tape_remote = remote;
         }
 
+        // Sample write enables before the edge that commits them.
+        if (sf && source_started) {
+            unsigned pos = top->rootp->top__DOT__source_loader__DOT__position;
+            uint64_t keys = top->rootp->top__DOT__source_keys;
+            unsigned symbols = top->rootp->top__DOT__apl_symbols;
+            auto event = [&](const char* kind, unsigned addr, unsigned data) {
+                fprintf(sf, "%ld,%ld,%s,%u,%llu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
+                        cycles, fg.frame, kind, pos, (unsigned long long)keys, symbols,
+                        unsigned(top->rootp->top__DOT__pc0), unsigned(top->rootp->top__DOT__pc1),
+                        unsigned(top->rootp->top__DOT__dc0), unsigned(CPU(acc)),
+                        unsigned(CPU(iozcs)), unsigned(CPU(visar)), unsigned(CORE(key_latch_l)),
+                        unsigned(top->rootp->top__DOT__core__DOT__u_io__DOT__uv_kbd), addr, data);
+                fprintf(sf, ",");
+                if (!strcmp(kind, "begin") || !strcmp(kind, "key") || !strcmp(kind, "mode"))
+                    for (int i = 0; i < 64; i++) fprintf(sf, "%02X", unsigned(CPU(scratch_regs)[i]));
+                fprintf(sf, "\n");
+            };
+            if (!snooping && pos >= source_snoop_from && top->source_busy) {
+                snooping = true;
+                snoop_keys = keys;
+                snoop_symbols = symbols;
+                event("begin", 0, 0);
+            }
+            if (snooping) {
+                if (keys != snoop_keys) event("key", 0, 0);
+                if (symbols != snoop_symbols) event("mode", 0x0fe2, symbols);
+                snoop_keys = keys;
+                snoop_symbols = symbols;
+                auto strobe = [&](bool enabled, unsigned addr, unsigned data,
+                                  unsigned& previous, const char* kind) {
+                    unsigned signature = enabled ? (addr << 8) | data : ~0u;
+                    if (enabled && signature != previous) event(kind, addr, data);
+                    previous = signature;
+                };
+                strobe(BUS(sys_ram_we) || BUS(cart_ram_we), BUS(a_eff), BUS(bus_wdata), snoop_ram, "ram");
+                strobe(CPU(sreg_wr), CPU(sreg_wa), CPU(sreg_wd), snoop_reg, "scratch");
+                strobe(CORE(io_rd), CORE(io_addr), CORE(io_rdata), snoop_read, "io-read");
+                strobe(CORE(io_wr), CORE(io_addr), CORE(io_wdata), snoop_write, "io-write");
+            }
+        }
+
         top->clk_sys = 1;
         top->eval();
 
@@ -960,7 +1021,24 @@ int main(int argc, char** argv) {
         }
 
         if (source_started) {
+            if (source_trace) {
+                uint64_t keys = top->rootp->top__DOT__source_keys;
+                if (keys && keys != last_source_keys) {
+                    printf("[source-key] frame=%ld pos=%u token=%02X keys=%09llX symbols=%u pc=%04X\n",
+                           fg.frame, unsigned(top->rootp->top__DOT__source_loader__DOT__position),
+                           unsigned(top->rootp->top__DOT__source_loader__DOT__token),
+                           (unsigned long long)keys, unsigned(top->rootp->top__DOT__apl_symbols),
+                           unsigned(top->rootp->top__DOT__pc0));
+                }
+                last_source_keys = keys;
+            }
             if (top->source_error) {
+                if (source_trace)
+                    fprintf(stderr, "[source-stop] frame=%ld pos=%u token=%02X state=%u symbols=%u pc=%04X\n",
+                            fg.frame, unsigned(top->rootp->top__DOT__source_loader__DOT__position),
+                            unsigned(top->rootp->top__DOT__source_loader__DOT__token),
+                            unsigned(top->rootp->top__DOT__source_loader__DOT__state),
+                            unsigned(top->rootp->top__DOT__apl_symbols), unsigned(top->rootp->top__DOT__pc0));
                 fprintf(stderr, "error: RTL rejected keyboard file\n"); return 1;
             }
             if (top->source_busy) source_seen = true;
@@ -1316,6 +1394,7 @@ int main(int argc, char** argv) {
     if (af) fclose(af);
     if (rf) fclose(rf);
     if (ef) fclose(ef);
+    if (sf) fclose(sf);
     delete top;
     return 0;
 }

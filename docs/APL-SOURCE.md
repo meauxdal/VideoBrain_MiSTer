@@ -2,7 +2,7 @@
 
 Boot the Computational Language cartridge and wait for its input prompt.
 Load a `.vbk` file with **Keyboard Entry > Load Keyboard File**, then close the OSD. The core
-types the listing through the keyboard matrix without restoring machine RAM.
+types the listing through the keyboard matrix without resetting or restoring machine RAM.
 Pressing a keyboard key or reopening the OSD cancels entry and releases the
 generated key. Cancellation leaves any partially entered program in place.
 Reset or reload the cartridge before retrying a partial listing.
@@ -73,7 +73,11 @@ The interpreter must be ready for input. **Keyboard Entry > APL/S Entry Speed** 
 hardware testing confirmed 6/6 through automatic line clearances; 4/4 can lose
 characters. Select before loading; the setting is latched per file. Normal is
 the default. SHIFT and NEXT use at least 8 fields per press and release (10 at
-Slow); every speed retains the 64-field startup and line waits.
+Slow); every speed retains the 64-field startup wait. After NEXT's release gap,
+lines up to 16 characters wait 64 fields; each additional character adds 4 fields,
+capped at 125 characters (500 fields). Spaces count; implicit SHIFTs do not.
+This provisional parsing margin applies before any following key and still needs
+hardware validation against the timing sweep.
 SHIFT must update the observed interpreter mode before the next character.
 Other keys and prompts have no acknowledgement. Music Teacher's reliable 2/2
 result does not establish it for APL/S.

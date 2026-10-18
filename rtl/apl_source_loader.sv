@@ -35,7 +35,10 @@ reg [15:0] length = 0, expected_crc = 0, crc = 16'hffff;
 reg [11:0] position = 0;
 reg [7:0] memory [0:4095];
 reg [7:0] token;
-reg [7:0] frames = 0;
+reg [9:0] frames = 0;
+reg [6:0] line_length = 0;
+wire [9:0] line_frames = {2'd0, LINE_FRAMES} +
+                         (line_length > 16 ? ({3'd0, line_length} - 10'd16) << 2 : 10'd0);
 reg shifting = 0, shifted = 0, started = 0;
 reg timed = 0;
 reg playback = 0;
@@ -92,6 +95,7 @@ always @(posedge clk) begin
         keys <= 0;
         started <= 0;
         complete <= 0;
+        line_length <= 0;
     end else if (download && !download_d) begin
         state <= RECEIVE;
         bad <= wr && (addr != 0 || data != "V");
@@ -108,6 +112,7 @@ always @(posedge clk) begin
         playback <= music_playback;
         recording <= 0;
         music_notes <= 0;
+        line_length <= 0;
         // Latch speed per file; timed events retain their encoded durations.
         case (speed)
             1: key_frames <= 6;
@@ -189,6 +194,7 @@ always @(posedge clk) begin
                 end else begin
                     keys <= 36'd1 << token[5:0];
                     shifting <= 0;
+                    if (token != 8'h9b && line_length < 125) line_length <= line_length + 1'b1;
                     frames <= token == 8'h9b ? control_frames : key_frames;
                     state <= HOLD_KEY;
                 end
@@ -238,12 +244,15 @@ always @(posedge clk) begin
                 if (frames > 1) frames <= frames - 1'b1;
                 else if (shifting) state <= SELECT_KEY;
                 else if (!timed && token == 8'h9b) begin
-                    frames <= LINE_FRAMES;
+                    // Allow longer statements more time to parse before any next key.
+                    frames <= line_frames;
+                    line_length <= 0;
                     state <= LINE_WAIT;
                 end else if ({4'd0, position} + 16'd1 == length) begin
                     if (auto_repeat) begin
                         position <= 0;
                         shifted <= 0;
+                        line_length <= 0;
                         state <= READ_KEY;
                     end else begin
                         complete <= 1;
