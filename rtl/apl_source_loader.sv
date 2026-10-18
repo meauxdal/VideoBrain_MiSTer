@@ -36,11 +36,10 @@ reg [15:0] length = 0, expected_crc = 0, crc = 16'hffff;
 reg [11:0] position = 0;
 reg [7:0] memory [0:4095];
 reg [7:0] token;
-reg [9:0] frames = 0;
+reg [7:0] frames = 0;
 reg [6:0] line_length = 0;
 reg end_edit = 0;
-wire [9:0] line_frames = {2'd0, LINE_FRAMES} +
-                         (line_length > 16 ? ({3'd0, line_length} - 10'd16) << 2 : 10'd0);
+wire [7:0] line_frames = line_length > 30 || (end_edit && line_length == 4) ? 8'd96 : LINE_FRAMES;
 reg shifting = 0, shifted = 0, started = 0;
 reg timed = 0;
 reg playback = 0;
@@ -257,9 +256,8 @@ always @(posedge clk) begin
                 if (frames > 1) frames <= frames - 1'b1;
                 else if (shifting) state <= SELECT_KEY;
                 else if (!timed && token == 8'h9b) begin
-                    // Allow longer statements more time to parse before any next key.
-                    // ENDE checks the whole definition, regardless of command length.
-                    frames <= end_edit && line_length == 4 ? 10'd512 : line_frames;
+                    // Long lines and ENDE need more parsing time before any next key.
+                    frames <= line_frames;
                     line_length <= 0;
                     end_edit <= 0;
                     state <= LINE_WAIT;

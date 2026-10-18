@@ -171,7 +171,7 @@ task check_line_wait(input integer count, input bit next_shift, input [1:0] sett
     if (observed[count + 1] != 27 || observed[next_index] != (next_shift ? 11 : 33))
         $fatal(1, "Line length %0d key order mismatch", count);
     control = setting == 2 ? 10 : 8;
-    expected_wait = 3 + (count > 16 ? ((count > 125 ? 125 : count) - 16) * 4 : 0);
+    expected_wait = count > 30 ? 96 : 3;
     if (press_field[next_index] - release_field[count + 1] != control + expected_wait)
         $fatal(1, "Line length %0d post-NEXT wait mismatch", count);
     if (field_count - release_field[presses - 1] != control + 3)
@@ -199,7 +199,7 @@ task check_end_edit(input [1:0] setting, input bit exact_command, input bit next
     next_index = count + 2;
     control = setting == 2 ? 10 : 8;
     if (observed[count + 1] != 27 || observed[next_index] != (next_shift ? 11 : 18) ||
-        press_field[next_index] - release_field[count + 1] != control + (exact_command ? 512 : 3))
+        press_field[next_index] - release_field[count + 1] != control + (exact_command ? 96 : 3))
         $fatal(1, "ENDE wait mismatch");
     if (field_count - release_field[presses - 1] != control + 3)
         $fatal(1, "ENDE wait was not cleared");
@@ -307,8 +307,10 @@ initial begin
     check_speed(2, 10);
     check_speed(3, 8);
 
-    check_line_wait(16, 1, 0);
-    check_line_wait(17, 0, 1);
+    check_line_wait(30, 1, 0);
+    check_line_wait(30, 0, 2);
+    check_line_wait(31, 0, 1);
+    check_line_wait(31, 1, 0);
     check_line_wait(46, 1, 0);
     check_line_wait(46, 0, 2);
     check_line_wait(125, 1, 1);

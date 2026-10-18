@@ -74,11 +74,9 @@ hardware testing confirmed 6/6 through automatic line clearances; 4/4 can lose
 characters. Select before loading; the setting is latched per file. Normal is
 the default. SHIFT and NEXT use at least 8 fields per press and release (10 at
 Slow); every speed retains the 64-field startup wait. After NEXT's release gap,
-lines up to 16 characters wait 64 fields; each additional character adds 4 fields,
-capped at 125 characters (500 fields). Spaces count; implicit SHIFTs do not.
-ENDE waits 512 fields because it checks the whole program definition.
-This provisional parsing margin applies before any following key and still needs
-hardware validation against the timing sweep.
+lines up to 30 characters wait 64 fields; longer lines wait 96 fields.
+ENDE also waits 96 fields because it checks the whole program definition.
+Spaces count; implicit SHIFTs do not. The wait applies before any following key.
 SHIFT must update the observed interpreter mode before the next character.
 Other keys and prompts have no acknowledgement. Music Teacher's reliable 2/2
 result does not establish it for APL/S.
