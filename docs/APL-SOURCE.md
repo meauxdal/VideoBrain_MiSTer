@@ -76,6 +76,7 @@ the default. SHIFT and NEXT use at least 8 fields per press and release (10 at
 Slow); every speed retains the 64-field startup wait. After NEXT's release gap,
 lines up to 16 characters wait 64 fields; each additional character adds 4 fields,
 capped at 125 characters (500 fields). Spaces count; implicit SHIFTs do not.
+ENDE waits 512 fields because it checks the whole program definition.
 This provisional parsing margin applies before any following key and still needs
 hardware validation against the timing sweep.
 SHIFT must update the observed interpreter mode before the next character.

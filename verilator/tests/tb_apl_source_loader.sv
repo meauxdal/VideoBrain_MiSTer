@@ -179,6 +179,33 @@ task check_line_wait(input integer count, input bit next_shift, input [1:0] sett
     speed = 0; frame_tick = 1;
 endtask
 
+task check_end_edit(input [1:0] setting, input bit exact_command, input bit next_shift);
+    integer count, control, next_index;
+    speed = setting; symbols = 1; presses = 0; frame_tick = 0;
+    packet[8] = 20; packet[9] = 14; packet[10] = 25; packet[11] = 20;
+    count = exact_command ? 4 : 5;
+    if (!exact_command) packet[12] = 0;
+    packet[8 + count] = 8'h9b;
+    packet[9 + count] = next_shift ? 8'h61 : 18;
+    packet[10 + count] = 8'h9b;
+    init_packet(count + 3); send_packet(count + 11, -1);
+    for (integer i = 0; i < 2000 && busy; i = i + 1) begin
+        repeat (4) tick;
+        frame_tick = 1; tick;
+        frame_tick = 0; tick;
+    end
+    if (busy || error || !complete || presses != count + 4 + int'(next_shift))
+        $fatal(1, "ENDE wait lost keys");
+    next_index = count + 2;
+    control = setting == 2 ? 10 : 8;
+    if (observed[count + 1] != 27 || observed[next_index] != (next_shift ? 11 : 18) ||
+        press_field[next_index] - release_field[count + 1] != control + (exact_command ? 512 : 3))
+        $fatal(1, "ENDE wait mismatch");
+    if (field_count - release_field[presses - 1] != control + 3)
+        $fatal(1, "ENDE wait was not cleared");
+    speed = 0; frame_tick = 1;
+endtask
+
 task check_speed(input [1:0] setting, input integer duration);
     integer held, released;
     speed = setting; symbols = 0; presses = 0;
@@ -286,6 +313,11 @@ initial begin
     check_line_wait(46, 0, 2);
     check_line_wait(125, 1, 1);
     check_line_wait(140, 0, 0);
+
+    check_end_edit(0, 1, 0);
+    check_end_edit(1, 1, 1);
+    check_end_edit(2, 1, 0);
+    check_end_edit(0, 0, 0);
 
     // Timed physical events work without APL and never consult its mode.
     available = 0; presses = 0; speed = 2;

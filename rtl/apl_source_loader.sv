@@ -27,6 +27,7 @@ localparam IDLE = 0, RECEIVE = 1, WAIT_START = 2, READ_KEY = 3,
            SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6, LINE_WAIT = 7,
            READ_HOLD = 8, SELECT_HOLD = 9, READ_GAP = 10, SELECT_GAP = 11;
 localparam [7:0] MUSIC_REPLAY = 8'hfd, MUSIC_RECORD = 8'hfe;
+localparam [7:0] LETTER_E = 20, LETTER_N = 14, LETTER_D = 25;
 reg [3:0] state = IDLE;
 reg download_d = 0;
 reg bad = 0;
@@ -37,6 +38,7 @@ reg [7:0] memory [0:4095];
 reg [7:0] token;
 reg [9:0] frames = 0;
 reg [6:0] line_length = 0;
+reg end_edit = 0;
 wire [9:0] line_frames = {2'd0, LINE_FRAMES} +
                          (line_length > 16 ? ({3'd0, line_length} - 10'd16) << 2 : 10'd0);
 reg shifting = 0, shifted = 0, started = 0;
@@ -96,6 +98,7 @@ always @(posedge clk) begin
         started <= 0;
         complete <= 0;
         line_length <= 0;
+        end_edit <= 0;
     end else if (download && !download_d) begin
         state <= RECEIVE;
         bad <= wr && (addr != 0 || data != "V");
@@ -113,6 +116,7 @@ always @(posedge clk) begin
         recording <= 0;
         music_notes <= 0;
         line_length <= 0;
+        end_edit <= 0;
         // Latch speed per file; timed events retain their encoded durations.
         case (speed)
             1: key_frames <= 6;
@@ -194,7 +198,16 @@ always @(posedge clk) begin
                 end else begin
                     keys <= 36'd1 << token[5:0];
                     shifting <= 0;
-                    if (token != 8'h9b && line_length < 125) line_length <= line_length + 1'b1;
+                    if (token != 8'h9b) begin
+                        if (line_length < 125) line_length <= line_length + 1'b1;
+                        case (line_length)
+                            0: end_edit <= token == LETTER_E;
+                            1: end_edit <= end_edit && token == LETTER_N;
+                            2: end_edit <= end_edit && token == LETTER_D;
+                            3: end_edit <= end_edit && token == LETTER_E;
+                            default: end_edit <= 0;
+                        endcase
+                    end
                     frames <= token == 8'h9b ? control_frames : key_frames;
                     state <= HOLD_KEY;
                 end
@@ -245,14 +258,17 @@ always @(posedge clk) begin
                 else if (shifting) state <= SELECT_KEY;
                 else if (!timed && token == 8'h9b) begin
                     // Allow longer statements more time to parse before any next key.
-                    frames <= line_frames;
+                    // ENDE checks the whole definition, regardless of command length.
+                    frames <= end_edit && line_length == 4 ? 10'd512 : line_frames;
                     line_length <= 0;
+                    end_edit <= 0;
                     state <= LINE_WAIT;
                 end else if ({4'd0, position} + 16'd1 == length) begin
                     if (auto_repeat) begin
                         position <= 0;
                         shifted <= 0;
                         line_length <= 0;
+                        end_edit <= 0;
                         state <= READ_KEY;
                     end else begin
                         complete <= 1;
