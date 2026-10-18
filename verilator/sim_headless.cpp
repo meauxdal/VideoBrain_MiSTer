@@ -419,6 +419,7 @@ static void usage(const char* argv0) {
 "\n"
 "  --trace-cpu N        log the first N CPU memory cycles (PC0, ROMC)\n"
 "  --trace-from F       only start the trace at frame F\n"
+"  --money-trace        log Money Minder key dispatch registers\n"
 "  --audio-log FILE     log DAC latch events and interrupt state as CSV\n"
 "  --press KEY@F[:H]    hold KEY from frame F for H frames (default 8).\n"
 "                       ESC = MASTER CONTROL; H uses nominal field cycles.\n"
@@ -480,6 +481,7 @@ int main(int argc, char** argv) {
 //     std::vector<uint8_t> apl_data;
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
+    bool money_trace = false;
     long joy_trace_from = -1;
     long joy_focus_frame = -1;
     long joy_results_from = -1;
@@ -566,6 +568,7 @@ int main(int argc, char** argv) {
         else if (a == "--dump-file")   dump_path = need("--dump-file");
         else if (a == "--trace-cpu")   trace_cpu = atol(need("--trace-cpu"));
         else if (a == "--trace-from")  trace_from = atol(need("--trace-from"));
+        else if (a == "--money-trace") money_trace = true;
         else if (a == "--audio-log")   audio_path = need("--audio-log");
         else if (a == "--press") {
             std::string v = need("--press");
@@ -1190,6 +1193,23 @@ int main(int argc, char** argv) {
                         width != 0 && FET(x_l) >= FET(xdelta_l)) ? "ACCEPT" : "reject");
             }
             if (CORE(u_uv202__DOT__hblank_falling)) lines_started++;
+        }
+
+        if (money_trace && CORE(cpu_ce)) {
+            static unsigned last_pc = 0xffff;
+            unsigned pc = top->rootp->top__DOT__pc0;
+            if (pc != last_pc &&
+                (pc == 0x1119 || pc == 0x111e || pc == 0x1140 ||
+                 pc == 0x114a || pc == 0x144b || pc == 0x1526 || pc == 0x165b)) {
+                printf("[money] frame=%ld PC=%04X R0=%02X R8=%02X A=%02X "
+                       "IS=%02X Q=%02X%02X DC0=%04X\n",
+                       fg.frame, pc, (unsigned)CPU(scratch_regs)[0],
+                       (unsigned)CPU(scratch_regs)[8], (unsigned)CPU(acc),
+                       (unsigned)CPU(visar), (unsigned)CPU(scratch_regs)[14],
+                       (unsigned)CPU(scratch_regs)[15],
+                       (unsigned)top->rootp->top__DOT__dc0);
+            }
+            last_pc = pc;
         }
 
         // Trace on the CPU enable only: romc moves in between, so sampling

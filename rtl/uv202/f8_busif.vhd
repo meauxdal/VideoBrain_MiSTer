@@ -89,8 +89,9 @@ BEGIN
       result := ACC_RAM_RD;
     END IF;
 
-  ELSIF (a_eff >= to_unsigned(ADDR_CART2_LO, 14)) AND
-        (a_eff <= to_unsigned(ADDR_CART2_HI, 14)) THEN
+  ELSIF ((a_eff >= to_unsigned(ADDR_CART2_LO, 14)) AND
+         (a_eff <= to_unsigned(ADDR_CART2_HI, 14))) OR
+        (a_eff >= to_unsigned(ADDR_EXP_LO, 14)) THEN
     IF is_write = '1' THEN
       result := ACC_CART_WR;
     ELSE
