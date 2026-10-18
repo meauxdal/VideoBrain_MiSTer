@@ -31,4 +31,27 @@ overflow or playback underrun raises Tape error.
 `make -C verilator test-expander1-playback` checks two-record original-ROM
 SAVE/LOAD through a remounted SD image, plus protection, sector boundaries,
 buffer wrap, reset
-and capacity limits. Full APL/S workspaces and SD latency need MiSTer testing.
+and capacity limits. SD latency and broader program execution need MiSTer testing.
+
+## APL/S dump conversion
+
+`python tools/apl_tape.py convert input.bin output.vbt` extracts the two SAVE
+records from a 16K MAME CPU-address-space dump: 67 bytes at 0E50 and 1001 bytes
+at 1C02. SAVE places two-byte length fields at 0E4E and 1C00, before the payloads.
+The output uses timing index 1, record CRCs and a two-second lead before each record.
+Existing files are never replaced. Originals remain untouched.
+
+`python tools/apl_tape.py inspect image.vbt` checks timing-index-1 record
+framing and CRCs. `python -m unittest discover -s verilator/tests -p
+test_apl_tape.py` checks extraction and the hardware-tested A=7, B=123 fixture.
+Hardware testing passed the converted Guess program and regenerated A=7, B=123
+save, including consecutive tape loads and execution without resetting.
+
+`python tools/apl_tape.py regenerate input.vbt output.vbt` preserves decoded
+records while regenerating their waveform, for a separate hardware timing check.
+
+`python tools/apl_tape.py collection dumps_directory output_directory` converts
+22 selected workspaces, with launch inputs in brackets in each filename.
+NEXT submits each input; semicolons separate inputs. Sine and Pyramid retain
+immediate expressions. Random Bars requires a separate native cassette save.
+Existing identical images are checked; differing images are never replaced.

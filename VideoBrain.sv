@@ -191,8 +191,9 @@ pll pll
 );
 
 reg master_control = 0;
+// Keep download out of the index decode to avoid a reset pulse on VBK start.
 wire system_reset = RESET | status[0] | buttons[1] |
-                    (ioctl_download && !source_dl) | ~pll_locked;
+                    (ioctl_download && (ioctl_index[7:0] != 8'd4)) | ~pll_locked;
 wire reset = system_reset | master_control;
 
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.

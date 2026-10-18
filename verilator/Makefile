@@ -257,3 +257,11 @@ test-apl-source:
 	./out/source_test/Vtb_apl_source_loader
 
 .PHONY: test-apl-source
+
+test-download-reset:
+	@mkdir -p out/download_reset
+	iverilog -g2012 -i -I.. -s tb_download_reset -o out/download_reset/test \
+		tests/tb_download_reset.sv ../VideoBrain.sv
+	vvp out/download_reset/test
+
+.PHONY: test-download-reset
