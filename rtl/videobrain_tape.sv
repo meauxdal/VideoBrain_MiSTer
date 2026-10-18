@@ -41,13 +41,17 @@ reg [30:0] elapsed = 1, remaining = 0;
 reg level = 1, playing = 0;
 reg record_d = 0, playback_d = 0, arm_d = 0;
 
+// APL/S enables both remotes at startup, then selects one for a transfer.
+wire record_remote = record_enable && !playback_enable;
+wire playback_remote = playback_enable && !record_enable;
+
 // Four KiB absorbs SD service latency without changing the tape clock.
 wire [31:0] buffer_sample;
 reg [1:0] sd_byte;
 reg [7:0] header_byte;
 wire [9:0] buffer_index = io_base + {3'd0, sd_buff_addr[8:2]};
 wire capture = mode == RECORD && !reset && !img_mounted && !error &&
-               (!record_enable || record_data != level || &elapsed);
+               (!record_remote || record_data != level || &elapsed);
 wire capture_room = produced < capacity && produced - transferred < 1024;
 wire [31:0] capture_sample = {level, elapsed};
 wire capture_write = capture && capture_room;
@@ -98,8 +102,8 @@ end
 endtask
 
 always @(posedge clk) begin
-    record_d <= record_enable;
-    playback_d <= playback_enable;
+    record_d <= record_remote;
+    playback_d <= playback_remote;
     arm_d <= arm;
 
     if (sd_buff_wr && operation == HEADER && io_state != 0) begin
@@ -161,9 +165,9 @@ always @(posedge clk) begin
         if (arm && writable) error <= 0;
     end
 
-    if (record_enable && !record_d) begin
+    if (record_remote && !record_d) begin
         armed <= 0;
-        if (armed && writable && !playback_enable) begin
+        if (armed && writable) begin
             mode <= RECORD;
             produced <= 0;
             transferred <= 0;
@@ -180,7 +184,7 @@ always @(posedge clk) begin
                 produced <= produced + 1'b1;
                 elapsed <= 1;
                 level <= record_data;
-                if (!record_enable) mode <= FLUSH;
+                if (!record_remote) mode <= FLUSH;
             end else begin
                 error <= 1;
                 mode <= IDLE;
@@ -188,9 +192,9 @@ always @(posedge clk) begin
         end else elapsed <= elapsed + 1'b1;
     end
 
-    if (playback_enable && !playback_d) begin
+    if (playback_remote && !playback_d) begin
         armed <= 0;
-        if (!busy && valid && length != 0 && !record_enable) begin
+        if (!busy && valid && length != 0) begin
             mode <= PLAY;
             transferred <= 0;
             consumed <= 0;
@@ -200,7 +204,7 @@ always @(posedge clk) begin
         end else error <= 1;
     end
     if (mode == PLAY) begin
-        if (!playback_enable) begin
+        if (!playback_remote) begin
             mode <= IDLE;
             playback_data <= 1;
         end else if (!playing) begin

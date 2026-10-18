@@ -32,6 +32,20 @@ task transfer(input [7:0] value, output [7:0] result);
     $display("Host %x reply %x",value,result);
 endtask
 reg [7:0] reply;
+task initialize_remotes;
+    host_data_n = 1;
+    host_clock_n = 0;
+    transfer(5,reply);
+    transfer(0,reply);
+    transfer(3,reply);
+    @(negedge interrupt_n);
+    #1;
+    if (data_n || !clock_n) $fatal(1,"Remote initialization status");
+    @(posedge interrupt_n);
+    if (!record_enable || !playback_enable || busy || error)
+        $fatal(1,"Remote initialization started a tape transfer");
+    host_data_n = 1;
+endtask
 string path;
 integer file_handle, size;
 initial begin
@@ -59,6 +73,8 @@ initial begin
     arm = 1;
     @(negedge clk);
     wait(armed);
+    initialize_remotes();
+    if (!armed) $fatal(1,"Remote initialization consumed recording arm");
     host_clock_n = 0;
     transfer(2,reply);
     transfer(0,reply);
@@ -93,6 +109,7 @@ initial begin
     img_mounted = 0;
     wait(!busy);
     #100000;
+    initialize_remotes();
     host_clock_n = 0;
     transfer(1,reply);
     transfer(1,reply);

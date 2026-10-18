@@ -30,7 +30,7 @@ digital capture and checks good/bad checksum status. It requires the firmware.
 with a final screenshot and host signal trace in `out/expander1/apl-load`.
 Override `APL_TAPE` for another image. This is a long run. The headless
 `--playback FILE` option replays the VBT1 waveform directly at the Expander
-input, bypassing SD service; each playback remote request restarts the image.
+input, bypassing SD service; each selection of playback alone restarts the image.
 `--expander-trace FILE` logs host signal changes and the VideoBrain PC.
 
 ## Keyboard files

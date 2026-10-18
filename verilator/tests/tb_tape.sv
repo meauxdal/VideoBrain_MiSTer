@@ -29,6 +29,7 @@ task arm_recording;
 endtask
 task run_record(input integer edges);
     @(negedge clk);
+    playback_enable = 0;
     record_enable = 1;
     for (integer i = 0; i < edges; i = i + 1) begin
         repeat(40) @(negedge clk);
@@ -56,6 +57,10 @@ initial begin
     if (armed) $fatal(1,"Disarm failed");
     arm_recording();
     record_data = 1;
+    record_enable = 1;
+    playback_enable = 1;
+    repeat(3) @(negedge clk);
+    if (busy || error || !armed) $fatal(1,"Both remotes started a transfer");
     run_record(1700);
     if (error || armed || card.word_at(8) != 1701) $fatal(1,"SAVE failed");
     repeat(3) @(negedge clk);
@@ -71,6 +76,10 @@ initial begin
     if (error) $fatal(1,"Recorded mount failed");
     @(negedge clk);
     playback_enable = 1;
+    record_enable = 1;
+    repeat(3) @(negedge clk);
+    if (busy || error) $fatal(1,"Both remotes started playback");
+    record_enable = 0;
     wait(dut.playing);
     @(negedge clk);
     for (integer i = 0; i < 1701; i = i + 1) begin

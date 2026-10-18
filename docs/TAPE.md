@@ -9,7 +9,8 @@ before unmounting or switching cores. **Tape error** means persistence failed,
 even if the cartridge reports TAPE OK.
 
 Issue the cartridge's LOAD or VERIFY command to replay the mounted recording.
-Playback starts at the beginning on each playback remote request. Reset disarms
+Playback starts at the beginning when playback alone is selected. Both remotes
+enabled is a setup state and does not start a transfer. Reset disarms
 recording and cancels tape activity. An interrupted recording is invalid; arm
 it again to reuse the image. Read-only images cannot be armed.
 

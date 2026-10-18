@@ -890,7 +890,7 @@ int main(int argc, char** argv) {
 //         }
 
         if (!tape_samples.empty()) {
-            bool remote = top->playback_enable && !top->reset;
+            bool remote = top->playback_enable && !top->record_enable && !top->reset;
             if (remote != tape_remote)
                 printf("[tape] cycle=%ld %s interval=%zu/%zu\n", cycles,
                        remote ? "start" : "stop", tape_index, tape_samples.size());
