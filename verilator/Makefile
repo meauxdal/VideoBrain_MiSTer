@@ -120,7 +120,13 @@ test-render: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_render.vhd
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_render --assert-level=error
 
-test-audio:
+.PHONY: test-audio-io
+test-audio-io:
+	mkdir -p out/ghdl_audio_io
+	$(GHDL) -a --std=08 --workdir=out/ghdl_audio_io $(RTL)/f8/base_pack.vhd $(RTL)/videobrain_io.vhd tests/tb_audio_io.vhd
+	$(GHDL) -r --std=08 --workdir=out/ghdl_audio_io tb_audio_io --assert-level=error
+
+test-audio: test-audio-io
 	PYTHONDONTWRITEBYTECODE=1 python3 tests/audio_filter_design.py
 	$V -cc --exe --build --top-module videobrain_audio --Mdir out/obj_audio \
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio.cpp)

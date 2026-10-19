@@ -32,6 +32,7 @@ letter/symbol mode. Use symbol mode for numbers and NEXT after each answer.
 | `08-acey.vbk` | `ACEY` | Starts with cash 100 and two cards. Bet `0`: the third card is revealed, win/loss is reported, and the next deal still has cash 100. Bet `1` to check cash changes to 99 or 101. Only a card strictly between the two wins. `99` at BET? exits. CARD is included in the file. |
 | `20-bulls.vbk` | `MOO4` | Enter `1 2 3 4` as one answer. Expect YOU WIN or WHITE/RED counts for exact/misplaced matches. Their sum must be 3 or 4. `99` exits. |
 | `22-roulette.vbk` | `RO` | Answer `3`, then `0` to bet on zero. The spin is 0..36; cash becomes 134 on zero, otherwise 99. At the next round, `3` then `99` exits. |
+| `23-change.vbk` | `C` | Defines C, then initializes the counters and X=89. Calling C should end with X Q D N P equal to 0 3 1 0 4. Hardware execution still needs checking. |
 
 Guess and Acey match the collection's listing images; Bulls and Roulette match
 its text listings. These checks exercise input, branches, arrays, subroutine

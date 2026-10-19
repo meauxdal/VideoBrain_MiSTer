@@ -63,14 +63,13 @@ BEGIN
 
       key_latch_l <= port_a_v;
 
-      -- The F8 write event is the hardware edge. Do not infer it from the
-      -- held output pin; the port latch may retain the clock level.
-      IF port_b_wr = '1' AND sound_clk_l = '0' AND port_b_v(4) = '1' THEN
-        audio_code_l <= std_logic_vector(port_a_v(1 DOWNTO 0));
+      -- Sheet 4: U16 clocks on rising physical I/O-14 and latches I/O-01/00.
+      IF port_b_wr = '1' AND sound_clk_l = '0' AND port_b_n(4) = '1' THEN
+        audio_code_l <= std_logic_vector(port_a_n(1 DOWNTO 0));
         audio_stb_l  <= '1';
       END IF;
 
-      sound_clk_l    <= port_b_v(4);
+      sound_clk_l    <= port_b_n(4);
       accessory_p5_l <= port_b_v(5);
       accessory_p1_l <= port_b_v(6);
       -- F3850 inverts outputs: enabled when physical I/O-17 is low.

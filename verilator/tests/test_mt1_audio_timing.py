@@ -25,4 +25,16 @@ print(f"Premature field-start interrupts: {len(premature)}")
 for event in premature[:3]:
     print(f"  frame {event['frame']}: Y={event['vpos']} "
           f"before target {event['yint']}")
+if "irq_cycle" in events[0]:
+    print("Longest IRQ-to-DAC delays: IRQ-to-ack, ack-to-DAC, masked, "
+          "wait stalls, service stalls, IRQ PC, masked PC, sources")
+    waits = [event for event in events if int(event["irq_cycle"]) >= 0]
+    waits.sort(key=lambda event: int(event["cycle"]) - int(event["irq_cycle"]),
+               reverse=True)
+    for event in waits[:8]:
+        delay = int(event["ack_cycle"]) - int(event["irq_cycle"])
+        service = int(event["cycle"]) - int(event["ack_cycle"])
+        print(f"  {delay}, {service}, {event['masked_ticks']}, {event['stall_ticks']}, "
+              f"{event['service_stall_ticks']}, "
+              f"{event['irq_pc']}, {event['masked_pc']}, {event['irq_sources']}")
 assert not premature, "Sound ISR ran before its programmed Y position"

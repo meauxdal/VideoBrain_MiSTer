@@ -689,7 +689,9 @@ int main(int argc, char** argv) {
     if (!audio_path.empty()) {
         af = fopen(audio_path.c_str(), "w");
         if (!af) { fprintf(stderr, "error: cannot write %s\n", audio_path.c_str()); return 2; }
-        fprintf(af, "cycle,frame,pc,code,hpos,vpos,cmd,yint,s23,s24,s25,s26\n");
+        fprintf(af, "cycle,frame,pc,code,hpos,vpos,cmd,yint,s23,s24,s25,s26,"
+                    "irq_cycle,irq_pc,irq_flags,irq_sources,ack_cycle,masked_ticks,stall_ticks,"
+                    "masked_pc,service_stall_ticks\n");
     }
 
     FILE* rf = nullptr;
@@ -776,6 +778,13 @@ int main(int argc, char** argv) {
     int joy_start_pot = 0, joy_start_latch = 0;
     JoyTimer joy_start_timer = { joy_timer_base, joy_timer_step };
     unsigned joy_sweep_index[8] = {};
+
+    struct AudioIrq {
+        long cycle = -1, ack = -1, dac = -1, masked = 0, stalled = 0, service_stalled = 0;
+        unsigned pc = 0, flags = 0, sources = 0, masked_pc = 0;
+    } audio_pending, audio_serviced;
+    bool audio_request_l = false, audio_ack_l = false;
+    unsigned audio_sources_l = 0;
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
 
@@ -1076,13 +1085,48 @@ int main(int argc, char** argv) {
 //             fprintf(stderr, "error: APL/S load changed write-only video controls\n"); return 1;
 //         }
 
+        if (af) {
+            bool request = CORE(int_req), ack = CORE(int_ack);
+            unsigned pc = top->rootp->top__DOT__pc0;
+            unsigned sources = CORE(yint_irq) | (CORE(joy_int) << 1) |
+                               (!CORE(expander_interrupt_n) << 2);
+            if (request && !audio_request_l) {
+                audio_pending = {};
+                audio_pending.cycle = cycles;
+                audio_pending.pc = pc;
+                audio_pending.flags = CPU(iozcs);
+                audio_pending.sources = sources | audio_sources_l;
+            }
+            if (ack && !audio_ack_l) {
+                audio_pending.ack = cycles;
+                audio_serviced = audio_pending;
+            }
+            if (request && audio_pending.cycle >= 0 && audio_pending.ack < 0) {
+                if (!(CPU(iozcs) & 0x10)) {
+                    if (!audio_pending.masked) audio_pending.masked_pc = pc;
+                    ++audio_pending.masked;
+                }
+                if (CORE(u_uv202__DOT__cpu_stall_l)) ++audio_pending.stalled;
+            }
+            if (audio_serviced.ack >= 0 && audio_serviced.dac < 0 &&
+                CORE(u_uv202__DOT__cpu_stall_l)) ++audio_serviced.service_stalled;
+            if (CORE(audio_stb)) audio_serviced.dac = cycles;
+            audio_request_l = request;
+            audio_ack_l = ack;
+            audio_sources_l = sources;
+        }
         if (af && CORE(audio_stb))
-            fprintf(af, "%ld,%ld,%04X,%u,%u,%u,%02X,%u,%02X,%02X,%02X,%02X\n", cycles, fg.frame,
+            fprintf(af, "%ld,%ld,%04X,%u,%u,%u,%02X,%u,%02X,%02X,%02X,%02X,"
+                        "%ld,%04X,%02X,%u,%ld,%ld,%ld,%04X,%ld\n", cycles, fg.frame,
                     (unsigned)top->rootp->top__DOT__pc0, (unsigned)CORE(audio_code),
                     (unsigned)top->rootp->top__DOT__hpos, (unsigned)top->rootp->top__DOT__vpos,
                     (unsigned)UVR(r_cmd), (unsigned)UVR(r_y_int),
                     (unsigned)CPU(scratch_regs)[0x23], (unsigned)CPU(scratch_regs)[0x24],
-                    (unsigned)CPU(scratch_regs)[0x25], (unsigned)CPU(scratch_regs)[0x26]);
+                    (unsigned)CPU(scratch_regs)[0x25], (unsigned)CPU(scratch_regs)[0x26],
+                    audio_serviced.cycle, audio_serviced.pc, audio_serviced.flags,
+                    audio_serviced.sources, audio_serviced.ack,
+                    audio_serviced.masked, audio_serviced.stalled, audio_serviced.masked_pc,
+                    audio_serviced.service_stalled);
 
         if (joy_capture)
             printf("[joy-capture] cycle=%llu frame=%ld x=%u y=%u cmd=%02X accepted=%u freeze_x=%u freeze_y=%u\n",
@@ -1289,14 +1333,17 @@ int main(int argc, char** argv) {
             uint32_t pc = top->rootp->top__DOT__pc0;
             if (romc != prev_romc || pc != prev_pc) {
                 printf("%08llu  PC0=%04X PC1=%04X DC0=%04X romc=%02X ph=%X acc=%02X "
-                       "addr=%04X rd=%d wr=%d req=%d grant=%d rdata=%02X\n",
+                       "addr=%04X rd=%d wr=%d req=%d grant=%d rdata=%02X "
+                       "cycle=%ld op=%02X flags=%02X j=%02X irq=%d\n",
                        (unsigned long long)main_time, pc,
                        (unsigned)top->rootp->top__DOT__pc1,
                        (unsigned)top->rootp->top__DOT__dc0,
                        romc, (unsigned)CORE(phase), (unsigned)CPU(acc),
                        (unsigned)CORE(ext_addr), (int)CORE(ext_rd), (int)CORE(ext_wr),
                        (int)CORE(ext_req), (int)CORE(ext_grant),
-                       (unsigned)CORE(ext_rdata));
+                       (unsigned)CORE(ext_rdata), cycles,
+                       (unsigned)CPU(opcode), (unsigned)CPU(iozcs),
+                       (unsigned)CPU(scratch_regs)[9], (int)CORE(int_req));
                 if (--trace_cpu == 0) printf("[trace-cpu limit reached]\n");
             }
             prev_romc = romc; prev_pc = pc;
