@@ -17,6 +17,7 @@ VHD_SRC = \
 	$(RTL)/f8/f8_cpu.vhd \
 	$(RTL)/uv202/f8_busif.vhd \
 	$(RTL)/uv202/uv202_clkgen.vhd \
+	$(RTL)/uv202/uv202_cpu_gate.vhd \
 	$(RTL)/uv202/uv202_timing.vhd \
 	$(RTL)/uv202/uv202_arbiter.vhd \
 	$(RTL)/uv202/uv202_top.vhd \
@@ -120,6 +121,21 @@ test-cpu-irq-chain:
 	$(GHDL) -r --std=08 --workdir=out/cpu_irq_chain tb_cpu_irq_chain --assert-level=error
 
 .PHONY: test-cpu-irq-chain
+
+test-cpu-bus-wait:
+	mkdir -p out/cpu_bus_wait
+	$(GHDL) -a --std=08 --workdir=out/cpu_bus_wait $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/uv202/uv202_cpu_gate.vhd $(RTL)/uv202/uv202_timing.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd $(RTL)/uv202/uv202_arbiter.vhd $(RTL)/uv202/uv202_top.vhd tests/tb_cpu_bus_wait.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_bus_wait tb_cpu_bus_wait --assert-level=error --ieee-asserts=disable $(BUS_WAIT_ARGS)
+
+.PHONY: test-cpu-bus-wait
+
+test-cpu-gate:
+	mkdir -p out/cpu_gate
+	$(GHDL) -a --std=08 --workdir=out/cpu_gate $(RTL)/f8/base_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/uv202/uv202_cpu_gate.vhd $(RTL)/uv202/uv202_timing.vhd $(RTL)/uv202/uv202_arbiter.vhd $(RTL)/uv202/uv202_top.vhd tests/tb_cpu_gate.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_gate tb_cpu_gate --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/cpu_gate tb_cpu_gate -glegacy_gate=true --assert-level=error
+
+.PHONY: test-cpu-gate
 
 .PHONY: test-smi
 test-smi:

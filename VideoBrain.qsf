@@ -300,6 +300,7 @@ set_global_assignment -name VHDL_FILE rtl/uv202/uv202_pack.vhd -hdl_version VHDL
 set_global_assignment -name VHDL_FILE rtl/f8/f8_cpu.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/f8_busif.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_clkgen.vhd -hdl_version VHDL_2008
+set_global_assignment -name VHDL_FILE rtl/uv202/uv202_cpu_gate.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_timing.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_arbiter.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_top.vhd -hdl_version VHDL_2008

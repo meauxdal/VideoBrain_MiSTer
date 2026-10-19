@@ -26,6 +26,7 @@ ENTITY uv202_clkgen IS
     brclk_ena  : OUT std_logic;
 
     cpu_ena    : OUT std_logic;
+    cpu_sample : OUT std_logic := '0';
 
     brclk_phase : OUT uv2
     );
@@ -43,6 +44,7 @@ ARCHITECTURE rtl OF uv202_clkgen IS
   CONSTANT CPU_HALF_HZ : natural := 4_000_000;
   SIGNAL cpu_phase_acc : natural RANGE 0 TO MCLK_HZ-1 := 0;
   SIGNAL cpu_ena_l     : std_logic;
+  SIGNAL cpu_sample_l  : std_logic;
 
 BEGIN
 
@@ -102,10 +104,16 @@ BEGIN
     IF reset_na = '0' THEN
       cpu_phase_acc <= 0;
       cpu_ena_l     <= '0';
+      cpu_sample_l  <= '0';
     ELSIF rising_edge(clk) THEN
       cpu_ena_l <= '0';
+      cpu_sample_l <= '0';
       IF mclk_ena_l = '1' THEN
         phase_v := cpu_phase_acc + CPU_HALF_HZ;
+        -- Rising 4 MHz oscillator edge, half a period before cpu_ena.
+        IF cpu_phase_acc < (MCLK_HZ + 1) / 2 AND phase_v >= (MCLK_HZ + 1) / 2 THEN
+          cpu_sample_l <= '1';
+        END IF;
         IF phase_v >= MCLK_HZ THEN
           cpu_phase_acc <= phase_v - MCLK_HZ;
           cpu_ena_l     <= '1';
@@ -117,5 +125,6 @@ BEGIN
   END PROCESS;
 
   cpu_ena <= cpu_ena_l;
+  cpu_sample <= cpu_sample_l;
 
 END ARCHITECTURE rtl;

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1250" height="775" viewBox="0 0 1250 775">
+<rect width="100%" height="100%" fill="#fff"/>
+<style>text {font:15px monospace;fill:#1b2530} .title {font:bold 21px sans-serif} .note {font:15px sans-serif}</style>
+<text x="25" y="33" class="title">External CPU clock gate: WACK falls after its sampling edge</text>
+<text x="25" y="58" class="note">Ideal circuit example. One oscillator period = 250 ns. CPU clock holds its previous level during the wait.</text>
+<path d="M 240.0 89 V 505" stroke="#dde3e9"/>
+<text x="240.0" y="83" text-anchor="middle">0</text>
+<path d="M 330.0 89 V 505" stroke="#dde3e9"/>
+<text x="330.0" y="83" text-anchor="middle">125</text>
+<path d="M 420.0 89 V 505" stroke="#dde3e9"/>
+<text x="420.0" y="83" text-anchor="middle">250</text>
+<path d="M 510.0 89 V 505" stroke="#dde3e9"/>
+<text x="510.0" y="83" text-anchor="middle">375</text>
+<path d="M 600.0 89 V 505" stroke="#dde3e9"/>
+<text x="600.0" y="83" text-anchor="middle">500</text>
+<path d="M 690.0 89 V 505" stroke="#dde3e9"/>
+<text x="690.0" y="83" text-anchor="middle">625</text>
+<path d="M 780.0 89 V 505" stroke="#dde3e9"/>
+<text x="780.0" y="83" text-anchor="middle">750</text>
+<path d="M 870.0 89 V 505" stroke="#dde3e9"/>
+<text x="870.0" y="83" text-anchor="middle">875</text>
+<path d="M 960.0 89 V 505" stroke="#dde3e9"/>
+<text x="960.0" y="83" text-anchor="middle">1000</text>
+<path d="M 1050.0 89 V 505" stroke="#dde3e9"/>
+<text x="1050.0" y="83" text-anchor="middle">1125</text>
+<path d="M 1140.0 89 V 505" stroke="#dde3e9"/>
+<text x="1140.0" y="83" text-anchor="middle">1250</text>
+<text x="32" y="83">Time (ns)</text>
+<text x="25" y="131">4 MHz oscillator</text>
+<path d="M 240.0 113 H 330.0 V 137 H 420.0 V 113 H 510.0 V 137 H 600.0 V 113 H 690.0 V 137 H 780.0 V 113 H 870.0 V 137 H 960.0 V 113 H 1050.0 V 137 H 1140.0 V 113 H 1140.0" fill="none" stroke="#253f5b" stroke-width="2.5"/>
+<text x="25" y="189">Request</text>
+<path d="M 240.0 195 H 340.8 V 171 H 830.4 V 195 H 1140.0" fill="none" stroke="#253f5b" stroke-width="2.5"/>
+<text x="25" y="247">WACK</text>
+<path d="M 240.0 253 H 456.0 V 229 H 801.6 V 253 H 1140.0" fill="none" stroke="#253f5b" stroke-width="2.5"/>
+<text x="25" y="305">U30A.Q stop latch</text>
+<path d="M 240.0 311 H 340.8 V 287 H 600.0 V 311 H 1140.0" fill="none" stroke="#253f5b" stroke-width="2.5"/>
+<text x="25" y="363">U31A.Q ready</text>
+<path d="M 240.0 345 H 600.0 V 369 H 960.0 V 345 H 1140.0" fill="none" stroke="#253f5b" stroke-width="2.5"/>
+<text x="25" y="421">Circuit CPU clock</text>
+<path d="M 240.0 427 H 330.0 V 403 H 1050.0 V 427 H 1140.0" fill="none" stroke="#12634a" stroke-width="2.5"/>
+<text x="25" y="479">Previous RTL clock</text>
+<path d="M 240.0 485 H 330.0 V 461 H 870.0 V 485 H 1050.0 V 461 H 1140.0" fill="none" stroke="#b82b32" stroke-width="2.5"/>
+<path d="M 801.6 214 V 515" stroke="#6b7280" stroke-dasharray="5 4"/>
+<rect x="864.0" y="448" width="12" height="46" fill="none" stroke="#b82b32" stroke-width="2"/>
+<text x="25" y="544" class="note" fill="#b82b32">875 ns: previous RTL advances early. U31A still holds zero; the circuit must suppress this transition.</text>
+<text x="25" y="571" class="note">1000 ns: U31A samples /WACK = 1. 1125 ns: U30B makes the first permitted CPU transition.</text>
+<text x="25" y="596" class="note">The corresponding oscillator rising/falling edges are represented separately by cpu_sample/cpu_raw in RTL.</text>
+<path d="M 25 618 H 1225" stroke="#dde3e9"/>
+<text x="25" y="646" class="note">Request admission: b0 and b1 are consecutive BRCLK rising edges, one BRCLK = 279.37 ns.</text>
+<text x="25" y="675">U41 request Q</text>
+<path d="M 240 681 H 600 V 660 H 1120" fill="none" stroke="#12634a" stroke-width="2.5"/>
+<text x="25" y="715">Circuit WACK</text>
+<path d="M 240 721 H 900 V 700 H 1120" fill="none" stroke="#12634a" stroke-width="2.5"/>
+<path d="M 600 652 V 732 M 900 652 V 732" stroke="#8b98a5" stroke-dasharray="4 4"/>
+<text x="600" y="752" text-anchor="middle">b0: U41 samples</text>
+<text x="900" y="752" text-anchor="middle">b1: UV202 admits</text>
+<text x="25" y="770" class="note">Previous RTL admitted at b0, omitting the U41 stage. The external stop latch sees the request before b0.</text>
+</svg>
