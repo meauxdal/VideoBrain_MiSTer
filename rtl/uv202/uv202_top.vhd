@@ -94,10 +94,12 @@ BEGIN
       );
 
   u_arbiter : ENTITY work.uv202_arbiter
+    -- Bus phase is 3 at HBLANK rising (hpos 222).
     PORT MAP (
       clk        => clk,
       reset_na   => reset_na,
       brclk_ena  => brclk_ena_l,
+      bus_phase  => brclk_phase_l + 1,
       cpu_req    => cpu_req,
       cpu_class  => cpu_class,
       cpu_grant  => cpu_grant,

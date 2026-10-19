@@ -294,6 +294,41 @@ replay-clock-source: headless
 
 .PHONY: replay-clock-source
 
+test-arbiter:
+	@mkdir -p out/arbiter
+	$(GHDL) -a --std=08 --workdir=out/arbiter $(RTL)/f8/base_pack.vhd \
+		$(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_arbiter.vhd tests/tb_arbiter.vhd
+	$(GHDL) -r --std=08 --workdir=out/arbiter tb_arbiter --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/arbiter tb_arbiter --assert-level=error -gdma_test=true
+
+.PHONY: test-arbiter
+
+test-fetcher-bus:
+	@mkdir -p out/fetcher_bus
+	$(GHDL) -a --std=08 --workdir=out/fetcher_bus $(RTL)/f8/base_pack.vhd \
+		$(RTL)/uv201/uv201_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
+		$(RTL)/uv202/uv202_clkgen.vhd $(RTL)/uv202/uv202_arbiter.vhd \
+		$(RTL)/uv201/uv201_fetcher.vhd tests/tb_fetcher_bus.vhd
+	$(GHDL) -r --std=08 --workdir=out/fetcher_bus tb_fetcher_bus --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/fetcher_bus tb_fetcher_bus --assert-level=error -gcopy_mode=true
+	$(GHDL) -r --std=08 --workdir=out/fetcher_bus tb_fetcher_bus --assert-level=error -gbackpressure=true
+	$(GHDL) -r --std=08 --workdir=out/fetcher_bus tb_fetcher_bus --assert-level=error -gcopy_mode=true -gbackpressure=true
+
+.PHONY: test-fetcher-bus
+
+test-cpu-audio:
+	@mkdir -p out/cpu_audio
+	$(GHDL) -a --std=08 --workdir=out/cpu_audio $(RTL)/f8/base_pack.vhd \
+		$(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
+		$(RTL)/uv202/uv202_clkgen.vhd $(RTL)/f8/f8_cpu.vhd \
+		$(RTL)/uv202/f8_busif.vhd $(RTL)/videobrain_io.vhd tests/tb_cpu_audio.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_audio tb_cpu_audio --assert-level=error -gdelay_count=96
+	$(GHDL) -r --std=08 --workdir=out/cpu_audio tb_cpu_audio --assert-level=error -gdelay_count=46
+	$(GHDL) -r --std=08 --workdir=out/cpu_audio tb_cpu_audio --assert-level=error -gdelay_count=21
+	$(GHDL) -r --std=08 --workdir=out/cpu_audio tb_cpu_audio --assert-level=error -gdelay_count=8
+
+.PHONY: test-cpu-audio
+
 test-download-reset:
 	@mkdir -p out/download_reset
 	iverilog -g2012 -i -I.. -s tb_download_reset -o out/download_reset/test \

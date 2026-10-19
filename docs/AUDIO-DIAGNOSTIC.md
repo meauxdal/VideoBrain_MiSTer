@@ -1,25 +1,16 @@
 # Audio diagnostic
 
-Audio remains unresolved. Rounded waveform shape and cycle timing require
-separate comparisons with original hardware.
-Consistent periods and pulse widths can be checked without an original-machine
-recording. That reference is needed to establish the intended analog shape.
+Normal audio remains faulty across software and pitch. Timing variation is
+present before filtering. The current investigation targets core generation
+and CPU/bus timing; MiSTer output, 240p and filter tuning are excluded.
 
 `System > Audio Test` selects a 500 Hz, 1 kHz, 2 kHz or 4 kHz square-wave
 source ahead of the existing audio filter. It uses no CPU, ROM, keyboard or
 interrupt timing. The computer continues running. Off selects normal audio.
 This is an isolation test, not a sound correction. Filtering rounds its output.
 
-After building the core, record several seconds at each setting through the
-same output used for normal audio. Keep output rate, volume and MiSTer filter
-settings fixed. Compare with `verilator/out/audio_path_<frequency>_<rate>.wav`.
-
-- If test tones differ from simulation, investigate FPGA implementation,
-  clock crossing, output configuration and capture path.
-- If test tones match, capture the core's normal DAC codes and timestamps
-  before filtering. This localizes the implementation discrepancy upstream.
-- Compare waveform shape with original hardware at the same pitch. Low
-  nonharmonic noise alone does not establish faithful sound.
+The test tones sound steady on the user's core. Normal audio remains faulty.
+Low nonharmonic noise alone does not establish faithful sound.
 
 Run the short digital-path check from `verilator`:
 
@@ -51,3 +42,40 @@ Corresponding IRQ full periods span 1017.448..1020.800 us. IRQ-to-ack delay
 spans 5.029..93.867 us; ack-to-DAC spans 86.813..89.327 us. This localizes
 most reproduced timing variation before acknowledgement, ahead of filtering.
 It does not establish which implementation behavior differs from hardware.
+
+The unmodified ED01 cartridge capture in `out/audio_timing_audit` reproduces
+the variation. All 39 DAC updates covered by its detailed CPU trace match
+the physical clock edge and data; none is missing. A 90.165 us request-to-ack
+delay spans actual interrupt masking and privileged call/return instructions.
+No missed permitted acceptance was found at the logged fetch boundaries.
+The sparse trace does not prove CPU equivalence to original hardware.
+
+`make test-cpu-audio` checks a fixed F8 program through the clock generator,
+CPU, bus interface and DAC latch. Published instruction times give a half
+period of `20 * delay_count + 82` CPU clocks. All four cases pass: 2002, 1002,
+502 and 242 clocks, with only one MCLK tick of interval variation (69.84 ns).
+This test uses RES1 without interrupts or buffered-bus waits. It validates
+that path in simulation, not normal ROM interrupt timing or FPGA behavior.
+
+UV202 corrections under evaluation, following the explicit bus-body and setup
+rules in `refs/kevtris/videobrain_unwrapped.txt`:
+
+- UV201 register bodies take 4..7 BRCLKs by phase, plus one setup BRCLK.
+  The old body was fixed at five. Bus phase is three at HBLANK rising.
+- Consecutive DMA bytes take three BRCLKs; the old arbiter took five.
+  The fetcher keeps multi-byte requests asserted between bytes.
+- CPU requests present before the last DMA cycle overlap setup; DMA after
+  CPU completion retains one setup BRCLK.
+
+`make test-arbiter test-fetcher-bus` passes phase, contention, priority,
+dual-DMA, byte ordering, address wrap, copy mode and FIFO backpressure checks.
+The old arbiter fails the UV201 duration and DMA burst-spacing checks.
+Full-core VHDL analysis and elaboration, CPU interrupt, F3853 and fixed CPU
+audio checks pass. Normal-ROM audio improvement is not yet measured.
+
+Run `sh verilator/audio_bus_timing_capture.sh` from the repository root in WSL.
+This longer run rebuilds the simulator, repeats the original ED01 capture,
+preserves `out/audio_timing_audit` and compares frames 330..342. Results go to
+`verilator/out/audio_bus_timing/comparison.txt`. Baseline full-period spread
+is 171.460 us, RMS deviation 18.985 us and p95 deviation 60.769 us. Compare
+those pre-filter metrics before requesting another FPGA build.
