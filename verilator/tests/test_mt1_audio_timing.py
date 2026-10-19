@@ -1,4 +1,4 @@
-"""Check a held MT1 note for premature interrupts near the field boundary."""
+"""Report held MT1 timing and check for premature field-start interrupts."""
 import csv
 import statistics
 import sys
@@ -21,6 +21,21 @@ for event in events:
 
 print(f"MT1 DAC events: {len(events)}; interval ticks min/median/max: "
       f"{min(intervals)}/{statistics.median(intervals):g}/{max(intervals)}")
+transitions = events[:1] + [b for a, b in zip(events, events[1:])
+                           if a["code"] != b["code"]]
+for name, field in (("DAC", "cycle"), ("IRQ", "irq_cycle")):
+    if field not in events[0]:
+        continue
+    for code in sorted({event["code"] for event in transitions}):
+        edges = [int(event[field]) for event in transitions
+                 if event["code"] == code and int(event[field]) >= 0]
+        periods = [(b - a) / 14.318181 for a, b in zip(edges, edges[1:])]
+        if not periods:
+            continue
+        print(f"{name} code {code} full period us min/median/max: "
+              f"{min(periods):.3f}/{statistics.median(periods):.3f}/"
+              f"{max(periods):.3f}; spread {max(periods) - min(periods):.3f}")
+print("Field-start checks do not establish periodic audio.")
 print(f"Premature field-start interrupts: {len(premature)}")
 for event in premature[:3]:
     print(f"  frame {event['frame']}: Y={event['vpos']} "

@@ -272,7 +272,7 @@ test-apl-input: test-cartridges
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \
 		"-gapl_image=../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
 
-test-apl-source: test-apl-input
+test-apl-source: test-apl-input test-cpu-interrupt
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_source.py
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_next_sweep.py
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_keyboard_input.py

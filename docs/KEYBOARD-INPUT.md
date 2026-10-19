@@ -6,6 +6,11 @@ Loading a keyboard file does not reset the machine; confirmed on APL/S in RC7.
 The loader checks the complete file before pressing any key. Start at the
 intended input screen; files do not interpret prompt contents.
 
+Earlier intermittent first-load restarts are currently unreproducible in RC14.
+Hardware checks reported on 2026-10-19 found no restarts across four fresh-boot
+CHANGE loads and one CLOCK load. The cause remains unconfirmed; treat this as
+an unresolved issue that may recur, rather than a verified fix.
+
 The OSD submenus are Input, Video, Keyboard Entry, System, in that order.
 Keyboard Entry contains file loading, Music Mode, Auto-Repeat,
 and the status messages "Keyboard entry active" and "Keyboard file rejected".

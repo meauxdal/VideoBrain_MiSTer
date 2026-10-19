@@ -69,6 +69,25 @@ assign sample = rounded_sample[25:10];
 
 endmodule
 
+module videobrain_audio_tone
+(
+	input clk,
+	input reset,
+	input [31:0] frequency_hz,
+	output [1:0] code
+);
+
+reg [31:0] phase = 0;
+always @(posedge clk) begin
+	if (reset || frequency_hz == 0) phase <= 0;
+	else if (phase + frequency_hz >= 14318181) phase <= phase + frequency_hz - 14318181;
+	else phase <= phase + frequency_hz;
+end
+
+assign code = phase < 7159090 ? 2'd0 : 2'd3;
+
+endmodule
+
 module videobrain_audio_fir
 (
 	input                       clk,
