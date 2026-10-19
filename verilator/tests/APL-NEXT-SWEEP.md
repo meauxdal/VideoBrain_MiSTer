@@ -27,12 +27,9 @@ releases, explicit SHIFT keys, and 512 extra fields after setup NEXTs.
 The recorded length is the actual logical line length, at most the requested
 length. Source files, screenshots, logs, commands, and CSV traces are retained.
 
-Delays count video fields from target NEXT release to probe press. The current
-Normal loader waits 8 release fields plus 64 LINE_WAIT fields for short lines:
-compare with 72, not 64. Lines over 30 characters and ENDE use 96 LINE_WAIT fields,
-so the 46-character Clock condition waits 104 fields after release.
-The timed sweep bypasses these waits. Idle events extend waits beyond VBK2's
-255-field gap.
+Delays count video fields from target NEXT release to probe press. The timed
+VBK2 sweep bypasses the VBK1 readiness handshake, allowing deliberately early
+probes. Idle events extend waits beyond VBK2's 255-field gap.
 SHIFT, an ordinary character in the current mode (A or 0), and a no-key control
 run independently. No acknowledgement changes or stops input delivery.
 

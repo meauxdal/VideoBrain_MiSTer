@@ -3,15 +3,16 @@
 Choose **Keyboard Entry > Load Keyboard File**, select a `.vbk`, and close the OSD. Entry uses
 the actual keyboard matrix. Typing, opening the OSD, or resetting cancels it.
 Loading a keyboard file does not reset the machine; confirmed on APL/S in RC7.
-The loader checks the complete file before pressing any key. Files cannot
-detect prompts or cartridge changes. Start at the intended input screen.
+The loader checks the complete file before pressing any key. Start at the
+intended input screen; files do not interpret prompt contents.
 
 The OSD submenus are Input, Video, Keyboard Entry, System, in that order.
-Keyboard Entry contains file loading, Music Mode, Auto-Repeat, APL/S Entry Speed,
+Keyboard Entry contains file loading, Music Mode, Auto-Repeat,
 and the status messages "Keyboard entry active" and "Keyboard file rejected".
 
-APL/S VBK1 files retain their format and live SHIFT handling. **Keyboard Entry >
-APL/S Entry Speed** applies to VBK1 only; VBK2 retains its encoded event timings.
+APL/S VBK1 files retain their format and live SHIFT handling. Entry waits for
+the interpreter to accept each key and become ready again, including after NEXT.
+VBK2 retains its encoded event timings.
 See [APL/S entry and loading without running](APL-SOURCE.md).
 Other profiles produce VBK2 and require the updated core.
 
@@ -105,7 +106,18 @@ and High C4..B5. `scale.vbk` enters all 48 chromatic pitches C2..B5 and replays;
 
 The converter keeps the current octave bank while it contains the next pitch.
 Bank changes add control-key time; they can appear as extra rests in recording.
-Use a single bank when precise rhythm matters. The manual specifies songs of
+For experimental live playback, add `--bank-fields 2` when converting MML.
+This uses two held and two released fields per bank control, taking that time
+from preceding rests or release gaps, then shortening the preceding held note
+if needed. It retains at least `--min-hold` held fields and the smaller of
+`--gap` and `--bank-fields` released fields before the control. If insufficient
+time remains, the converter warns and adds only the uncompensated fields.
+A bank change before the first note may still add startup time. Hardware testing
+confirmed successful live playback at 2/2 with the static-staff ROM and Playback
+mode on 2026-10-18. Smooth files are in `examples/music/smooth`, generated with `--min-hold 2 --gap 2
+--bank-fields 2`; their MML sources remain in `examples/music`.
+Without this option, bank controls retain their 8/8 timing.
+The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
 Key-off gaps may also consume entries. The loader enters at most 79 note keys in
 Record mode, skipping the remaining music and delays before No-Record and optional
@@ -123,9 +135,25 @@ For an experimental static-staff ROM, run
 original ED01 cartridge. Use Program 1 normally, with existing VBK files.
 The patch skips note/rest drawing and recurring page redraws, retaining pitch
 setup, recording, and sound routines. Program 2's visual teaching is affected.
-Playback improvement and recording behavior need hardware verification.
+Live playback improvement is hardware-confirmed; recording behavior remains
+unverified.
+
+TODO: Explore further ROM changes to eliminate remaining octave-switch delays.
+Improve the mostly static display: accumulated note overdraw produces glitched
+"8b" markers as every possible note pixel fills in. Preserve sound timing when
+restoring or replacing visual feedback.
 
 ## Music hardware results
+
+Hardware testing reported on 2026-10-18:
+
+- The static-staff ROM with the smooth VBK files was reported a total success
+  during live Playback. Cartridge Record was not used.
+- The converter compensates octave-control time within preceding notes/rests.
+  Its full cello prelude still adds two fields at the final switch; eliminating
+  remaining switch delays is a possible ROM follow-up, not yet a measured result.
+- Higher notes still have clearly audible aliasing. Audio filtering is a
+  separate follow-up from ROM timing and display work.
 
 Hardware testing reported on 2026-10-15:
 

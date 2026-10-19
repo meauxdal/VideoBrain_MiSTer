@@ -14,6 +14,7 @@ ENTITY sys_bus IS
 
     ext_addr  : IN  unsigned(13 DOWNTO 0);
     ext_rd    : IN  std_logic;
+    ext_fetch : IN  std_logic := '0';
     ext_wr    : IN  std_logic;
     ext_wdata : IN  uv8;
     ext_rdata : OUT uv8;
@@ -51,6 +52,8 @@ ENTITY sys_bus IS
     apl_available : OUT std_logic;
     apl_load_error : OUT std_logic;
     apl_symbols : OUT std_logic := '0';
+    apl_input_ready : OUT std_logic := '0';
+    apl_key_accepted : OUT std_logic := '0';
 
     joy_linear_base : OUT unsigned(13 DOWNTO 0) := to_unsigned(2580, 14);
     joy_linear_step : OUT unsigned(6 DOWNTO 0) := to_unsigned(7, 7);
@@ -174,6 +177,27 @@ ARCHITECTURE rtl OF sys_bus IS
 BEGIN
 
   apl_available <= '1' WHEN cart_auto_type = to_unsigned(CART_COMPLANG, 8) ELSE '0';
+  -- Bank D input loop: release verified at 3C14, new key accepted at 3C20.
+  apl_key_accepted <= '1' WHEN reset_na = '1' AND
+    cart_auto_type = to_unsigned(CART_COMPLANG, 8) AND cart_bank = 0 AND
+    ext_rd = '1' AND ext_fetch = '1' AND ext_addr = x"3C20" ELSE '0';
+
+  PROCESS (clk, reset_na) IS
+  BEGIN
+    IF reset_na = '0' THEN
+      apl_input_ready <= '0';
+    ELSIF rising_edge(clk) THEN
+      IF cart_auto_type /= to_unsigned(CART_COMPLANG, 8) OR dl_cart = '1' THEN
+        apl_input_ready <= '0';
+      ELSIF cart_bank = 0 AND ext_rd = '1' AND ext_fetch = '1' THEN
+        IF ext_addr = x"3C14" THEN
+          apl_input_ready <= '1';
+        ELSIF ext_addr = x"3C20" THEN
+          apl_input_ready <= '0';
+        END IF;
+      END IF;
+    END IF;
+  END PROCESS;
 --   apl_load_error <= apl_error;
 --   apl_hold <= '1' WHEN apl_state = WAIT_PAUSE OR apl_state = COPY_READ OR
 --                        apl_state = COPY_WRITE ELSE '0';

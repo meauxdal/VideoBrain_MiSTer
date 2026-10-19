@@ -168,7 +168,6 @@ int main(int argc, char** argv, char** env) {
     input.ps2_key = &top->ps2_key;
 
     top->kbd_matrix = 0;
-    top->source_speed = 0;
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
     top->joy_timer_base = 2580;

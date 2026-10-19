@@ -14,7 +14,7 @@ Live variable values are not treated as program edits.
 
 ## PROGs differing from print
 
-These 17 dumps contain a confirmed difference. The examples identify why each
+These 16 dumps contain a confirmed difference. The examples identify why each
 file fails the comparison; they are not exhaustive patches.
 
 | Dump | Printed PROG | PDF page | Confirmed difference |
@@ -25,7 +25,6 @@ file fails the comparison; they are not exhaustive patches.
 | `collatz.bin` | `COLLATZ` (`COLL`) | 139 | Stored as `C`. |
 | `dicejack.bin` | `D` | 217 | Dealer message is `BUSTED` instead of printed `I BUSTED`. |
 | `dstats.bin` | `DSTATS` (`DSTA`) | 252 | Stored as `D`; also contains an extra empty `S` PROG. |
-| `estimatepibarchart.bin` | `PI` | 265 | Adds `X,Y` output inside the loop; absent from the printed bar-chart listing. |
 | `fib1liner.bin` | Immediate expression | 162-166 | Adds a stored `F` wrapper. Its expression uses `INDEX 12`; the printed bar-chart expression uses `INDEX 7`. The book's separately printed `FIB` is in `recursivefib.bin`. |
 | `guess.bin` | `GUES` | 303 | Adds `WILL` to the printed `OK I CHOSE A NUMBER. WHAT IS YOUR GUESS` message; also adds a question mark to the limit prompt. |
 | `gun.bin` | `GUN` | 124 | Printed lines say `BAR -30` and `BAR 30`; stored code uses `BARH`. See qualification below. |
@@ -50,6 +49,7 @@ to PROGs actually printed in the book. Keep that topic as immediate-input VBKs.
 | --- | --- | --- |
 | `aceyducey.bin` | `ACEY`, `CARD` | 78, 80 |
 | `coinchange.bin` | `C` | 313 |
+| `estimatepibarchart.bin` | `PI` | 265 |
 | `lunarlander.bin` | `LL` | 194 |
 | `primebarchart.bin` | `P` | 234 |
 | `recursivefactorial.bin` | `F` | 180, the ascending version that prints intermediate `Y` values |
@@ -62,7 +62,8 @@ workspaces, nor does matching source establish hardware execution correctness.
 
 ## Immediate-expression dumps
 
-Neither file contains a stored PROG. Keep these topics as VBKs, not program tapes.
+Neither file contains a stored PROG. Preserve direct-expression VBKs and use
+separately identified named program wrappers for tape versions.
 
 | Dump | Printed reference | Finding |
 | --- | --- | --- |

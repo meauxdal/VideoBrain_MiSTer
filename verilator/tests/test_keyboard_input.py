@@ -101,6 +101,76 @@ class KeyboardTests(unittest.TestCase):
         self.assertEqual(music_pitches(body), [36, 48, 60, 72, 60, 83, 60])
         self.assertEqual([key for key, _, _ in body if key in (33, 19, 22)], [33, 19, 22])
 
+    def test_music_bank_timing_preserves_onsets_and_pitches(self):
+        body = events(music('O4 C O5 B O2 C O4 C', 'letters', gap=2,
+                            min_hold=2, bank_fields=2))[5:-3]
+        elapsed = 0
+        onsets = []
+        for key, hold, gap in body:
+            if key not in (33, 19, 22, 255):
+                onsets.append(elapsed)
+            elapsed += hold + gap
+        self.assertEqual(onsets, [0, 30, 60, 90])
+        self.assertEqual(elapsed, 120)
+        self.assertEqual(music_pitches(body), [60, 83, 36, 60])
+        self.assertEqual(body[0][1:], (24, 2))
+        self.assertEqual([event[1:] for event in body if event[0] in (33, 19, 22)],
+                         [(2, 2), (2, 2)])
+
+    def test_music_bank_timing_uses_silence_first(self):
+        body = events(music('O4 C O5 B', 'letters', bank_fields=2))[5:-3]
+        self.assertEqual(body[0][1:], (22, 4))
+        for rest, expected in (('R4', [(255, 26, 0)]),
+                               ('T32 R1', [(255, 255, 0), (255, 190, 0)]),
+                               ('T255 R64', [])):
+            with self.subTest(rest=rest):
+                body = events(music(f'O4 C {rest} T120 O5 B', 'letters', gap=2,
+                                    min_hold=2, bank_fields=2))[5:-3]
+                self.assertEqual([event for event in body if event[0] == 255], expected)
+                self.assertEqual(body[0][1:], (25 if rest == 'T255 R64' else 28, 2))
+
+    def test_music_bank_timing_startup_and_limits(self):
+        body = events(music('O2 C', 'letters', bank_fields=2))[5:-3]
+        self.assertEqual(body[0], (33, 2, 2))
+        self.assertEqual(body[1][1:], (22, 8))
+        for value in (0, 256):
+            with self.assertRaisesRegex(ValueError, 'bank fields'):
+                music('C', 'letters', bank_fields=value)
+        warning = io.StringIO()
+        with redirect_stderr(warning):
+            body = events(music('T255 L16 O4 C O5 B', 'letters', gap=2,
+                                min_hold=2, bank_fields=2))[5:-3]
+        self.assertIn('octave switch adds 4 fields', warning.getvalue())
+        self.assertEqual(body[0][1:], (2, 2))
+
+    def test_music_smooth_examples(self):
+        directory = Path(__file__).resolve().parents[2] / 'examples' / 'music'
+        for source in directory.glob('*.mml'):
+            with self.subTest(source=source.name), redirect_stderr(io.StringIO()):
+                text = source.read_text()
+                original = events(music(text, 'letters', gap=2, min_hold=2))[5:-3]
+                data = music(text, 'letters', gap=2, min_hold=2, bank_fields=2)
+                self.assertEqual(data, (directory / 'smooth' / source.with_suffix('.vbk').name).read_bytes())
+                smooth = events(data)[5:-3]
+                self.assertEqual(music_pitches(original), music_pitches(smooth))
+                timelines = []
+                for body, omit_banks in ((original, True), (smooth, False)):
+                    elapsed = 0
+                    onsets = []
+                    for key, hold, gap in body:
+                        if key in (33, 19, 22):
+                            if omit_banks:
+                                continue
+                        elif key != 255:
+                            self.assertGreaterEqual(hold, 2)
+                            self.assertGreaterEqual(gap, 2)
+                            onsets.append(elapsed)
+                        elapsed += hold + gap
+                    timelines.append([time - onsets[0] for time in onsets])
+                if source.stem == 'bach-cello-suite-1-prelude-full':
+                    timelines[0][-1] += 2
+                self.assertEqual(*timelines)
+
     def test_music_range_example_packets(self):
         directory = Path(__file__).resolve().parents[2] / 'examples' / 'music-tests'
         for name, expected in (('scale', list(range(36, 84))),

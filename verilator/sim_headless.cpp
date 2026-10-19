@@ -397,7 +397,6 @@ static void usage(const char* argv0) {
 // "  --apl FILE@F         load RAM from a 16K MAME APL/S memory dump at frame F\n"
 // "  --apl-rtl FILE@F     load the same dump through the RTL download path\n"
 "  --source FILE@F      enter a VBK keyboard file through RTL\n"
-"  --source-speed MODE  APL/S entry: normal (default), fast, slow\n"
 "  --source-trace       log generated keys and interpreter mode\n"
 "  --source-snoop FILE  passive CSV: keys, mode, RAM writes, I/O, scratch writes\n"
 "  --source-snoop-from N  start at loader payload position N (default 0)\n"
@@ -475,7 +474,6 @@ int main(int argc, char** argv) {
 //     long apl_frame = -1;
     std::string source_path;
     long source_frame = -1;
-    unsigned source_speed = 0;
     bool source_started = false, source_seen = false, source_done = false;
     bool source_trace = false;
     std::string source_snoop_path;
@@ -526,13 +524,6 @@ int main(int argc, char** argv) {
         else if (a == "--source-trace") source_trace = true;
         else if (a == "--source-snoop") source_snoop_path = need("--source-snoop");
         else if (a == "--source-snoop-from") source_snoop_from = strtoul(need("--source-snoop-from"), nullptr, 0);
-        else if (a == "--source-speed") {
-            std::string mode = need("--source-speed");
-            if (mode == "normal") source_speed = 0;
-            else if (mode == "fast") source_speed = 1;
-            else if (mode == "slow") source_speed = 2;
-            else { fprintf(stderr, "error: invalid --source-speed\n"); return 1; }
-        }
         else if (a == "--source") {
             std::string value = need("--source");
             size_t at = value.rfind('@');
@@ -757,7 +748,6 @@ int main(int argc, char** argv) {
     top->ioctl_addr = 0; top->ioctl_dout = 0; top->ioctl_din = 0; top->ioctl_index = 0;
     top->ps2_key = 0;
     top->kbd_matrix = 0;
-    top->source_speed = source_speed;
     top->joy_fire = 0;
     top->joy_pots = 0x8080808080808080ULL;
     if (joy_timer_base < 0 || joy_timer_step < 0 || joy_timer_step > 127 ||

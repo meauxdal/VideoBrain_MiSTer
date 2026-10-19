@@ -80,6 +80,8 @@ ENTITY videobrain_core IS
     apl_available : OUT std_logic;
     apl_load_error : OUT std_logic;
     apl_symbols : OUT std_logic := '0';
+    apl_input_ready : OUT std_logic := '0';
+    apl_key_accepted : OUT std_logic := '0';
 
     pc0 : OUT uv16;
     pc1 : OUT uv16;
@@ -308,6 +310,7 @@ BEGIN
       reset_na       => reset_na,
       ext_addr       => ext_addr,
       ext_rd         => ext_rd,
+      ext_fetch      => to_std_logic(romc = ROMC_00),
       ext_wr         => ext_wr,
       ext_wdata      => ext_wdata,
       ext_rdata      => ext_rdata,
@@ -340,6 +343,8 @@ BEGIN
       apl_available  => apl_available,
       apl_load_error => apl_load_error,
       apl_symbols    => apl_symbols,
+      apl_input_ready => apl_input_ready,
+      apl_key_accepted => apl_key_accepted,
       joy_linear_base => joy_linear_base,
       joy_linear_step => joy_linear_step,
       unknown_cart_profile => unknown_cart_profile

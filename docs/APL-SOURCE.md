@@ -13,6 +13,12 @@ Arithmetic and bars passed repeated hardware runs, including consecutive
 source entries and executions. The five Price first-batch programs also passed
 hardware testing. Other listings still need testing.
 
+Coverage target: every printed expression and program via both VBK and VBT.
+Keep original expression VBKs; provide separately identified named program
+wrappers as VBK and VBT so expressions can be loaded from tape. Source
+comparison and hardware execution are separate checks; converted MAME dumps
+alone do not establish coverage.
+
 ## Starting the Price games
 
 Boot APL/S fresh, load a definition from `software/APL_S/price`, and wait for
@@ -68,20 +74,19 @@ ASCII `*` means exponentiation; it is not converted to multiplication.
 Unsupported characters are rejected with their source line and column.
 The limit is 4096 key tokens, including spaces and NEXT.
 
-The interpreter must be ready for input. **Keyboard Entry > APL/S Entry Speed** selects Normal
-(8 fields per press and release), Fast (6/6), or Slow (10/10). Continuous-entry
-hardware testing confirmed 6/6 through automatic line clearances; 4/4 can lose
-characters. Select before loading; the setting is latched per file. Normal is
-the default. SHIFT and NEXT use at least 8 fields per press and release (10 at
-Slow); every speed retains the 64-field startup wait. After NEXT's release gap,
-lines up to 30 characters wait 64 fields; longer lines wait 96 fields.
-ENDE also waits 96 fields because it checks the whole program definition.
-Spaces count; implicit SHIFTs do not. The wait applies before any following key.
-SHIFT must update the observed interpreter mode before the next character.
-Other keys and prompts have no acknowledgement. Music Teacher's reliable 2/2
-result does not establish it for APL/S.
-Long operations or interactive prompts need separate testing. Avoid typing
-during entry. VBK2 files, including music, retain their encoded timings.
+APL/S VBK1 entry follows the recognized interpreter's keyboard handshake.
+The loader holds each key until accepted, releases it, and waits for the
+interpreter to verify release before sending another key. This includes SHIFT
+and NEXT. After NEXT, parsing, ENDE checks, execution, and screen updates can
+take as long as needed; no following key is sent until input resumes.
+There is no entry-speed setting or fixed startup, key, or line delay for VBK1.
+Cancellation releases the key even while the interpreter is busy.
+VBK2 files, including music, retain their encoded timings.
+
+The detector observes opcode fetches in bank D: $3C14 follows the all-keys-up
+loop at $3C0A; $3C20 follows acceptance of a new, nonzero key at $3C14-$3C1E.
+Cursor drawing at $3C04 precedes release verification and is not readiness.
+These addresses apply only to the CRC-recognized Computational Language ROM.
 
 ## Entry timing test
 
@@ -90,14 +95,13 @@ row is exactly 15 characters, including quotes; the result is `AAABBBCCCDDDE`
 without quotes. Groups of three expose missed or repeated letters. The file
 runs immediate expressions without storing a program.
 
-Boot APL/S fresh, select a candidate speed, load the file and watch every row.
-Allow about 8-12 minutes per run. Any shortened group, missing quote, error or
-extra character is a failure, even if later rows look correct. Repeat at each
-speed; a clean final screen alone cannot establish zero misses across 100 rows.
+Boot APL/S fresh, load the file and watch every row.
+Any shortened group, missing quote, error or extra character is a failure, even if later rows look correct. Repeat the
+entry; a clean final screen alone cannot establish zero misses across 100 rows.
 
 `examples/apl/timing-continuous-100.vbk` types the same quoted phrase 100 times
-continuously, with no NEXT (PC F3) or line waits. It uses the selected
-APL/S Entry Speed. Regenerate it with:
+continuously, with no NEXT (PC F3) or line waits. It uses the same
+keyboard handshake. Regenerate it with:
 
 ```sh
 python3 verilator/apl_source.py examples/apl/timing-continuous-100.txt --hold-final
@@ -121,7 +125,6 @@ make headless
 
 The headless run checks completion, not the displayed arithmetic result.
 Inspect its capture. Building and running the full simulator may take time.
-The headless option `--source-speed normal|fast|slow` selects the same timing.
 
 For other titles and timed music, see [keyboard input](KEYBOARD-INPUT.md).
 The RAM dump loader and its diagnostic entry paths are commented out; dump

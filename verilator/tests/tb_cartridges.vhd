@@ -22,6 +22,8 @@ ARCHITECTURE test OF tb_cartridges IS
   SIGNAL dl_index, fallback : uv8 := (OTHERS => '0');
   SIGNAL apl_hold, apl_error, apl_available : std_logic;
   SIGNAL apl_symbols : std_logic;
+  SIGNAL fetch : std_logic := '0';
+  SIGNAL apl_input_ready, apl_key_accepted : std_logic;
   SIGNAL apl_paused : std_logic := '0';
   SIGNAL joy_base : unsigned(13 DOWNTO 0);
   SIGNAL joy_step : unsigned(6 DOWNTO 0);
@@ -34,6 +36,7 @@ BEGIN
     PORT MAP (
       clk => clk, reset_na => reset_na,
       ext_addr => addr, ext_rd => '1', ext_wr => wr,
+      ext_fetch => fetch,
       ext_wdata => wdata, ext_rdata => rdata,
       bb_addr => bb_addr, bb_rdata => bb_rdata,
       uv_cur_field => '0', uv_cur_vpos => (OTHERS => '0'),
@@ -49,6 +52,7 @@ BEGIN
       apl_hold => apl_hold, apl_paused => apl_paused,
       apl_available => apl_available, apl_load_error => apl_error,
       apl_symbols => apl_symbols,
+      apl_input_ready => apl_input_ready, apl_key_accepted => apl_key_accepted,
       joy_linear_base => joy_base, joy_linear_step => joy_step
     );
 
@@ -183,6 +187,13 @@ BEGIN
     fallback <= to_unsigned(CART_COMPLANG, 8);
     tick;
     tick;
+    fetch <= '1'; addr <= to_unsigned(16#3C14#, 14); tick;
+    ASSERT apl_input_ready = '0' AND apl_key_accepted = '0'
+      REPORT "Unrecognized ROM enabled input handshake" SEVERITY failure;
+    addr <= to_unsigned(16#3C20#, 14); tick;
+    ASSERT apl_key_accepted = '0'
+      REPORT "Unrecognized ROM accepted key" SEVERITY failure;
+    fetch <= '0';
     read_at(16#1000#, 16);
     read_at(16#1BFF#, 17);
     FOR data IN 0 TO 3 LOOP
@@ -230,6 +241,32 @@ BEGIN
 
     IF apl_image /= "" THEN
       load_file(apl_image);
+      -- Data reads and other banks must not impersonate the input routine.
+      addr <= to_unsigned(16#3C14#, 14); tick;
+      ASSERT apl_input_ready = '0' REPORT "Data read signalled ready" SEVERITY failure;
+      FOR bank IN 1 TO 2 LOOP
+        write_at(16#1000# + bank, 0);
+        fetch <= '1'; addr <= to_unsigned(16#3C14#, 14); tick;
+        ASSERT apl_input_ready = '0' REPORT "Wrong bank signalled ready" SEVERITY failure;
+        addr <= to_unsigned(16#3C20#, 14); tick;
+        ASSERT apl_key_accepted = '0' REPORT "Wrong bank accepted key" SEVERITY failure;
+        fetch <= '0';
+      END LOOP;
+      write_at(16#1000#, 0);
+      read_at(16#3C14#, 16#28#);
+      read_at(16#3C20#, 16#13#);
+      fetch <= '1'; addr <= to_unsigned(16#3C14#, 14); tick;
+      ASSERT apl_input_ready = '1' REPORT "Input loop not ready" SEVERITY failure;
+      fetch <= '0'; addr <= to_unsigned(16#3C20#, 14); tick;
+      ASSERT apl_input_ready = '1' AND apl_key_accepted = '0'
+        REPORT "Data read accepted key" SEVERITY failure;
+      fetch <= '1'; tick;
+      ASSERT apl_input_ready = '0' AND apl_key_accepted = '1'
+        REPORT "Input loop did not accept key" SEVERITY failure;
+      addr <= to_unsigned(16#3C14#, 14); tick;
+      ASSERT apl_input_ready = '1' REPORT "Input did not resume" SEVERITY failure;
+      fetch <= '0'; reset_na <= '0'; tick; reset_na <= '1'; tick;
+      ASSERT apl_input_ready = '0' REPORT "Reset retained readiness" SEVERITY failure;
       read_at(16#1000#, 16#AA#);
       read_at(16#3000#, 16#08#);
       write_at(16#1001#, 0);

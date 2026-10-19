@@ -6,7 +6,9 @@ reg reset = 1, frame_tick = 0, download = 0, wr = 0;
 reg [24:0] addr = 0;
 reg [7:0] data = 0;
 reg available = 1, symbols = 0, enabled = 0, cancel = 0;
-reg [1:0] speed = 0;
+reg input_ready = 0, key_accepted = 0;
+reg emulate_input = 1;
+integer input_cycles = 0;
 reg music_playback = 0, auto_repeat = 0;
 wire busy, error, complete;
 wire [35:0] keys;
@@ -20,14 +22,26 @@ integer held_cycles [0:8191];
 integer field_count = 0;
 integer press_field [0:8191];
 integer release_field [0:8191];
-integer shift_delay = 0, shift_due = -1;
 
 always @(negedge clk) begin
-    if (frame_tick) field_count = field_count + 1;
-    if (shift_due >= 0 && field_count >= shift_due) begin
-        symbols = !symbols;
-        shift_due = -1;
+    if (emulate_input) key_accepted = 0;
+    if (emulate_input && !dut.timed) begin
+        if (keys != 0 && input_ready) begin
+            input_cycles = input_cycles + 1;
+            if (input_cycles == 5) begin
+                input_ready = 0;
+                key_accepted = 1;
+                input_cycles = 0;
+            end
+        end else if (keys == 0 && !input_ready) begin
+            input_cycles = input_cycles + 1;
+            if (input_cycles == 7) begin
+                input_ready = 1;
+                input_cycles = 0;
+            end
+        end
     end
+    if (frame_tick) field_count = field_count + 1;
     if (keys != 0 && previous == 0) begin
         if ((keys & (keys - 1)) != 0) $fatal(1, "Multiple playback keys");
         for (integer i = 0; i < 36; i = i + 1)
@@ -35,10 +49,7 @@ always @(negedge clk) begin
         presses = presses + 1;
         held_cycles[presses - 1] = 0;
         press_field[presses - 1] = field_count;
-        if (keys[11] && emulate_shift) begin
-            if (shift_delay == 0) symbols = !symbols;
-            else shift_due = field_count + shift_delay;
-        end
+        if (keys[11] && emulate_shift) symbols = !symbols;
     end
     if (keys == 0 && previous != 0) release_field[presses - 1] = field_count;
     if (keys != 0) held_cycles[presses - 1] = held_cycles[presses - 1] + 1;
@@ -77,6 +88,45 @@ task finish_entry;
     if (busy || keys != 0) $fatal(1, "Playback failed to release");
 endtask
 
+task check_handshake;
+    emulate_input = 0; input_ready = 0; symbols = 0; presses = 0;
+    emulate_shift = 0;
+    frame_tick = 1;
+    packet[8] = 0; packet[9] = 0; packet[10] = 8'h9b; packet[11] = 8'h61;
+    init_packet(4); send_packet(12, -1);
+    repeat (200) tick;
+    if (keys != 0 || !busy) $fatal(1, "Typed before input ready");
+    input_ready = 1;
+    repeat (6) tick;
+    if (keys != 1 || presses != 1) $fatal(1, "Ready did not start entry");
+    repeat (200) tick;
+    if (keys != 1 || presses != 1) $fatal(1, "Released before acceptance");
+    // Every return to input must follow an accepted key and a release scan.
+    for (integer n = 0; n < 5; n = n + 1) begin
+        input_ready = 0; key_accepted = 1; tick; key_accepted = 0;
+        if (keys != 0) $fatal(1, "Accepted key not released");
+        if (n == 4) begin
+            if (!complete || busy) $fatal(1, "Final key not acknowledged");
+        end else begin
+            // Includes an arbitrarily long post-NEXT pause before SHIFT.
+            repeat (300) tick;
+            if (keys != 0 || presses != n + 1 || !busy)
+                $fatal(1, "Typed while APL was busy");
+            if (n == 3) symbols = 1;
+            input_ready = 1;
+            frame_tick = 0;
+            repeat (6) tick;
+            if (presses != n + 2 || keys == 0)
+                $fatal(1, "Did not resume on readiness");
+            frame_tick = 1;
+        end
+    end
+    if (observed[0] != 0 || observed[1] != 0 || observed[2] != 27 ||
+        observed[3] != 11 || observed[4] != 33 || error)
+        $fatal(1, "Handshake key order mismatch");
+    emulate_input = 1; emulate_shift = 1; input_ready = 0; input_cycles = 0;
+endtask
+
 task check_clock;
     integer file_handle, count, expected, mode;
     file_handle = $fopen("../software/2 VideoBrain Keyboard Input Files (vbk)/21-apl_s-games-james-price/21-clock.vbk", "rb");
@@ -85,7 +135,7 @@ task check_clock;
     $fclose(file_handle);
     if (count != 445 || {packet[5], packet[4]} != 437)
         $fatal(1, "Unexpected Clock VBK size");
-    symbols = 0; presses = 0; speed = 0;
+    symbols = 0; presses = 0;
     send_packet(count, -1); finish_entry;
     if (error || !complete) $fatal(1, "Clock entry stopped at payload byte %0d", dut.position);
     expected = 0; mode = 0;
@@ -151,89 +201,11 @@ task check_music_limit(input integer notes, input bit playback_mode, input bit r
     auto_repeat = 0; music_playback = 0;
 endtask
 
-task check_line_wait(input integer count, input bit next_shift, input [1:0] setting);
-    integer next_index, expected_wait, control;
-    speed = setting; symbols = 0; presses = 0; frame_tick = 0;
-    for (integer n = 0; n < count; n = n + 1)
-        packet[8 + n] = n % 2 == 0 ? 8'h61 : 8'h93;
-    packet[8 + count] = 8'h9b;
-    packet[9 + count] = next_shift ? 0 : 8'h61;
-    packet[10 + count] = 8'h9b;
-    init_packet(count + 3); send_packet(count + 11, -1);
-    for (integer i = 0; i < 10000 && busy; i = i + 1) begin
-        repeat (4) tick;
-        frame_tick = 1; tick;
-        frame_tick = 0; tick;
-    end
-    if (busy || error || !complete || presses != count + 4 + int'(next_shift))
-        $fatal(1, "Line length %0d lost keys", count);
-    next_index = count + 2;
-    if (observed[count + 1] != 27 || observed[next_index] != (next_shift ? 11 : 33))
-        $fatal(1, "Line length %0d key order mismatch", count);
-    control = setting == 2 ? 10 : 8;
-    expected_wait = count > 30 ? 96 : 3;
-    if (press_field[next_index] - release_field[count + 1] != control + expected_wait)
-        $fatal(1, "Line length %0d post-NEXT wait mismatch", count);
-    if (field_count - release_field[presses - 1] != control + 3)
-        $fatal(1, "Line length was not cleared after NEXT");
-    speed = 0; frame_tick = 1;
-endtask
-
-task check_end_edit(input [1:0] setting, input bit exact_command, input bit next_shift);
-    integer count, control, next_index;
-    speed = setting; symbols = 1; presses = 0; frame_tick = 0;
-    packet[8] = 20; packet[9] = 14; packet[10] = 25; packet[11] = 20;
-    count = exact_command ? 4 : 5;
-    if (!exact_command) packet[12] = 0;
-    packet[8 + count] = 8'h9b;
-    packet[9 + count] = next_shift ? 8'h61 : 18;
-    packet[10 + count] = 8'h9b;
-    init_packet(count + 3); send_packet(count + 11, -1);
-    for (integer i = 0; i < 2000 && busy; i = i + 1) begin
-        repeat (4) tick;
-        frame_tick = 1; tick;
-        frame_tick = 0; tick;
-    end
-    if (busy || error || !complete || presses != count + 4 + int'(next_shift))
-        $fatal(1, "ENDE wait lost keys");
-    next_index = count + 2;
-    control = setting == 2 ? 10 : 8;
-    if (observed[count + 1] != 27 || observed[next_index] != (next_shift ? 11 : 18) ||
-        press_field[next_index] - release_field[count + 1] != control + (exact_command ? 96 : 3))
-        $fatal(1, "ENDE wait mismatch");
-    if (field_count - release_field[presses - 1] != control + 3)
-        $fatal(1, "ENDE wait was not cleared");
-    speed = 0; frame_tick = 1;
-endtask
-
-task check_speed(input [1:0] setting, input integer duration);
-    integer held, released;
-    speed = setting; symbols = 0; presses = 0;
-    frame_tick = 0; shift_delay = 7;
-    packet[8] = 0; packet[9] = 8'h61; packet[10] = 8'h61; packet[11] = 8'h9b;
-    init_packet(4); send_packet(12, -1);
-    speed = 2'd3; // Changes after download must not affect this file.
-    for (integer i = 0; i < 250 && busy; i = i + 1) begin
-        repeat (32) tick;
-        frame_tick = 1; tick;
-        frame_tick = 0; tick;
-    end
-    if (busy || error || !complete || presses != 5 || observed[0] != 0 ||
-        observed[1] != 11 || observed[2] != 33 || observed[3] != 33 || observed[4] != 27)
-        $fatal(1, "Speed %0d lost or reordered keys", setting);
-    for (integer n = 0; n < 5; n = n + 1) begin
-        held = (n == 1 || n == 4) && duration < 8 ? 8 : duration;
-        if (release_field[n] - press_field[n] != held)
-            $fatal(1, "Speed %0d hold mismatch at %0d", setting, n);
-        released = n == 4 ? field_count : press_field[n + 1];
-        if (released - release_field[n] != held + (n == 4 ? 3 : 0))
-            $fatal(1, "Speed %0d gap or line wait mismatch at %0d", setting, n);
-    end
-    shift_delay = 0; speed = 0; frame_tick = 1;
-endtask
-
 initial begin
     tick; reset = 0; tick;
+    enabled = 1;
+    check_handshake;
+    enabled = 0; presses = 0; symbols = 0;
     packet[8] = 8'h61; packet[9] = 8'h56; packet[10] = 8'h61; packet[11] = 8'h9b;
     packet[12] = 8'h5e; packet[13] = 8'h56; packet[14] = 8'h5a; packet[15] = 8'h9b;
     init_packet(8);
@@ -302,27 +274,8 @@ initial begin
     init_packet(4096); send_packet(4104, -1); finish_entry;
     if (error) $fatal(1, "Maximum stream failed");
 
-    check_speed(0, 8);
-    check_speed(1, 6);
-    check_speed(2, 10);
-    check_speed(3, 8);
-
-    check_line_wait(30, 1, 0);
-    check_line_wait(30, 0, 2);
-    check_line_wait(31, 0, 1);
-    check_line_wait(31, 1, 0);
-    check_line_wait(46, 1, 0);
-    check_line_wait(46, 0, 2);
-    check_line_wait(125, 1, 1);
-    check_line_wait(140, 0, 0);
-
-    check_end_edit(0, 1, 0);
-    check_end_edit(1, 1, 1);
-    check_end_edit(2, 1, 0);
-    check_end_edit(0, 0, 0);
-
     // Timed physical events work without APL and never consult its mode.
-    available = 0; presses = 0; speed = 2;
+    available = 0; presses = 0;
     packet[8] = 11; packet[9] = 3; packet[10] = 2;
     packet[11] = 35; packet[12] = 5; packet[13] = 4;
     packet[14] = 255; packet[15] = 7; packet[16] = 0;
@@ -419,7 +372,7 @@ initial begin
     check_music_limit(90, 0, 1);
     check_music_limit(90, 1, 0);
 
-    // Both VBK1 completion paths must repeat, including final line waits.
+    // VBK1 repeats only after each key is accepted.
     available = 1;
     for (integer line_end = 0; line_end < 2; line_end = line_end + 1) begin
         packet[8] = line_end != 0 ? 8'h9b : 0;

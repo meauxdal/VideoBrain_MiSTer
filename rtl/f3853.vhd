@@ -88,6 +88,8 @@ BEGIN
           WHEN 0 => vec(15 DOWNTO 8) <= io_wdata;
           WHEN 1 => vec(7 DOWNTO 0)  <= io_wdata;
           WHEN 2 =>
+            -- MK3853 data book, p. 172: control writes clear external requests.
+            request      <= '0';
             ext_enable   <= to_std_logic(io_wdata(1 DOWNTO 0) = "01");
             timer_enable <= to_std_logic(io_wdata(1 DOWNTO 0) = "11");
           WHEN OTHERS =>

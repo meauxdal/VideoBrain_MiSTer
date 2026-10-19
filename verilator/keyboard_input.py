@@ -109,18 +109,22 @@ def keyboard_text(text, start_mode, profile="keyboard", hold_final=False):
     return packet(events)
 
 
-def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, replay=False):
+def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, replay=False,
+          bank_fields=None):
     if start_mode not in ("letters", "symbols"):
         raise ValueError("music input requires --start-mode letters or symbols")
     if not 1 <= gap <= 255 or not 1 <= min_hold <= 255:
         raise ValueError("music gap and minimum hold must be 1..255 fields")
     if page_notes is not None and page_notes < 1:
         raise ValueError("--page-notes must be positive")
+    if bank_fields is not None and not 1 <= bank_fields <= 255:
+        raise ValueError("music bank fields must be 1..255")
     # Start from an empty Play/Record staff. Shifted SPACE erases its song.
     events = []
     if start_mode == "letters":
         events.append((11, 8, 8))
     events.extend([(19, 8, 64), (MUSIC_RECORD, 8, 8), (11, 8, 8), (19, 8, 8)])
+    music_start = len(events)
     octave, tempo, length, bank = 4, 120, 4, 0
     count = 0
     notes = 0
@@ -176,7 +180,28 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
             raise ValueError("Music Teacher range is C2..B5")
         if not 48 <= pitch - bank <= 74:
             bank = next(offset for offset in (0, -12, 12) if 48 <= pitch - offset <= 74)
-            events.append(({-12: 33, 0: 19, 12: 22}[bank], 8, 8))
+            control_fields = 8 if bank_fields is None else bank_fields
+            if bank_fields is not None:
+                remaining = 2 * bank_fields
+                # Spend trailing silence before shortening the previous note.
+                while remaining and len(events) > music_start and events[-1][0] == 255:
+                    _, held, released = events.pop()
+                    used = min(remaining, held)
+                    remaining -= used
+                    if held > used:
+                        events.append((255, held - used, released))
+                if remaining and sounding:
+                    key, held, released = events[-1]
+                    used = min(remaining, max(0, released - min(gap, bank_fields)))
+                    released -= used
+                    remaining -= used
+                    if held - remaining < min_hold:
+                        extra = remaining - (held - min_hold)
+                        print(f"warning: note {count+1}: octave switch adds {extra} fields; "
+                              "previous note is too short to compensate fully", file=sys.stderr)
+                        remaining = held - min_hold
+                    events[-1] = (key, held - remaining, released)
+            events.append(({-12: 33, 0: 19, 12: 22}[bank], control_fields, control_fields))
         hold = fields - gap
         if not min_hold <= hold <= 255:
             raise ValueError(f"note {count+1}: needs {hold} held fields; choose a slower/faster tempo or length")
@@ -208,14 +233,16 @@ def main():
     parser.add_argument("--hold-final", action="store_true", help="omit the final NEXT; earlier lines still submit")
     parser.add_argument("--gap", type=int, default=8, help="music key-off fields (hardware minimum unverified)")
     parser.add_argument("--min-hold", type=int, default=8, help="music minimum held fields (hardware minimum unverified)")
+    parser.add_argument("--bank-fields", type=int,
+                        help="experimental music bank hold/gap fields, fitted into preceding note/rest")
     parser.add_argument("--page-notes", type=int, help="insert a wait at this measured entry interval")
     parser.add_argument("--page-wait", type=int, default=64, help="additional fields at a configured page boundary")
     parser.add_argument("--replay", action="store_true", help="press Music Teacher REPLAY after entry")
     args = parser.parse_args()
     if args.hold_final and args.profile in ("music", "keys"):
         parser.error("--hold-final applies to text input")
-    if (args.replay or args.page_notes is not None) and args.profile != "music":
-        parser.error("--replay and --page-notes require --profile music")
+    if (args.replay or args.page_notes is not None or args.bank_fields is not None) and args.profile != "music":
+        parser.error("--replay, --page-notes and --bank-fields require --profile music")
     try:
         text = args.source.read_text(encoding="utf-8")
         if args.profile == "apl":
@@ -224,7 +251,7 @@ def main():
             data = physical_keys(text)
         elif args.profile == "music":
             data = music(text, args.start_mode, args.gap, args.min_hold,
-                         args.page_notes, args.page_wait, args.replay)
+                         args.page_notes, args.page_wait, args.replay, args.bank_fields)
         else:
             data = keyboard_text(text, args.start_mode, args.profile, args.hold_final)
         output = args.output or args.source.with_suffix(".vbk")

@@ -1,6 +1,5 @@
 `timescale 1ns/1ps
 module apl_source_loader #(
-    parameter [7:0] KEY_FRAMES = 8,
     parameter [7:0] LINE_FRAMES = 64
 )(
     input wire clk,
@@ -12,7 +11,8 @@ module apl_source_loader #(
     input wire [7:0] data,
     input wire available,
     input wire symbols,
-    input wire [1:0] speed,
+    input wire input_ready,
+    input wire key_accepted,
     input wire music_playback,
     input wire auto_repeat,
     input wire enabled,
@@ -24,10 +24,9 @@ module apl_source_loader #(
 );
 
 localparam IDLE = 0, RECEIVE = 1, WAIT_START = 2, READ_KEY = 3,
-           SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6, LINE_WAIT = 7,
+           SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6,
            READ_HOLD = 8, SELECT_HOLD = 9, READ_GAP = 10, SELECT_GAP = 11;
 localparam [7:0] MUSIC_REPLAY = 8'hfd, MUSIC_RECORD = 8'hfe;
-localparam [7:0] LETTER_E = 20, LETTER_N = 14, LETTER_D = 25;
 reg [3:0] state = IDLE;
 reg download_d = 0;
 reg bad = 0;
@@ -37,16 +36,11 @@ reg [11:0] position = 0;
 reg [7:0] memory [0:4095];
 reg [7:0] token;
 reg [7:0] frames = 0;
-reg [6:0] line_length = 0;
-reg end_edit = 0;
-wire [7:0] line_frames = line_length > 30 || (end_edit && line_length == 4) ? 8'd96 : LINE_FRAMES;
 reg shifting = 0, shifted = 0, started = 0;
 reg timed = 0;
 reg playback = 0;
 reg recording = 0;
 reg [6:0] music_notes = 0;
-reg [7:0] key_frames = KEY_FRAMES;
-wire [7:0] control_frames = key_frames < 8 ? 8'd8 : key_frames;
 reg [1:0] payload_phase = 0;
 reg [7:0] event_key, hold_frames, gap_frames;
 
@@ -96,8 +90,6 @@ always @(posedge clk) begin
         keys <= 0;
         started <= 0;
         complete <= 0;
-        line_length <= 0;
-        end_edit <= 0;
     end else if (download && !download_d) begin
         state <= RECEIVE;
         bad <= wr && (addr != 0 || data != "V");
@@ -114,14 +106,6 @@ always @(posedge clk) begin
         playback <= music_playback;
         recording <= 0;
         music_notes <= 0;
-        line_length <= 0;
-        end_edit <= 0;
-        // Latch speed per file; timed events retain their encoded durations.
-        case (speed)
-            1: key_frames <= 6;
-            2: key_frames <= 10;
-            default: key_frames <= KEY_FRAMES;
-        endcase
     end else if (busy && ((!timed && state != RECEIVE && !available) ||
                          cancel || (started && !enabled))) begin
         state <= IDLE;
@@ -169,8 +153,8 @@ always @(posedge clk) begin
                     end
                 end
             end
-            WAIT_START: if (enabled && frame_tick) begin
-                if (frames > 1) frames <= frames - 1'b1;
+            WAIT_START: if (enabled && (timed ? frame_tick : input_ready)) begin
+                if (timed && frames > 1) frames <= frames - 1'b1;
                 else begin
                     started <= 1;
                     shifted <= 0;
@@ -183,7 +167,7 @@ always @(posedge clk) begin
                     event_key <= token;
                     position <= position + 1'b1;
                     state <= READ_HOLD;
-                end else if (!token[7] && token[6] != symbols) begin
+                end else if (input_ready && !token[7] && token[6] != symbols) begin
                     if (shifted) begin
                         error <= 1;
                         state <= IDLE;
@@ -191,23 +175,11 @@ always @(posedge clk) begin
                         keys <= 36'd1 << 11;
                         shifting <= 1;
                         shifted <= 1;
-                        frames <= control_frames;
                         state <= HOLD_KEY;
                     end
-                end else begin
+                end else if (input_ready) begin
                     keys <= 36'd1 << token[5:0];
                     shifting <= 0;
-                    if (token != 8'h9b) begin
-                        if (line_length < 125) line_length <= line_length + 1'b1;
-                        case (line_length)
-                            0: end_edit <= token == LETTER_E;
-                            1: end_edit <= end_edit && token == LETTER_N;
-                            2: end_edit <= end_edit && token == LETTER_D;
-                            3: end_edit <= end_edit && token == LETTER_E;
-                            default: end_edit <= 0;
-                        endcase
-                    end
-                    frames <= token == 8'h9b ? control_frames : key_frames;
                     state <= HOLD_KEY;
                 end
             end
@@ -243,43 +215,32 @@ always @(posedge clk) begin
                     state <= HOLD_KEY;
                 end
             end
-            HOLD_KEY: if (frame_tick) begin
-                if (frames > 1) frames <= frames - 1'b1;
-                else begin
-                    keys <= 0;
-                    frames <= timed ? gap_frames :
-                              (shifting || token == 8'h9b ? control_frames : key_frames);
-                    state <= RELEASE_KEY;
-                end
-            end
-            RELEASE_KEY: if (frame_tick || (timed && frames == 0)) begin
-                if (frames > 1) frames <= frames - 1'b1;
-                else if (shifting) state <= SELECT_KEY;
-                else if (!timed && token == 8'h9b) begin
-                    // Long lines and ENDE need more parsing time before any next key.
-                    frames <= line_frames;
-                    line_length <= 0;
-                    end_edit <= 0;
-                    state <= LINE_WAIT;
-                end else if ({4'd0, position} + 16'd1 == length) begin
+            HOLD_KEY: if (!timed && key_accepted) begin
+                keys <= 0;
+                if (shifting) state <= SELECT_KEY;
+                else if ({4'd0, position} + 16'd1 == length) begin
                     if (auto_repeat) begin
                         position <= 0;
                         shifted <= 0;
-                        line_length <= 0;
-                        end_edit <= 0;
                         state <= READ_KEY;
                     end else begin
                         complete <= 1;
                         state <= IDLE;
                     end
-                end
-                else begin
+                end else begin
                     position <= position + 1'b1;
                     shifted <= 0;
                     state <= READ_KEY;
                 end
+            end else if (timed && frame_tick) begin
+                if (frames > 1) frames <= frames - 1'b1;
+                else begin
+                    keys <= 0;
+                    frames <= gap_frames;
+                    state <= RELEASE_KEY;
+                end
             end
-            LINE_WAIT: if (frame_tick) begin
+            RELEASE_KEY: if (frame_tick || (timed && frames == 0)) begin
                 if (frames > 1) frames <= frames - 1'b1;
                 else if ({4'd0, position} + 16'd1 == length) begin
                     if (auto_repeat) begin

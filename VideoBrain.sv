@@ -72,7 +72,6 @@ localparam CONF_STR = {
 	"P4F4,VBK,Load Keyboard File;",
 	"P4O[18],Music Mode,Playback,Record;",
 	"P4O[19],Auto-Repeat,Off,On;",
-	"P4O[13:12],APL/S Entry Speed,Normal,Fast,Slow;",
 	"H2P4-Keyboard entry active;",
 	"H3P4-Keyboard file rejected;",
 	"P2,System;",
@@ -203,6 +202,7 @@ wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
 wire source_dl = ioctl_download && (ioctl_index[7:0] == 8'd4);
 wire apl_available, apl_load_error;
 wire apl_symbols, source_busy, source_error;
+wire apl_input_ready, apl_key_accepted;
 wire [35:0] source_keys;
 wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
                                     (ioctl_index[7:0] == 8'd2));
@@ -344,7 +344,8 @@ apl_source_loader source_loader (
 	.data(ioctl_dout),
 	.available(apl_available),
 	.symbols(apl_symbols),
-	.speed(status[13:12]),
+	.input_ready(apl_input_ready),
+	.key_accepted(apl_key_accepted),
 	.music_playback(~status[18]),
 	.auto_repeat(status[19]),
 	.enabled(!OSD_STATUS),
@@ -443,6 +444,8 @@ videobrain_core core
 	.apl_available (apl_available),
 	.apl_load_error (apl_load_error),
 	.apl_symbols (apl_symbols),
+	.apl_input_ready (apl_input_ready),
+	.apl_key_accepted (apl_key_accepted),
 
 	.pc0        (),
 	.pc1        (),
