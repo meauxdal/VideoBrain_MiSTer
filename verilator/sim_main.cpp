@@ -150,6 +150,7 @@ int main(int argc, char** argv, char** env) {
     }
 
     top = new Vtop();
+    top->progressive = 0;
     top->playback_data = 1;
     Verilated::commandArgs(argc, argv);
 

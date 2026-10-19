@@ -4,6 +4,12 @@ cd "$(dirname "$0")"
 
 cart=${1:-'../software/1 Cartridges/Music Teacher 1 - Audio Focus (experimental).bin'}
 output=out/music_audio_b5
+set --
+case ${VB_240P:-0} in
+    0) ;;
+    1) output=out/music_audio_b5_240p; set -- --240p ;;
+    *) echo 'VB_240P must be 0 or 1.' >&2; exit 1 ;;
+esac
 
 if [ ! -x obj_dir_headless/Vtop ] || [ ! -f "$cart" ]; then
     echo 'Requires the headless simulator and Music Teacher 1 ROM.' >&2
@@ -12,8 +18,8 @@ fi
 
 mkdir -p "$output"
 make headless
-make test-smi
-./obj_dir_headless/Vtop --cart "$cart" --frames 430 --max-cycles 110000000 \
+make test-smi test-cpu-interrupt
+./obj_dir_headless/Vtop "$@" --cart "$cart" --frames 430 --max-cycles 110000000 \
     --press Z@120:8 --press Z@180:8 --press V@260:8 --press K@320:100 \
     --audio-log "$output/events.csv" --shot 179,259,319 --shot-last --outdir "$output"
 if [ "$(wc -l < "$output/events.csv")" -le 1 ]; then

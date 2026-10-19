@@ -106,6 +106,14 @@ test-cpu-clock: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_cpu_clock.vhd
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_cpu_clock --assert-level=error
 
+.PHONY: test-cpu-interrupt
+test-cpu-interrupt:
+	mkdir -p out/ghdl_cpu_interrupt
+	$(GHDL) -a --std=08 --workdir=out/ghdl_cpu_interrupt $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_interrupt.vhd
+	$(GHDL) -r --std=08 --workdir=out/ghdl_cpu_interrupt tb_cpu_interrupt --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/ghdl_cpu_interrupt tb_cpu_interrupt -glate_request=true --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/ghdl_cpu_interrupt tb_cpu_interrupt -glong_cycle=true --assert-level=error
+
 .PHONY: test-smi
 test-smi:
 	mkdir -p out/ghdl_smi

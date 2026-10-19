@@ -2,6 +2,7 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
 USE work.base_pack.ALL;
+USE work.uv202_pack.ALL;
 
 ENTITY tb_cpu_clock IS
 END ENTITY;
@@ -34,17 +35,24 @@ BEGIN
 
   PROCESS
     VARIABLE previous_cycle : time := 0 ns;
+    VARIABLE first_cycle : time := 0 ns;
     VARIABLE checked : natural := 0;
+    VARIABLE elapsed_ticks : natural;
   BEGIN
     WAIT UNTIL rising_edge(clk);
     IF now > 2 us AND cpu_ena = '1' AND phase = 0 THEN
       IF previous_cycle /= 0 ns THEN
-        ASSERT now - previous_cycle = 280 ns
-          REPORT "F8 short cycle must take 28 master clocks" SEVERITY failure;
+        ASSERT now - previous_cycle = 280 ns OR now - previous_cycle = 290 ns
+          REPORT "F8 short cycle must take 28 or 29 master clocks" SEVERITY failure;
         checked := checked + 1;
+      ELSE
+        first_cycle := now;
       END IF;
       previous_cycle := now;
       IF checked = 8 THEN
+        elapsed_ticks := (now - first_cycle) / 10 ns;
+        ASSERT abs(elapsed_ticks * 4_000_000 - checked * 8 * MCLK_HZ) <= 4_000_000
+          REPORT "F8 short cycles must average four 2 MHz clock periods" SEVERITY failure;
         REPORT "CPU clock test passed";
         std.env.stop;
       END IF;

@@ -404,6 +404,7 @@ static void usage(const char* argv0) {
 "\n"
 "  --frames N           stop after N video frames (default 300)\n"
 "  --max-cycles N       hard cycle cap (default 2000000000)\n"
+"  --240p               use the core's 240p timing (default off)\n"
 "\n"
 "  --shot N[,N...]      capture at these frame numbers\n"
 "  --shot-every N       capture every N frames\n"
@@ -487,6 +488,7 @@ int main(int argc, char** argv) {
     long frames = 300, max_cycles = 2000000000;
     long shot_every = 0, dump_every = 0, trace_cpu = 0, trace_from = 0;
     bool money_trace = false;
+    bool progressive = false;
     long joy_trace_from = -1;
     long joy_focus_frame = -1;
     long joy_results_from = -1;
@@ -555,6 +557,7 @@ int main(int argc, char** argv) {
         else if (a == "--cart-type")   cart_type = atoi(need("--cart-type"));
         else if (a == "--frames")      frames = atol(need("--frames"));
         else if (a == "--max-cycles")  max_cycles = atol(need("--max-cycles"));
+        else if (a == "--240p")        progressive = true;
         else if (a == "--shot")        parse_list(need("--shot"), shots);
         else if (a == "--shot-every")  shot_every = atol(need("--shot-every"));
         else if (a == "--shot-last")   shot_last = true;
@@ -746,6 +749,7 @@ int main(int argc, char** argv) {
 
     top->clk_sys = 0;
     top->reset = 1;
+    top->progressive = progressive;
     top->ioctl_download = 0; top->ioctl_upload = 0; top->ioctl_wr = 0;
     top->ioctl_addr = 0; top->ioctl_dout = 0; top->ioctl_din = 0; top->ioctl_index = 0;
     top->ps2_key = 0;
