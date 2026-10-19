@@ -114,6 +114,13 @@ test-cpu-interrupt:
 	$(GHDL) -r --std=08 --workdir=out/ghdl_cpu_interrupt tb_cpu_interrupt -glate_request=true --assert-level=error
 	$(GHDL) -r --std=08 --workdir=out/ghdl_cpu_interrupt tb_cpu_interrupt -glong_cycle=true --assert-level=error
 
+test-cpu-irq-chain:
+	mkdir -p out/cpu_irq_chain
+	$(GHDL) -a --std=08 --workdir=out/cpu_irq_chain $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_irq_chain.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_irq_chain tb_cpu_irq_chain --assert-level=error
+
+.PHONY: test-cpu-irq-chain
+
 .PHONY: test-smi
 test-smi:
 	mkdir -p out/ghdl_smi

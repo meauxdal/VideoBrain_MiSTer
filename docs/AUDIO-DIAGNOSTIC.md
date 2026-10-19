@@ -1,8 +1,9 @@
 # Audio diagnostic
 
-Normal audio remains faulty across software and pitch. Timing variation is
-present before filtering. The current investigation targets core generation
-and CPU/bus timing; MiSTer output, 240p and filter tuning are excluded.
+Normal audio remains faulty across software and pitch. Periodic timing
+modulation is present before filtering in the held-note capture. The
+investigation targets core generation and CPU/bus timing; MiSTer output,
+240p and filter tuning are excluded.
 
 `System > Audio Test` selects a 500 Hz, 1 kHz, 2 kHz or 4 kHz square-wave
 source ahead of the existing audio filter. It uses no CPU, ROM, keyboard or
@@ -71,11 +72,54 @@ rules in `refs/kevtris/videobrain_unwrapped.txt`:
 dual-DMA, byte ordering, address wrap, copy mode and FIFO backpressure checks.
 The old arbiter fails the UV201 duration and DMA burst-spacing checks.
 Full-core VHDL analysis and elaboration, CPU interrupt, F3853 and fixed CPU
-audio checks pass. Normal-ROM audio improvement is not yet measured.
+audio checks pass.
+
+Hardware listening after these corrections on 2026-10-19 suggests a modest
+improvement: smoother, more periodic sound, with the remaining ringing sounding
+more like an overtone than distortion. The fundamental audio fault persists.
+Brief gameplay showed no observed graphics discrepancies.
+The remaining sound is described as pitch-related beating or nonharmonic
+ringing; the fundamental fault remains unfixed.
 
 Run `sh verilator/audio_bus_timing_capture.sh` from the repository root in WSL.
 This longer run rebuilds the simulator, repeats the original ED01 capture,
 preserves `out/audio_timing_audit` and compares frames 330..342. Results go to
-`verilator/out/audio_bus_timing/comparison.txt`. Baseline full-period spread
-is 171.460 us, RMS deviation 18.985 us and p95 deviation 60.769 us. Compare
-those pre-filter metrics before requesting another FPGA build.
+`verilator/out/audio_bus_timing/comparison.txt`.
+
+Measured on 2026-10-19: DAC period spread increased from 171.460 to 174.254 us,
+RMS deviation from 18.985 to 20.315 us and p95 deviation from 60.769 to
+66.503 us. This capture does not support reduced DAC timing variation.
+Of 425 IRQ full periods, 423 are 14592 MCLKs; the other two are 14568 and
+14616 MCLKs around the frame-340 boundary. IRQ-to-ack reaches 94.705 us;
+ack-to-DAC spread is 1.816 us. Long waits include interrupt masking at BIOS
+PCs 43AB/43AC and 40AA. CPU instruction timing and interrupt acceptance
+through these paths remain investigation targets, not established defects.
+
+Exact held-DAC integration over 0.005..0.200 s of this capture shows sidebands
+near 981.24 +/- 59.94/119.88 Hz at approximately -35 dBc, similar to baseline.
+IRQ-to-ack delays have modulation near 60 Hz and its multiples. Replacing only
+IRQ-to-ack latency with a constant reduces the +/-60 Hz sidebands to roughly
+-72/-75 dBc. This timestamp sensitivity check links the simulated sidebands
+to acknowledgement latency; it is not a hardware correction or proof that
+the CPU's interrupt acceptance rules are wrong. Pitch dependence is unmeasured.
+
+Run `sh verilator/audio_irq_diagnostic.sh` in WSL for the short follow-up.
+It reuses the saved capture and writes `verilator/out/audio_irq_diagnostic/`:
+
+- `cpu.txt`: ROM instruction-chain timing and acceptance at 320 request phases.
+- `comparison.txt`: pre-filter sideband levels and listening instructions.
+- `a_recorded.wav`: recorded DAC timing.
+- `b_fixed_ack.wav`: constant IRQ-to-ack latency, recorded ack-to-DAC latency.
+- `c_fixed_irq_to_dac.wav`: constant IRQ-to-DAC latency, recorded IRQ timing.
+
+All WAVs use the same reconstruction and gain, excluding core/MiSTer/analog
+filters. Each repeats the short captured burst with silence between repeats.
+User listening on 2026-10-19: A is bad; B and C are good. Removing IRQ-to-ack
+variation is sufficient to remove the reported ringing in this capture.
+This identifies a sufficient timing intervention, not an accuracy correction.
+
+The isolated ROM chain passes the Fairchild F3850 Table 3 instruction timings
+and interrupt exclusions (printed pp. 3-22..3-24 in
+`refs/orphanedgames.com/fairchild-3850.pdf`). A request at LM entry takes
+85.25 us to acknowledge at 2 MHz, without bus waits. This checks a controlled
+ROM slice, not full-machine execution or the original hardware's audio.
