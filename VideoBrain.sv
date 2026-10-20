@@ -73,6 +73,7 @@ localparam CONF_STR = {
 	"P2-;",
 	"P2F2,BIN,Load Expander 1 ROM;",
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
+	"P2O[22],Info Messages,On,Off;",
 	//"P2O[26:24],Audio Test,Off,500 Hz,1 kHz,2 kHz,4 kHz;",
 	"P2-;",
 	"P2T[27],Master Control (Soft Reset);",
@@ -315,7 +316,7 @@ always @(posedge clk_sys) begin
 	source_error_d <= source_error;
 	tape_error_d <= tape_error;
 	info_req <= 0;
-	if (reset) pending_info <= 0;
+	if (reset || status[22]) pending_info <= 0;
 	else begin
 		// Wait for the menu to close. New events replace older messages.
 		if (!OSD_STATUS && vid_vs && !source_vs_d && pending_info != 0) begin
