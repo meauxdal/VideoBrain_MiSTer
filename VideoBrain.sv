@@ -1,5 +1,6 @@
 //============================================================================
 //  VideoBrain Family Computer for MiSTer
+//  SPDX-License-Identifier: GPL-2.0-or-later
 //
 //  This program is free software; you can redistribute it and/or modify it
 //  under the terms of the GNU General Public License as published by the Free
@@ -10,6 +11,7 @@
 //  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 //  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 //  more details.
+//  See LICENSE and LICENSING.md in the repository root.
 //
 //============================================================================
 

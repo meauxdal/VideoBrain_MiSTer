@@ -4,6 +4,10 @@
 -- DO 8/2020
 --------------------------------------------------------------------------------
 -- With help from MAME F8 model
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- From Grabulosaure's ChannelF_MiSTer, rtl/chf/f8_cpu.vhd.
+-- Modified for VideoBrain, 2026-09-19 through 2026-10-18.
+-- Licensing notice added 2026-10-20; see LICENSE and LICENSING.md.
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
