@@ -74,7 +74,7 @@ static void check_decimation_alias(int period) {
 static void capture_sweep(const char* path) {
     FILE* output = std::fopen(path, "wb");
     assert(output);
-    for (int note = 0; note < 12; ++note) {
+    for (int note = 0; note < 36; ++note) {
         int period = std::lround(14318181.0 / (1046.5023 * std::pow(2.0, note / 12.0)));
         reset();
         int64_t poles[4] = {}, dac = 0;
@@ -113,6 +113,7 @@ int main(int argc, char** argv) {
             assert(sample >= -8256 && sample <= 4160);
             prev = sample;
         }
+        std::printf("DC code %d: %d (target %d)\n", code, prev, target);
         assert(std::abs(prev - target) <= 2);
         dut.code = code ^ 3;
         for (int i = 0; i < 2000; ++i) tick();
@@ -122,9 +123,13 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 60000; ++i) assert(tick() == 0);
     puts("Audio reset, latch, range and DC tests passed");
 
-    check_response(28636, -0.4, -0.25);
-    check_response(14318, -1.3, -1.0);
-    check_response(7158, -4.1, -3.7);
+    check_response(28636, -0.5, -0.33);
+    check_response(14318, -1.65, -1.4);
+    check_response(7158, -4.7, -4.45);
+    check_response(1302, -23, -22.4);
+    check_response(1101, -33, -31);
+    check_response(1023, -71, -65);
+    check_response(988, -INFINITY, -85);
     check_response(596, -INFINITY, -85);
     check_response(448, -INFINITY, -85);
     check_response(298, -INFINITY, -85);

@@ -76,8 +76,11 @@ correction does not reconcile the entire sunk cost. Propagation-sensitive
 behavior described in
 `videobrain_unwrapped.txt` is also outside the ideal circuit model.
 
-Full-ROM IRQ/audio effect is pending the longer capture. Run from the root
-in WSL:
+The completed full-ROM capture reduces period RMS deviation from 20.315 to
+8.875 us and +/-60 Hz sidebands by 9.5..9.7 dB in frames 330..342.
+IRQ-to-ack maximum falls from 94.705 to 62.438 us, with delays over 40 us
+falling from 18 to 7. The audio fault remains unresolved. Capture command,
+from the root in WSL:
 
 ```sh
 sh verilator/audio_cpu_gate_capture.sh

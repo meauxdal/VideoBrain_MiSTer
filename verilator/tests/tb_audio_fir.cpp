@@ -32,26 +32,29 @@ int main(int argc, char** argv) {
         int64_t value = std::stoll(line.substr(start + prefix.size(), 6), nullptr, 16);
         coeff.push_back((value & 0x800000) ? value - 0x1000000 : value);
     }
-    assert(coeff.size() == 81);
-    for (int i = 79; i >= 0; --i) coeff.push_back(coeff[i]);
+    const int pairs = static_cast<int>(coeff.size());
+    assert(pairs == 113);
+    const int length = pairs * 2 - 1;
+    for (int i = pairs - 2; i >= 0; --i) coeff.push_back(coeff[i]);
     uint32_t random = 1;
     for (int pass = 0; pass < 2; ++pass) {
         dut.reset = 1;
         assert(tick() == 0);
         dut.reset = 0;
-        std::vector<int64_t> history(161, 0);
+        std::vector<int64_t> history(length, 0);
         int32_t previous = 0;
         for (int sample = 0; sample < 600; ++sample) {
             random = random * 1664525u + 1013904223u;
-            for (int i = 160; i > 0; --i) history[i] = history[i - 1];
+            for (int i = length - 1; i > 0; --i) history[i] = history[i - 1];
             history[0] = static_cast<int32_t>(random % 6000001u) - 3000000;
             int64_t sum = 0;
-            for (int i = 0; i < 161; ++i) sum += history[i] * coeff[i];
+            for (int i = 0; i < length; ++i) sum += history[i] * coeff[i];
             int32_t expected = static_cast<int32_t>((sum + (1 << 22)) >> 23);
+            assert(expected >= -8388608 && expected <= 8388607);
             for (int cycle = 0; cycle < 128; ++cycle) {
                 // Only the decimation instant may capture the input.
                 dut.input_sample = cycle == 0 ? history[0] : 123456;
-                assert(tick() == (cycle < 83 ? previous : expected));
+                assert(tick() == (cycle < pairs + 2 ? previous : expected));
             }
             previous = expected;
         }

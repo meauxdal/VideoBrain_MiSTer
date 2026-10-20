@@ -6,7 +6,7 @@ import numpy as np
 
 data = np.fromfile(sys.argv[1], dtype="<i4").reshape(-1, 3)
 print("note,output_hz,previous_alias_rms,new_alias_rms,change_db")
-for note in range(12):
+for note in range(36):
     samples = data[data[:, 0] == note, 1:].astype(float)
     assert len(samples) == 262144
     samples -= samples.mean(axis=0)
@@ -25,5 +25,6 @@ for note in range(12):
         change = 20 * np.log10(rms[1] / rms[0])
         print(f"{note},{rate},{rms[0]:.4f},{rms[1]:.4f},{change:.2f}")
         assert rms[1] < 0.5
-        if rate == 48000:
+        # At higher notes the comparison can reach the 16-bit rounding floor.
+        if rate == 48000 and note < 12:
             assert change < -6

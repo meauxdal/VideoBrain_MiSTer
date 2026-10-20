@@ -424,7 +424,9 @@ static void usage(const char* argv0) {
 "  --trace-from F       only start the trace at frame F\n"
 "  --money-trace        log Money Minder key dispatch registers\n"
 "  --audio-log FILE     log DAC latch events and interrupt state as CSV\n"
-"  --press KEY@F[:H]    hold KEY from frame F for H frames (default 8).\n"
+"  --audio-trace FILE   trace keys, sound pins, latch checks and IRQ edges\n"
+"  --press KEY@F[:H[:C]]  hold KEY from F to F+H (default H=8).\n"
+"                       C delays key-down by 0..239855 MCLKs (default 0).\n"
 "                       ESC = MASTER CONTROL; H uses nominal field cycles.\n"
 "                       RUN/STOP is SPACE. Letters are their own names;\n"
 "                       also SHIFT ERASE SPECIAL NEXT PREVIOUS BACK\n"
@@ -471,6 +473,7 @@ int main(int argc, char** argv) {
     std::string res2 = "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
 //    std::string cart, expander1, apl_path, outdir = "out", prefix, dump_path, audio_path;
     std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
+    std::string audio_trace_path;
     std::string record_path, playback_path, expander_trace_path;
 //     long apl_frame = -1;
     std::string source_path;
@@ -502,7 +505,10 @@ int main(int argc, char** argv) {
     bool shot_last = false, want_ppm = false, want_ascii = false;
     bool want_ram = false, frame_log = false, quiet = false, probe = false;
     std::set<long> shots, dumps;
-    struct Press { int bit; long from, to; long reset_until = -1; };
+    struct Press {
+        int bit;
+        long from, to, offset = 0, start_cycle = -1, reset_until = -1;
+    };
     std::vector<Press> presses;
     struct JoyPress { std::string direction; long from, to; int player; };
     std::vector<JoyPress> joy_presses;
@@ -574,6 +580,7 @@ int main(int argc, char** argv) {
         else if (a == "--trace-from")  trace_from = atol(need("--trace-from"));
         else if (a == "--money-trace") money_trace = true;
         else if (a == "--audio-log")   audio_path = need("--audio-log");
+        else if (a == "--audio-trace") audio_trace_path = need("--audio-trace");
         else if (a == "--press") {
             std::string v = need("--press");
             size_t at = v.find('@');
@@ -581,12 +588,24 @@ int main(int argc, char** argv) {
             std::string name = v.substr(0, at);
             long from = atol(v.c_str() + at + 1);
             long hold = 8;
+            long offset = 0;
             size_t colon = v.find(':', at);
             if (colon != std::string::npos) hold = atol(v.c_str() + colon + 1);
+            size_t delay = colon == std::string::npos ? colon : v.find(':', colon + 1);
+            if (delay != std::string::npos) {
+                char* end = nullptr;
+                offset = strtol(v.c_str() + delay + 1, &end, 10);
+                if (end == v.c_str() + delay + 1 || *end || offset < 0 || offset >= 228 * 263 * 4) {
+                    fprintf(stderr, "error: --press C must be 0..239855 MCLKs\n"); return 1;
+                }
+            }
             if (from < 0 || hold <= 0) { fprintf(stderr, "error: --press needs F>=0 and H>0\n"); return 1; }
             int bit = key_bit(name);
             if (bit < 0) { fprintf(stderr, "error: unknown key '%s'\n", name.c_str()); return 1; }
-            presses.push_back({ bit, from, from + hold });
+            if (bit == 36 && offset) {
+                fprintf(stderr, "error: MASTER CONTROL does not support a key-down delay\n"); return 1;
+            }
+            presses.push_back({ bit, from, from + hold, offset });
         }
         else if (a == "--joy" || a == "--joy2") {
             std::string v = need(a.c_str());
@@ -697,6 +716,14 @@ int main(int argc, char** argv) {
                     "masked_pc,service_stall_ticks\n");
     }
 
+    FILE* atf = nullptr;
+    if (!audio_trace_path.empty()) {
+        atf = fopen(audio_trace_path.c_str(), "w");
+        if (!atf) { fprintf(stderr, "error: cannot write %s\n", audio_trace_path.c_str()); return 2; }
+        fprintf(atf, "cycle,frame,frame_cycle,keys,reset,pc,hpos,vpos,port_a_n,port_b_n,"
+                     "port_b_wr,clock_previous,held_code,stb,code,latch_ok,irq,ack\n");
+    }
+
     FILE* rf = nullptr;
     if (!record_path.empty()) {
         rf = fopen(record_path.c_str(), "w");
@@ -789,8 +816,15 @@ int main(int argc, char** argv) {
     } audio_pending, audio_serviced;
     bool audio_request_l = false, audio_ack_l = false;
     unsigned audio_sources_l = 0;
+    long audio_frame = -1, audio_frame_start = 0;
+    uint64_t audio_keys = 0;
+    bool audio_clock = false, audio_trace_irq = false, audio_trace_ack = false;
 
     while (fg.frame <= frames && cycles < max_cycles && !Verilated::gotFinish()) {
+        if (audio_frame != fg.frame) {
+            audio_frame = fg.frame;
+            audio_frame_start = cycles;
+        }
 
         if (!source_path.empty() && !source_started && fg.frame >= source_frame && io.finished) {
             source_started = true;
@@ -838,8 +872,11 @@ int main(int argc, char** argv) {
                     if (cycles < pr.reset_until) master_control = true;
                     if (cycles == pr.reset_until)
                         printf("[master-control] frame=%ld cycle=%ld released\n", fg.frame, cycles);
-                } else if (fg.frame >= pr.from && fg.frame < pr.to) {
-                    m |= (uint64_t)1 << pr.bit;
+                } else {
+                    if (pr.start_cycle < 0 && fg.frame >= pr.from)
+                        pr.start_cycle = cycles + pr.offset;
+                    if (pr.start_cycle >= 0 && cycles >= pr.start_cycle && fg.frame < pr.to)
+                        m |= (uint64_t)1 << pr.bit;
                 }
             }
             top->kbd_matrix = m;
@@ -984,8 +1021,40 @@ int main(int argc, char** argv) {
             }
         }
 
+        unsigned audio_a = 0, audio_b = 0, audio_write = 0, audio_held = 0;
+        if (atf) {
+            audio_a = CORE(po_a_n_l);
+            audio_b = CORE(po_b_n_l);
+            audio_write = CORE(port1_wr_l);
+            audio_held = CORE(audio_code);
+        }
+
         top->clk_sys = 1;
         top->eval();
+
+        if (atf) {
+            bool clock = (audio_b & 0x10) != 0;
+            bool expected_stb = !top->reset && clock && !audio_clock;
+            unsigned expected_code = top->reset ? 0 : expected_stb ? audio_a & 3 : audio_held;
+            bool latch_ok = CORE(audio_stb) == expected_stb && CORE(audio_code) == expected_code;
+            bool request = CORE(int_req), ack = CORE(int_ack);
+            if (cycles == audio_frame_start || top->kbd_matrix != audio_keys ||
+                clock != audio_clock || CORE(audio_stb) || !latch_ok ||
+                request != audio_trace_irq || ack != audio_trace_ack) {
+                // Pins are sampled before the edge; latch and IRQ state after it.
+                fprintf(atf, "%ld,%ld,%ld,%llu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
+                        cycles, fg.frame, cycles - audio_frame_start,
+                        (unsigned long long)top->kbd_matrix, unsigned(top->reset),
+                        unsigned(top->rootp->top__DOT__pc0), unsigned(CORE(hpos)), unsigned(CORE(vpos)),
+                        audio_a, audio_b, audio_write, unsigned(audio_clock), audio_held,
+                        unsigned(CORE(audio_stb)), unsigned(CORE(audio_code)), unsigned(latch_ok),
+                        unsigned(request), unsigned(ack));
+            }
+            audio_clock = !top->reset && clock;
+            audio_keys = top->kbd_matrix;
+            audio_trace_irq = request;
+            audio_trace_ack = ack;
+        }
 
         if (ef) {
             unsigned pc = top->rootp->top__DOT__pc0;
@@ -1110,10 +1179,10 @@ int main(int argc, char** argv) {
                     if (!audio_pending.masked) audio_pending.masked_pc = pc;
                     ++audio_pending.masked;
                 }
-                if (CORE(u_uv202__DOT__cpu_stall_l)) ++audio_pending.stalled;
+                if (CORE(u_uv202__DOT__cpu_stall)) ++audio_pending.stalled;
             }
             if (audio_serviced.ack >= 0 && audio_serviced.dac < 0 &&
-                CORE(u_uv202__DOT__cpu_stall_l)) ++audio_serviced.service_stalled;
+                CORE(u_uv202__DOT__cpu_stall)) ++audio_serviced.service_stalled;
             if (CORE(audio_stb)) audio_serviced.dac = cycles;
             audio_request_l = request;
             audio_ack_l = ack;
@@ -1433,6 +1502,7 @@ int main(int argc, char** argv) {
     top->final();
     if (df != stdout) fclose(df);
     if (af) fclose(af);
+    if (atf) fclose(atf);
     if (rf) fclose(rf);
     if (ef) fclose(ef);
     if (sf) fclose(sf);

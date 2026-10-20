@@ -69,7 +69,7 @@ def run():
     with (output / "audio_path_build.log").open("w") as log:
         subprocess.run(command, cwd=root, stdout=log, stderr=subprocess.STDOUT, check=True)
     for rate in (48000, 96000):
-        for frequency in (500, 1000, 2000, 4000):
+        for frequency in (500, 1000, 2000, 4000, 8000):
             path = output / f"audio_path_{frequency}_{rate}.bin"
             subprocess.run([str(output / "obj_audio_path/Vtb_audio_path"),
                             str(frequency), str(rate), str(path)], check=True)

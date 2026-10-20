@@ -1,17 +1,72 @@
 # Audio diagnostic
 
-Normal audio remains faulty across software and pitch. Periodic timing
-modulation is present before filtering in the held-note capture. The
-investigation targets core generation and CPU/bus timing; MiSTer output,
-240p and filter tuning are excluded.
+The supplied Happy Birthday comparison closely matches lower hardware notes.
+Its MiSTer upper harmonics are too weak; the retuned filter needs hardware
+listening. Periodic timing modulation is present before
+filtering in the held-note capture; CPU/bus timing and analog response remain
+separate accuracy targets. Regular test tones establish timing cleanliness,
+not faithful original-machine filtering.
 
 `System > Audio Test` selects a 500 Hz, 1 kHz, 2 kHz or 4 kHz square-wave
 source ahead of the existing audio filter. It uses no CPU, ROM, keyboard or
 interrupt timing. The computer continues running. Off selects normal audio.
 This is an isolation test, not a sound correction. Filtering rounds its output.
 
-The test tones sound steady on the user's core. Normal audio remains faulty.
+The test tones sound steady on the user's core. Normal audio still needs comparison.
 Low nonharmonic noise alone does not establish faithful sound.
+
+Matched Happy Birthday recordings contain the same 25 notes. On the high C5,
+relative harmonic levels agree near 2.6 kHz, but MiSTer is about 4.5 dB lower
+near 5.8 kHz and 14 dB lower near 11 kHz. The reference's steep 12..13 kHz
+cutoff is present in its compressed source video; its origin is unverified.
+MiSTer's weak harmonics above that edge continue falling. C4 plateau decay
+suggests effective time constants near 4.3 ms in the reference chain and
+11 ms in MiSTer. These are recording-chain observations, not board component
+values. Excess C5 sidebands near +/-60 Hz remain a separate timing concern.
+
+Filter audit: `refs/seanriddle.com/videobrain4.jpg` shows a resistive DAC;
+sheet 1 (`videobrain1.jpg`) shows the RF sound path: series choke, 150 pF
+shunt, 0.01 uF coupling capacitor, 1 Mohm return and varactor-modulated
+LM1889 sound oscillator. The DAC ladder's schematic source resistance is
+`120k || (56k + (120k || 120k))`, about 59 kohms. The 150 pF alone therefore
+suggests a pole near 18 kHz, excluding varactor loading. These are not the
+four independent audio low-pass poles currently in the core. The workbook's
+R51 connection conflicts with this schematic; it is not used for this estimate.
+Receiver de-emphasis also matters: [TI AN-402](https://www.ti.com/lit/an/snoa678/snoa678.pdf)
+describes the US 75 us response (about 2.1 kHz). The recording path is unknown.
+
+At the C5 harmonics near 5.8/11 kHz, relative to the fundamental, the core's
+two 8.9 kHz poles add 3.01/8.02 dB loss and its four reconstruction poles add
+1.71/5.58 dB. Without compensation this accounts for most of the observed
+excess suppression. The held FIR output adds another 0.04/0.14 dB loss.
+
+`python3 verilator/tests/audio_response_audit.py` uses NumPy and FFmpeg to
+check the saved OGGs and stage responses. It writes `verilator/out/audio_response_audit/`.
+A two-pole magnitude fit to C5 gives approximately 1.50/6.89 kHz, with
+0.24 dB RMS error across odd harmonics 3..21. Independent C4/D4/E4/G4/A4
+windows give 0.14..0.28 dB RMS; F4 gives 1.41 dB. This is an effective
+recording-response target, not identified component values or a complete
+model. Droop changes are deferred.
+
+The 225-tap FIR compensates the retained prefilter and reconstruction stages
+for an effective 1.50/6.90 kHz two-pole magnitude response. Maximum numerical
+error through 11.5 kHz is 0.22 dB. A steep transition centered at 13 kHz puts
+14 kHz at -67.9 dB relative to DC; 14.5 kHz is below 16-bit output resolution
+in the RTL tone check. This band limit is intentional alias protection, not
+an attribution of the compressed reference's cutoff to board components.
+Phase response is not calibrated to hardware.
+
+A synthetic 524 Hz tone through the actual MiSTer I2S modules gives H5/H11/H21
+at -20.0/-34.4/-48.7 dBc, versus -20.2/-34.5/-49.4 dBc in the hardware C5
+reference. This checks the filter calibration, excluding normal ROM timing.
+
+The FIR uses 113 products per 128-clock sample interval, retaining one shared
+multiplier and both 256-word history arrays. Group delay increases by 0.286 ms.
+Quarter gain within the FIR preserves headroom; gain is restored before
+reconstruction. `make test-audio` passes pin/latch, DC, bounds, response,
+decimation and exact FIR convolution/reset checks. Its 36-note, three-octave
+sweep at 48/96 kHz keeps measured foldback below 0.5 output LSB RMS.
+The coefficient table is larger; Quartus timing/resource validation is pending.
 
 Run the short digital-path check from `verilator`:
 
@@ -21,7 +76,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 tests/check_audio_path.py --run
 
 It checks source pulse widths and decodes actual I2S words after the core
 filter and MiSTer output modules at independent 14.318181/24.576 MHz clocks.
-It tests 500/1000/2000/4000 Hz at 48/96 kHz, with default MiSTer filter
+It tests 500/1000/2000/4000/8000 Hz at 48/96 kHz, with default MiSTer filter
 coefficients, unity volume, no boost and no Linux audio.
 
 Verilator 5.032 requires a simulation copy of `audio_out.sv`: five procedural
@@ -30,10 +85,10 @@ No `sys` source is modified. Build diagnostics are in `out/audio_path_build.log`
 The test excludes analog circuitry, HDMI transport, metastability and FPGA
 timing failures. It does not validate the original machine's analog response.
 
-Measured on 2026-10-19: all eight cases pass. I2S nonharmonic RMS ranges from
--79.9 to -60.7 dBc; interpolated period spread is below 0.15 us over each
+Measured on 2026-10-19: all ten cases pass. I2S nonharmonic RMS ranges from
+-79.9 to -53.8 dBc; interpolated period spread is below 0.20 us over each
 0.25-second capture. These figures describe controlled test inputs only.
-The output third harmonic is -15.9 dBc at 1 kHz and -37.8 dBc at 4 kHz,
+The output third harmonic is -15.6 dBc at 1 kHz and -23.5 dBc at 4 kHz,
 versus -9.54 dBc for an ideal square wave. The current filters therefore
 produce substantial rounding even when timing is regular.
 
@@ -205,6 +260,37 @@ transitions. The corrected
 gate passes the circuit-derived edge regression and CPU/interrupt tests,
 retaining zero RES1 waits and the existing BRCLK service lengths. RAM/cart
 halt cost becomes 6..7 lost half-clocks, still below the documented range;
-the halt-cost assertion remains failing. Full-ROM IRQ latency and audio
-sideband effects await `sh verilator/audio_cpu_gate_capture.sh`. The
+the halt-cost assertion remains failing. The completed full-ROM capture
+reduces period RMS deviation from 20.315 to 8.875 us and the +/-60 Hz
+sidebands by 9.5..9.7 dB in frames 330..342. IRQ-to-ack maximum falls from
+94.705 to 62.438 us. RC17 hardware listening suggests improvement, but the
 fundamental audio fault remains unresolved.
+
+The RC17 recording's release tails decay in 10.6..10.8 ms, matching the
+MiSTer DC blocker's 10.66 ms time constant. Opposite onset polarities can
+follow different held idle DAC levels; they do not establish a latch fault.
+Same-pitch notes with the same onset polarity still have different sideband
+strengths. Sustained IRQ/DAC timing remains the investigation target.
+
+Run the repeated-note phase capture from the root in WSL:
+
+```sh
+sh verilator/audio_note_phase_capture.sh
+```
+
+This long run uses unmodified ED01, four K presses with different sub-frame
+key-down delays, and writes `verilator/out/audio_note_phase/`. It preserves
+existing captures. `trace.csv` independently records key changes, physical
+sound-clock/data checks, IRQ/ack edges and actual onset video phase;
+`events.csv` retains the existing detailed latency fields. Pin inputs are
+sampled before MCLK rising, latch/IRQ outputs after it. The checker verifies
+physical rising clock edges, including any without a port-write strobe.
+
+`comparison.txt` reports idle/first/final codes, pulse widths, duty cycle,
+period variation, IRQ latency and +/-60/120 Hz sidebands. All spectra use
+0.100..0.300 s after each note's first DAC write. The synthetic fixed-ack
+comparison changes IRQ-to-ack latency only; it is not a proposed correction.
+Keyboard scanning can collapse requested phases to similar actual onsets.
+Missing notes, incomplete windows and mismatched latch/IRQ logs fail analysis.
+Short analyzer checks:
+`PYTHONDONTWRITEBYTECODE=1 python3 verilator/tests/test_audio_note_phase.py`.

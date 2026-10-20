@@ -324,4 +324,5 @@ set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_joystick.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/apl_source_loader.sv
 
 set_global_assignment -name TOP_LEVEL_ENTITY sys_top
+
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
