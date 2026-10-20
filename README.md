@@ -4,7 +4,7 @@ An FPGA implementation of the 1978 Umtech VideoBrain Family Computer, with its F
 
 ## Status
 
-All eighteen cartridges reach their expected first screen. Joystick timing and analog audio response remain approximations. Expander 1 supports tape SAVE/LOAD through SD images; Expander 2 and modem peripherals are unsupported. See [cartridge coverage](docs/CARTRIDGES.md).
+All eighteen cartridges reach their expected first screen. Joystick timing and analog audio response remain approximations. Expander 1 supports tape SAVE/LOAD through SD images and Timeshare internet sessions through MiSTer's UART. Expander 2 acoustic modem behavior is unsupported. See [cartridge coverage](docs/CARTRIDGES.md).
 
 ## Installing
 
@@ -24,7 +24,7 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 
 **System > Load BIOS** loads an alternate combined 4K BIOS `.bin` through the same download path.
 
-[Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K firmware as boot1.rom or through the OSD. This is required for Information Manager and tape SAVE/LOAD.
+[Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K firmware as boot1.rom or through the OSD. This is required for Information Manager, Timeshare serial communication, and tape SAVE/LOAD.
 
 ### Split cartridge dumps
 
@@ -32,23 +32,65 @@ Information Manager and APL/S: The Computational Language need assembled ROM ima
 
 ## Using the core
 
-The main menu provides the three file actions:
+The OSD provides these file actions:
 
 | Action | Use |
 | --- | --- |
-| Load Cartridge | Load a `.bin` cartridge and restart the machine. |
-| Load Keyboard File | Type a `.vbk` file into the running program. |
-| Mount Tape | Mount a `.vbt` image for the program's LOAD, VERIFY or SAVE commands. |
+| Load Cartridge | Load a `.bin` cartridge from the main menu and restart the machine. |
+| Input > Load Keyboard File | Type a `.vbk` file into the running program. |
+| Mount Tape | Mount a `.vbt` image from the main menu for the program's LOAD, VERIFY or SAVE commands. |
 
-**Unload Cartridge** returns to the built-in BIOS. **Reset** restarts the machine with its cartridge retained. **System > Master Control** and Esc provide the machine's Master Control button.
+**Unload Cartridge** returns to the built-in BIOS. **Reset** restarts the machine with its cartridge retained. **System > Master Control (Soft Reset)** and Esc provide the machine's Master Control button.
 
-For APL/S, wait for its input prompt before loading a keyboard file. Entry starts when the OSD closes. Ready-to-load examples are in `examples/apl`. See [APL/S entry](docs/APL-SOURCE.md) and [other programs and music](docs/KEYBOARD-INPUT.md). Keyboard Entry holds Music Mode and Auto-Repeat settings.
+Set **Input > Esc Reset > Off** to prevent accidental Master Control presses
+while using F1 for backspace. It defaults to On; the OSD Master Control action
+remains available when Esc is disabled.
 
-Tape recording starts when the program issues SAVE; mounting alone does not change the image. Tape holds Rewind Tape and busy/error indicators. See [tape setup and recording behavior](docs/TAPE.md).
+For APL/S, wait for its input prompt before loading a keyboard file. Entry starts when the OSD closes. Ready-to-load examples are in `examples/apl`. See [APL/S entry](docs/APL-SOURCE.md) and [other programs and music](docs/KEYBOARD-INPUT.md). **Input** holds **Music Mode** and **Music Repeat** settings.
+
+Tape recording starts when the program issues SAVE; mounting alone does not change the image. **Rewind Tape** is on the main menu. **System > Info Messages** controls keyboard-entry and tape notifications. See [tape setup and recording behavior](docs/TAPE.md).
+
+## Timeshare over UART
+
+Timeshare can connect to an internet text service through MiSTer's Linux side.
+The original cartridge and Expander 1 firmware handle serial communication;
+Linux bridges the UART to the network without an Expander 2 modem.
+
+1. Load the Expander 1 firmware and Timeshare cartridge. Timeshare defaults to 300 baud.
+2. Set MiSTer's UART connection to **None**, leaving `/dev/ttyS1` available for direct access.
+3. Select Timeshare full duplex: hold **F4 + Shift**, tap **D**, then release.
+4. Over SSH to MiSTer, run the following with `socat` and `telnet` installed:
+
+```sh
+stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
+  cs8 -parenb -cstopb clocal istrip
+
+TERM=dumb socat -d -d \
+  FILE:/dev/ttyS1 \
+  EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
+```
+
+Watch the VideoBrain for the banner. Press **F5** for Carriage Return after
+each command or answer. In Timeshare, **hold Shift** for shifted characters;
+it does not lock. Type `/` with **Shift+H**. Configure Telehack as follows:
+
+```text
+STTY /TTY
+NUMBER OF COLS? 24
+NUMBER OF ROWS? 15
+%SIZE SET: 24X15
+```
+
+Space advances its `--MORE--` prompt.
+Stop the bridge with Ctrl+C in SSH.
+
+Telehack sessions have displayed Zork, weather, date, and paginated command
+lists on MiSTer at 300 baud. See [Timeshare setup, keys, and diagnostics](docs/EXPANDER1.md#timeshare-over-uart)
+for echo settings, limitations, and a local command service.
 
 ## Joystick
 
-Joysticks default to Connected. **Input > Stick Preset > Auto** selects the cartridge's linear timing; Tennis and Gladiator can also be selected manually. Use **Calibrate Sticks** while the game is reading the joystick. Paired Sticks lets a controller's right stick and Fire 2 operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
+Joysticks default to Connected. **Input > Stick Preset > Auto** selects the cartridge's linear timing; Tennis and Gladiator can also be selected manually. Use **Input > Calibrate Sticks** while the game is reading the joystick. **Input > Paired Sticks** lets a controller's right stick and **Fire (Paired)** operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
 
 ## Video
 
@@ -58,7 +100,11 @@ Native output is interlaced, with integer scaling and scandoubler options. **Vid
 
 ![VideoBrain keyboard manual](/docs/VB_Keyboard.gif)
 
-VideoBrain SHIFT is a toggle (think CapsLock on a modern keyboard). In the BIOS, the square in the bottom right of the screen changes color to indicate when SHIFT is active.
+In the BIOS, VideoBrain SHIFT is a toggle (think CapsLock on a modern keyboard). The square in the bottom right of the screen changes color to indicate when SHIFT is active. Programs can use SHIFT differently: in Timeshare, hold it while pressing the desired key.
+
+**[How to play and use VideoBrain software](docs/HOW-TO-PLAY.md)** provides
+the original manual diagrams, cartridge keyboard layouts, game-selection
+charts, and MiSTer control mappings for games and utilities.
 
     SPACE       RUN/STOP
     ESC         MASTER CONTROL (reset)

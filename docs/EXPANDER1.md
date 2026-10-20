@@ -65,15 +65,153 @@ the modem and modem input to both the host and printer. The timer vector at
 `0020` contains `LR P0,Q`; command `04` sets Q to `041A`. Timer control `AA`
 selects /40 and enables timer interrupts, with external interrupts disabled.
 
-Select the MiSTer UART service and set its baud rate to match Timeshare:
-300 or 110. This configures the HPS endpoint; the cartridge and Expander ROM
-still control the VideoBrain's serial timing. The connection uses TX/RX only;
-HPS handshakes are held asserted. Live MiSTer communication remains unverified.
+For managed MiSTer UART services, set the baud rate to match Timeshare:
+300 or 110. For direct Linux access, select connection None and configure
+`/dev/ttyS1` as below. The cartridge and Expander ROM still control the
+VideoBrain's serial timing. The connection uses TX/RX only;
+HPS handshakes are held asserted. Bidirectional communication with Timeshare
+has been verified on MiSTer at 300 baud; live 110-baud operation is unverified.
 
 The modem connector is separate from the host cable. `Set 2/Image (73).jpg`
 corrects its pins to receive 4, transmit 2, and signal ground 1.
 
+## Timeshare over UART
+
+The working path is Timeshare -> Expander 1 serial port -> MiSTer HPS UART
+-> Linux -> remote server. Linux replaces the telephone connection with a
+network bridge. Expander 2 dialing, acoustic coupling, and telephone-line
+behavior are bypassed, not emulated.
+
+### Setup and keys
+
+Load Expander 1 firmware and the Timeshare cartridge. Set MiSTer's UART
+connection to **None** so Linux can access `/dev/ttyS1` directly. Timeshare
+defaults to 300 baud and full duplex. Its display is 24 columns by 15 lines.
+The Timeshare owner's handbook, printed pages 8-16, describes its terminal
+behavior and keyboard overlay. These PC key mappings use the core's keyboard
+matrix; PC Enter and Ctrl do not replace the cartridge's keys. In Timeshare,
+Shift is held while pressing a key, not toggled as in the BIOS.
+
+| Function | PC keyboard action |
+| --- | --- |
+| Carriage Return / submit line | F5, without Shift |
+| CONTROL | Hold F4 |
+| Slash (`/`) | Hold Shift, tap H, then release |
+| Full duplex, remote echo (default) | Hold F4 + Shift, tap D, then release |
+| Half duplex, local echo | Hold F4 + Shift, tap H, then release |
+| Select 300 baud | Hold F4 + Shift, tap C, then release |
+| Select 110 baud (live operation unverified) | Hold F4 + Shift, tap Z, then release |
+
+Full duplex expects the host to echo typed characters. If typing is invisible,
+enable host echo or select half duplex. If characters appear twice, select
+full duplex or disable host echo. The bridge below uses full duplex and leaves
+echo to the remote service.
+
+### Internet connection
+
+The tested MiSTer installation provides `/usr/bin/telnet`, `/usr/bin/socat`,
+`/usr/bin/python3`, and `/usr/bin/nc`; only Telnet and socat are needed here.
+Stop any UART diagnostic or local service before starting the bridge. Run
+over SSH:
+
+```sh
+stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
+  cs8 -parenb -cstopb clocal istrip
+
+TERM=dumb socat -d -d \
+  FILE:/dev/ttyS1 \
+  EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
+```
+
+`istrip` removes bit 7 from incoming Timeshare keyboard bytes for the text
+session. The separate raw-byte diagnostic below deliberately omits it.
+The Telnet client runs on a pseudo-terminal and handles Telnet negotiation;
+protocol control bytes are not sent directly to Timeshare. `TERM=dumb`
+requests a basic terminal. The serial connection uses TX/RX only, with
+hardware and software flow control disabled. At 300 baud, output arrives
+at about 30 characters per second; allow the banner to finish.
+
+[Telehack](https://telehack.com/telehack.html) accepts uppercase commands.
+On the VideoBrain, enter `STTY /TTY` for teleprinter mode and answer its
+dimension prompts as follows. Type `/` with Shift+H; press F5 after the
+command and each answer.
+
+```text
+STTY /TTY
+NUMBER OF COLS? 24
+NUMBER OF ROWS? 15
+%SIZE SET: 24X15
+```
+
+These dimensions make output fit the display and let the server pause at its
+`--MORE--` prompt; press Space to continue. Some output retains fixed spacing
+or wraps within words. Terminal dimensions and paging belong to the server,
+not the UART bridge. Stop socat with Ctrl+C in SSH.
+
+On October 20, 2026, this bridge supported interactive Telehack sessions:
+paginated command lists, Zork's opening scene and input prompt, weather,
+and date output were displayed on the VideoBrain. Space successfully
+advanced server pagination. This validates remote text sessions at 300 baud;
+it does not establish ANSI terminal compatibility, complete game coverage,
+Linux console login, or live 110-baud operation.
+
+### Local command service
+
+For a small offline host, run this over SSH instead of the network bridge.
+Select half duplex for local echo. Type TIME, DATE, HELP, or QUIT on the
+VideoBrain, followed by F5. Ctrl+C in SSH also stops the service.
+
+```sh
+stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
+  cs8 -parenb -cstopb clocal istrip icrnl
+
+(
+  printf '\r\nTIMESHARE HOST\r\nTIME DATE HELP QUIT\r\n> '
+  while IFS= read -r cmd; do
+    case "$cmd" in
+      TIME) date '+%H:%M:%S' | tr '\n' '\r' ;;
+      DATE) date '+%Y-%m-%d' | tr '\n' '\r' ;;
+      HELP) printf 'TIME DATE HELP QUIT' ;;
+      QUIT) printf 'GOODBYE\r\n'; break ;;
+      '') continue ;;
+      *) printf 'TYPE HELP' ;;
+    esac
+    printf '\r\n> '
+  done
+) < /dev/ttyS1 > /dev/ttyS1
+```
+
+`icrnl` converts Timeshare's Carriage Return to the newline expected by
+`read`. This is a diagnostic example; the confirmed remote-session results
+above use the Telnet bridge.
+
 ## Validation
+
+### MiSTer UART
+
+On October 20, 2026, Timeshare displayed `UUUUUUUU` and `MISTER CONNECTED`
+sent from Linux through `/dev/ttyS1`. Linux also captured Timeshare keyboard
+transmissions. The confirmed Linux settings were 300 baud, 8 data bits, no
+parity checking, one stop bit, and no hardware or software flow control.
+MiSTer's UART connection was set to None to leave the device available for
+direct access. With Expander 1 firmware and Timeshare loaded, run over SSH:
+
+```sh
+stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts cs8 -parenb -cstopb clocal
+printf '\r\nUUUUUUUU\r\nMISTER CONNECTED\r\n' > /dev/ttyS1
+od -An -tx1 -v < /dev/ttyS1
+```
+
+The banner checks receive; typing in Timeshare checks transmit. Stop `od`
+with Ctrl+C in SSH. All 61 non-space bytes in the 64-byte keyboard capture
+had even parity; three spaces were `20`. Masking bit 7 recovered readable
+keyboard sequences. Preserve raw bytes until the parity behavior is resolved.
+Linux 8N1 is a verified transport setting, not proof of the cartridge's
+intended character format. Remote text sessions were subsequently verified
+with the bridge above. Console login, printer connector behavior, and acoustic
+modem operation remain unverified.
+
+### Simulation
 
 `make -C verilator test-expander1` checks all timer prescales and modes,
 reload, readback, interrupt masking, priority and vector retention. Synthetic

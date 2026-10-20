@@ -60,6 +60,7 @@ localparam CONF_STR = {
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3T[20],Calibrate Sticks;",
 	"P3-;",
+	"P3O[29],Esc Reset,On,Off;",
 	"P3F4,VBK,Load Keyboard File;",
 	"P3O[18],Music Mode,Playback,Record;",
 	"P3O[19],Music Repeat,Off,On;",
@@ -220,7 +221,7 @@ reg        key_toggle  = 0;
 
 always @(posedge clk_sys) begin
 	key_toggle <= ps2_key[10];
-	if (system_reset) master_control <= 0;
+	if (system_reset || status[29]) master_control <= 0;
 	else if (key_toggle != ps2_key[10] && key_code == 'h076)
 		master_control <= key_pressed;  // ESC = MASTER CONTROL
 	if (reset) kbd_matrix <= 0;
