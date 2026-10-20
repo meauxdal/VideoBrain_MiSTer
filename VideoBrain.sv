@@ -74,7 +74,7 @@ localparam CONF_STR = {
 	"P2-;",
 	"P2F2,BIN,Load Expander 1 ROM;",
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
-	"P2O[26:24],Audio Test,Off,500 Hz,1 kHz,2 kHz,4 kHz;",
+	//"P2O[26:24],Audio Test,Off,500 Hz,1 kHz,2 kHz,4 kHz;",
 	"P2-;",
 	"P2T[27],Master Control (Soft Reset);",
 	"-;",
@@ -489,6 +489,7 @@ video_mixer #(.GAMMA(0)) video_mixer
 
 
 wire [15:0] audio_sample;
+/*
 wire [2:0] audio_test = status[26:24];
 wire [31:0] audio_test_hz = audio_test == 1 ? 32'd500 :
                             audio_test == 2 ? 32'd1000 :
@@ -502,13 +503,16 @@ videobrain_audio_tone audio_tone
 	.frequency_hz(audio_test_hz),
 	.code(audio_test_code)
 );
+*/
 
 videobrain_audio audio
 (
 	.clk(clk_sys),
 	.reset(reset),
-	.code(audio_test_hz != 0 ? audio_test_code : audio_code),
-	.stb(audio_test_hz != 0 ? 1'b1 : audio_stb),
+	//.code(audio_test_hz != 0 ? audio_test_code : audio_code),
+	//.stb(audio_test_hz != 0 ? 1'b1 : audio_stb),
+	.code(audio_code),
+	.stb(audio_stb),
 	.sample(audio_sample)
 );
 

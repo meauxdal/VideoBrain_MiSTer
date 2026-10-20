@@ -70,6 +70,7 @@ assign sample = rounded_sample[25:10];
 
 endmodule
 
+/*
 module videobrain_audio_tone
 (
 	input clk,
@@ -88,6 +89,7 @@ end
 assign code = phase < 7159090 ? 2'd0 : 2'd3;
 
 endmodule
+*/
 
 module videobrain_audio_fir
 (

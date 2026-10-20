@@ -12,10 +12,14 @@ module tb_audio_path
 	output sdata
 );
 
-videobrain_audio_tone tone
-(
-	.clk(clk_core), .reset(reset), .frequency_hz(tone_hz), .code(tone_code)
-);
+reg [31:0] phase = 0;
+always @(posedge clk_core) begin
+	if (reset || tone_hz == 0) phase <= 0;
+	else if (phase + tone_hz >= 14318181) phase <= phase + tone_hz - 14318181;
+	else phase <= phase + tone_hz;
+end
+
+assign tone_code = phase < 7159090 ? 2'd0 : 2'd3;
 
 videobrain_audio core_audio
 (
