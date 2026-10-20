@@ -75,6 +75,7 @@ vb-1200_3800-3fff_9_26_78
 
 Save as a `.bin` file: 8,192 bytes. Information Manager also requires
 [Expander 1 firmware](EXPANDER1.md).
+See [disassembly notes](INFOMAN.md) for ROM identity and interpreter details.
 
 ## Mapper tests
 
