@@ -3,6 +3,7 @@
 module top(
    input         clk_sys /*verilator public_flat*/,
    input         reset /*verilator public_flat*/,
+   input         progressive,
 
    output [7:0]  VGA_R /*verilator public_flat*/,
    output [7:0]  VGA_G /*verilator public_flat*/,
@@ -25,6 +26,15 @@ module top(
    input [7:0]   ioctl_din,
    input [7:0]   ioctl_index,
    output reg    ioctl_wait = 1'b0,
+   output        apl_available,
+   output        apl_load_error,
+   output        source_busy,
+   output        source_error,
+   output        source_complete,
+   output        record_data,
+   output        record_enable,
+   input         playback_data,
+   output        playback_enable,
 
    input [10:0]  ps2_key,
 
@@ -34,6 +44,7 @@ module top(
    input [13:0]  joy_timer_base /*verilator public_flat*/,
    input [6:0]   joy_timer_step /*verilator public_flat*/,
    input         joy_timer_curve /*verilator public_flat*/,
+   input         joy_timer_auto /*verilator public_flat*/,
    input [7:0]   cart_type /*verilator public_flat*/
 );
 
@@ -49,6 +60,21 @@ module top(
    wire [7:0]  background /*verilator public_flat*/;
    wire        x_zoom, y_zoom;
    wire        video_en /*verilator public_flat*/;
+   wire        apl_symbols;
+   wire        apl_input_ready, apl_key_accepted;
+   wire [35:0] source_keys;
+   reg source_vs_d = 0;
+   always @(posedge clk_sys) source_vs_d <= vid_vs;
+
+   apl_source_loader source_loader (
+      .clk(clk_sys), .reset(reset), .frame_tick(vid_vs && !source_vs_d),
+      .download(ioctl_download && ioctl_index == 5), .wr(ioctl_wr),
+      .addr(ioctl_addr), .data(ioctl_dout), .available(apl_available),
+      .symbols(apl_symbols), .enabled(1'b1), .cancel(|kbd_matrix),
+      .input_ready(apl_input_ready), .key_accepted(apl_key_accepted),
+      .music_playback(1'b0), .auto_repeat(1'b0),
+      .busy(source_busy), .complete(source_complete), .error(source_error), .keys(source_keys)
+   );
 
    wire [15:0] pc0 /*verilator public_flat*/;
    wire [15:0] pc1 /*verilator public_flat*/;
@@ -67,16 +93,23 @@ module top(
    videobrain_core core(
       .clk        (clk_sys),
       .reset_na   (~reset),
+      .progressive(progressive),
 
-      .kbd_matrix (kbd_matrix),
+      .kbd_matrix (source_busy ? source_keys : kbd_matrix),
       .joy_fire   (joy_fire),
       .joy_pots   (joy_pots),
+      .joy_connected (1'b1),
       .joy_timer_base (joy_timer_base),
       .joy_timer_step (joy_timer_step),
       .joy_timer_curve (joy_timer_curve),
+      .joy_timer_auto (joy_timer_auto),
       .audio_code (audio_code),
       .audio_stb  (audio_stb),
       .joy_enable (joy_enable),
+      .expander_record_data (record_data),
+      .expander_record_enable (record_enable),
+      .expander_playback_data (playback_data),
+      .expander_playback_enable (playback_enable),
       .f8_po_a_n  (po_a_n),
       .f8_po_b_n  (po_b_n),
 
@@ -113,7 +146,14 @@ module top(
       .dl_data    (ioctl_dout),
       .dl_wr      (dl_wr),
       .dl_index   (ioctl_download ? ioctl_index : 8'hff),
+      .cart_unload(1'b0),
+      .cart_loaded(),
       .unknown_cart_profile (cart_type),
+      .apl_available (apl_available),
+      .apl_load_error (apl_load_error),
+      .apl_symbols (apl_symbols),
+      .apl_input_ready (apl_input_ready),
+      .apl_key_accepted (apl_key_accepted),
 
       .pc0        (pc0),
       .pc1        (pc1),

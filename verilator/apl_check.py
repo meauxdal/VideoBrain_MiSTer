@@ -7,6 +7,8 @@ from pathlib import Path
 
 
 CASES = {
+    "00-arithmetic": (None, ["1+1", "2+3"], "Results 2 then 5; input remains responsive"),
+    "00-bars": (None, ["BARH 10 20 30", "1+1"], "Three bars, then result 2"),
     "01-sine": (None, ["BARH(64{MUL}SIN(INDEX 7{MUL}25{MUL}{PI}{DIV}180))"], "Sine bars"),
     "02-fibonacci": (None, ["BARH FLOOR(.5+((1.618*INDEX 7){DIV}(5*.5)))"], "Fibonacci bars"),
     "03-random": (None, ["BARC RAND(15+ARRA 7)", "BARH RAND(63+ARRA 7)"], "Random bar colors and heights"),
@@ -44,8 +46,8 @@ SYMBOLS.update({
 })
 
 
-def schedule(lines, settle=64, normalize=False):
-    frame, symbols = 224, False
+def schedule(lines, settle=64, normalize=False, leave_edit=False, symbols=False):
+    frame = 224
     presses, shots = [], []
 
     def press(key):
@@ -54,10 +56,13 @@ def schedule(lines, settle=64, normalize=False):
         frame += 16
 
     if normalize:
-        press("SPECIAL")
+        if leave_edit:
+            press("SPECIAL")
         press("ERASE")
         frame += 64
-        lines = ["ENDE", *lines]
+        shots.append(frame - 1)
+        if leave_edit:
+            lines = ["ENDE", *lines]
     for index, line in enumerate(lines):
         for token in re.findall(r"\{[A-Z]+\}|.", line):
             if token == " ":
@@ -71,11 +76,12 @@ def schedule(lines, settle=64, normalize=False):
                 symbols = upper
             press(SYMBOLS[token] if upper else token)
         press("NEXT")
-        frame += 64 if normalize and index == 0 else settle
+        frame += 64 if leave_edit and index == 0 else settle
         shots.append(frame - 1)
-        if normalize and index == 0:
+        if leave_edit and index == 0:
             press("ERASE")
             frame += 64
+            shots.append(frame - 1)
     return presses, shots, frame
 
 
@@ -86,11 +92,17 @@ def main():
     selection.add_argument("--case", choices=CASES, action="append")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--settle", type=int, default=64, help="Frames to wait after each submitted line")
-    parser.add_argument("--normalize", action="store_true", help="Clear pending snapshot input and attempt to leave edit mode")
+    parser.add_argument("--normalize", action="store_true", help="Clear pending snapshot input")
+    parser.add_argument("--leave-edit", action="store_true", help="Also leave edit mode; use only for snapshots in edit mode")
+    parser.add_argument("--trace-final", type=int, default=0, help="Trace this many CPU memory cycles starting in the final frame")
     parser.add_argument("--outdir", default="out/apl/suite", help="Capture directory relative to verilator")
     args = parser.parse_args()
     if args.settle < 1:
         parser.error("--settle must be positive")
+    if args.leave_edit and not args.normalize:
+        parser.error("--leave-edit requires --normalize")
+    if args.trace_final < 0:
+        parser.error("--trace-final must be nonnegative")
     selected = list(CASES) if args.all else args.case or []
     if not selected:
         for name, (_, _, expected) in CASES.items():
@@ -100,22 +112,34 @@ def main():
     simdir = Path(__file__).resolve().parent
     software = simdir.parent / "software"
     executable = simdir / "obj_dir_headless/Vtop"
-    cartridge = software / "converted/The Computational Language (APL-S).bin"
+    cartridge = software / "converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
     planned = []
     for name in selected:
         snapshot, lines, expected = CASES[name]
-        presses, shots, frames = schedule(lines, args.settle, args.normalize and bool(snapshot))
+        normalize = args.normalize and bool(snapshot)
         outdir = simdir / args.outdir / name
         command = [str(executable), "--cart", str(cartridge)]
+        symbols = False
+#         if snapshot:
+#             image = software / "21 games for apl_s" / f"{snapshot}.bin"
+#             if not image.is_file():
+#                 parser.error(f"Missing snapshot: {image}")
+#             data = image.read_bytes()
+#             if len(data) != 16384:
+#                 parser.error(f"Invalid snapshot size: {image}")
+#             # APL/S SHIFT latch: 0 = letters, 1 = symbols.
+#             symbols = bool(data[0x0FE2] & 1)
+#             command += ["--apl", f"{image}@210"]
         if snapshot:
-            image = software / "21 games for apl_s" / f"{snapshot}.bin"
-            if not image.is_file():
-                parser.error(f"Missing snapshot: {image}")
-            command += ["--apl", f"{image}@210"]
+            parser.error("RAM dump loading is disabled; use a keyboard source file")
+        presses, shots, frames = schedule(lines, args.settle, normalize,
+                                         normalize and args.leave_edit, symbols)
         captures = ",".join(map(str, [199, 211, *shots]))
         command += presses + ["--frames", str(frames), "--shot", captures,
                               "--dump", captures, "--ram", "--prefix", name,
                               "--outdir", str(outdir), "--dump-file", str(outdir / "state.txt")]
+        if args.trace_final:
+            command += ["--trace-from", str(frames - 1), "--trace-cpu", str(args.trace_final)]
         planned.append((name, command, outdir, expected))
         print(f"{name}: {frames} frames; expected: {expected}", flush=True)
 

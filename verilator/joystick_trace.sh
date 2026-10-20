@@ -29,7 +29,7 @@ run_case() {
         --quiet > "$out/${name}_trace.txt"
 }
 
-run_case tennis "../software/Tennis (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" 130 290 310
-run_case gladiator "../software/Gladiator (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin" 145 210 240
+run_case tennis "../software/Tennis (1978.11.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" 130 290 310
+run_case gladiator "../software/Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin" 145 210 240
 
 printf 'Joystick logs and frames: %s\n' "$out"

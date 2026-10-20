@@ -120,7 +120,9 @@ BEGIN
   END PROCESS;
 
   bb_addr <= ptr_l;
-  umireq <= '1' WHEN state = ST_DMA_WAIT AND fifo_writable = '1' ELSE '0';
+  -- Keep a multi-byte DMA request asserted between bytes.
+  umireq <= '1' WHEN fifo_writable = '1' AND
+    (state = ST_DMA_WAIT OR (state = ST_DMA_PUSH AND bytes_left > 1)) ELSE '0';
 
   PROCESS(state, gap_l, dma_data_l, color_l, fifo_writable) IS
   BEGIN

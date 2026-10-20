@@ -7,6 +7,7 @@ set_global_assignment -name VHDL_FILE rtl/uv202/uv202_pack.vhd -hdl_version VHDL
 set_global_assignment -name VHDL_FILE rtl/f8/f8_cpu.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/f8_busif.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_clkgen.vhd -hdl_version VHDL_2008
+set_global_assignment -name VHDL_FILE rtl/uv202/uv202_cpu_gate.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_timing.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_arbiter.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv202/uv202_top.vhd -hdl_version VHDL_2008
@@ -21,6 +22,7 @@ set_global_assignment -name VHDL_FILE rtl/f3853.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/buffered_bus.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/sys_bus.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/videobrain_io.vhd -hdl_version VHDL_2008
+set_global_assignment -name VHDL_FILE rtl/f3870_timer.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/expander1.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/videobrain_core.vhd -hdl_version VHDL_2008
 
@@ -29,3 +31,6 @@ set_global_assignment -name QIP_FILE rtl/pll.qip
 set_global_assignment -name SDC_FILE VideoBrain.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE VideoBrain.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_audio.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_joystick.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/apl_source_loader.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_tape.sv

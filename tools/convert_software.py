@@ -8,6 +8,10 @@ import zipfile
 import zlib
 
 
+APL_NAME = "APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
+INFO_NAME = "Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin"
+
+
 APL_CHIPS = [
     ("0310_apls-a.u1", "e0b883c8"),
     ("0311_apls-b.u4", "93c869d2"),
@@ -53,16 +57,16 @@ def main():
 
     apl_parts = read_chips(archives / "complang.zip", APL_CHIPS)
     apl = b"".join(apl_parts) + bytes(2048)
-    write("The Computational Language (APL-S).bin", apl)
+    write(APL_NAME, apl)
     older = archives / "complang (older).zip"
     if older.exists():
         old = b"".join(read_chips(older, APL_CHIPS)) + bytes(2048)
         if old != apl:
-            write("The Computational Language (older).bin", old)
+            write(APL_NAME.replace("(Cart)", "(Cart)(older)"), old)
         else:
             print("Older APL archive is identical; skipped.")
     info = read_chips(archives / "infoman.zip", INFO_CHIPS)
-    write("Information Manager (prototype).bin", info[0] + bytes(2048) + info[1] + info[2])
+    write(INFO_NAME, info[0] + bytes(2048) + info[1] + info[2])
 
     existing = {hashlib.sha1(p.read_bytes()).digest() for p in root.glob("*.bin")}
     matched = 0

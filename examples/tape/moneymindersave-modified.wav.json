@@ -1,0 +1,27 @@
+{
+  "source": "moneymindersave-modified.vbt",
+  "source_sha256": "3d61034d121f67a8928d460ea3a07f7ac07d8055e912f336d63ce91de70c5071",
+  "wav": "moneymindersave-modified.wav",
+  "wav_sha256": "e6cd4cffddc175a37806e4b37b328083a650fb0c27f5abb7a8741dee75859593",
+  "converter_sha256": "a7592618c864189cac84a590221abd4dfab4dd001f590cb0d73688e70e37dca9",
+  "sample_rate_hz": 96000,
+  "frames": 6177632,
+  "pcm_bits": 16,
+  "channels": 1,
+  "amplitude": 0.8,
+  "source_intervals": 57985,
+  "source_duration_seconds": 64.3503372635349,
+  "round_trip_max_edge_error_ticks": 75,
+  "round_trip_max_edge_error_microseconds": 5.238095903250273,
+  "round_trip_records_and_crcs_match": true,
+  "record_payload_lengths": [
+    280,
+    280,
+    280,
+    528,
+    528,
+    528,
+    0
+  ],
+  "original_hardware_playback": "unverified"
+}

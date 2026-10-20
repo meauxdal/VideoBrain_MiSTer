@@ -7,9 +7,12 @@ First-screen results do not establish full gameplay or peripheral coverage.
     verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
 Known raw dumps are identified by CRC-32 and use the matching slot behavior.
-`--cart-type` and the OSD's Fallback setting apply only to unrecognized
-images: 0 standard, 1 Timeshare, 2 Money Minder. APL and Information Manager
-assembled by `tools/convert_software.py` are also identified automatically.
+`--cart-type` and the OSD's System > Mapper Fallback setting apply only to unrecognized
+images: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman.
+Assembled APL/S and Information Manager images are also identified automatically.
+
+**Unload Cartridge** on the main menu removes the cartridge and resets to the
+built-in BIOS. Reset and Master Control retain the cartridge and its RAM.
 
 Fingerprints for all sixteen released single-image cartridges come from MAME's
 [VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
@@ -34,62 +37,44 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's
 | VideoArtist | 2K | standard | correct | Design selection menu. |
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
-| APL / Computational Language | 16K | comp_language | correct | Assembled MAME image; full program execution coverage pending. |
-| Information Manager | 8K | info_manager | correct | Prototype; with Expander 1 firmware, reaches PROGRAM / ENTER / REVIEW / EDIT without I/O ERR. Tape and serial operations need investigation. |
+| APL/S: The Computational Language | 16K | comp_language | correct | Assembled MAME image; full program execution coverage pending. |
+| Information Manager | 8K | info_manager | correct | Prototype; with Expander 1 firmware, reaches PROGRAM / ENTER / REVIEW / EDIT without I/O ERR. Serial operations need investigation. |
 
 ## Split cartridge conversion
 
-Use the chip names from MAME's
-[VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
-Every chip below is 2,048 bytes. Offsets are hexadecimal positions in the
-output file, not CPU addresses. Padding must contain zero bytes.
+Extract the chip dumps from each archive and concatenate them in the order
+below. Every chip is 2,048 bytes; each padding block is 2,048 zero bytes.
 
-### Computational Language (`complang.zip`)
+### APL/S: The Computational Language (`complang.zip`)
 
 Concatenate A, B, C, D, E, F, G, then 2,048 zero bytes:
 
-| File offset | Dump |
-|---|---|
-| 0000 | `0310_apls-a.u1` |
-| 0800 | `0311_apls-b.u4` |
-| 1000 | `0312_apls-c.u3` |
-| 1800 | `0313_apls-d.u6` |
-| 2000 | `0314_apls-e.u2` |
-| 2800 | `0315_apls-f.u5` |
-| 3000 | `0316_apls-g.u11` |
-| 3800 | 2,048 zero bytes |
+```text
+0310_apls-a.u1
+0311_apls-b.u4
+0312_apls-c.u3
+0313_apls-d.u6
+0314_apls-e.u2
+0315_apls-f.u5
+0316_apls-g.u11
+2,048 zero bytes
+```
 
-Output: `The Computational Language (APL-S).bin`, 16,384 bytes.
+Save as a `.bin` file: 16,384 bytes.
 
 ### Information Manager (`infoman.zip`, also known as `infomgr`)
 
 Concatenate the 1000 chip, 2,048 zero bytes, the 3000 chip, then the 3800 chip:
 
-| File offset | Dump |
-|---|---|
-| 0000 | `vb1200a_1000-17ff_9_25_78_51` |
-| 0800 | 2,048 zero bytes |
-| 1000 | `vb1200c_3000-37ff_9_25_78_51` |
-| 1800 | `vb-1200_3800-3fff_9_26_78` |
-
-Output: `Information Manager (prototype).bin`, 8,192 bytes. Load the separate
-Expander 1 firmware as described in [Expander 1 setup](EXPANDER1.md).
-
-### Converter
-
-Place both archives in `software/vidbrain (MAME)`, then run
-`python3 tools/convert_software.py` from the repository root. Alternatively,
-pass a software directory containing a `vidbrain (MAME)` subdirectory:
-
-```sh
-python3 tools/convert_software.py /path/to/software
+```text
+vb1200a_1000-17ff_9_25_78_51
+2,048 zero bytes
+vb1200c_3000-37ff_9_25_78_51
+vb-1200_3800-3fff_9_26_78
 ```
 
-The converter checks chip sizes and CRC-32, writes the assembled images and
-`checksums.tsv` into `software/converted` (or the supplied directory's
-`converted` subdirectory), and skips other cartridges matching existing images.
-Copy the assembled `.bin` files to the VideoBrain games folder and load through
-the OSD.
+Save as a `.bin` file: 8,192 bytes. Information Manager also requires
+[Expander 1 firmware](EXPANDER1.md).
 
 ## Mapper tests
 

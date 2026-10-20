@@ -17,7 +17,7 @@ mkdir -p "$out"
 
 if [[ $target == both || $target == checkers ]]; then
     ./obj_dir_headless/Vtop \
-        --cart "../software/Checkers (197x)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin" \
+        --cart "../software/Checkers (1978.05.01)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin" \
         --frames 470 --press SPACE@140:8 --press Y@250:8 \
         --joy UP@265:16 --joy DOWN@285:16 \
         --joy LEFT@305:16 --joy RIGHT@325:16 \
@@ -32,7 +32,7 @@ fi
 
 if [[ $target == both || $target == tennis ]]; then
     ./obj_dir_headless/Vtop \
-        --cart "../software/Tennis (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" \
+        --cart "../software/Tennis (1978.11.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" \
         --frames 420 --press SPACE@140:8 \
         --joy UP@260:24 --joy2 UP@260:24 \
         --joy DOWN@300:24 --joy2 DOWN@300:24 \

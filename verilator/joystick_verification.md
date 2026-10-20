@@ -4,6 +4,12 @@ See [joystick timing](../docs/JOYSTICK.md) for setup, the Curve mapping and
 release verification. Results below are simulator measurements unless
 marked hardware.
 
+These retained runs predate automatic linear presets. The Transfers note in
+[joystick timing](../docs/JOYSTICK.md#per-game-adjustment) documents per-game
+trim readjustment, so a shared affine mapping is no longer a requirement.
+The new Tennis 2644:24 preset and Gladiator horizontal aiming still need
+gameplay verification; the older runs below do not establish those results.
+
 ## Measurement and scaling
 
 BIOS stores initial Y+1 at 21D1 and subtracts with COM/INC at 21FC..21FD.
@@ -84,6 +90,26 @@ initial Y sampled outside h222..227, raw gains 6, not 228. Moving Y alone
 adds 228 only over h222..227 and creates a discontinuity. Software waits for
 Y to change, so changing phase also changes sample times. This model does
 not establish a hardware counter phase or justify a timing change.
+
+## Experimental 240p
+
+`make test-joystick-timing` compares native and fixed 263-line timing using the
+actual timer, capture and freeze-register RTL, with CPU writes held idle.
+All 14 directed cases retain HBLANK/EJOY reset and release, elapsed timer ticks,
+X capture, current-Y phase and freeze delivery. Ten cases away from rollover
+also retain Y/raw values and calculated software rejection decisions.
+
+Four cases spanning the native 262-line rollover change Y/raw values. Applying
+the documented 8-bit line subtraction and rejection thresholds gives:
+
+- Initial Y=260, delay=2580: frozen X=222, Y=0/262, raw=57412/412
+  (native/240p). Tennis and BIOS change from reject to accept.
+- Initial Y=250, delay=11295: frozen X=121, Y=0/262, raw=1223/2591.
+  Tennis changes from accept to reject; BIOS accepts both.
+
+These are synthetic raster cases, not gameplay acceptance. Fixed 263-line timing
+does not preserve native rollover measurements. HDMI stability and joystick
+gameplay still require MiSTer verification.
 
 ## Curve evidence and model limits
 

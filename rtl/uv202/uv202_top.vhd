@@ -15,6 +15,7 @@ ENTITY uv202_top IS
   PORT (
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
+    progressive : IN std_logic := '0';
 
     cpu_req    : IN  std_logic;
     cpu_class  : IN  bus_access_t;
@@ -56,8 +57,20 @@ ARCHITECTURE rtl OF uv202_top IS
   SIGNAL brclk_ena_l   : std_logic;
   SIGNAL brclk_phase_l : uv2;
   SIGNAL cpu_ena_l     : std_logic;
-  SIGNAL cpu_stall_l   : std_logic;
+  SIGNAL cpu_sample_l  : std_logic;
+  SIGNAL cpu_wack_l    : std_logic;
+  SIGNAL cpu_req_sync  : std_logic := '0';
 BEGIN
+
+  -- U41 samples requests on BRCLK before they reach the UV202 pins.
+  -- The external CPU stop latch sees the unsynchronized request.
+  PROCESS(clk, reset_na) IS
+  BEGIN
+    IF reset_na = '0' THEN cpu_req_sync <= '0';
+    ELSIF rising_edge(clk) THEN
+      IF brclk_ena_l = '1' THEN cpu_req_sync <= cpu_req; END IF;
+    END IF;
+  END PROCESS;
 
   u_clkgen : ENTITY work.uv202_clkgen
     GENERIC MAP (
@@ -70,6 +83,7 @@ BEGIN
       mclk_ena    => mclk_ena_l,
       brclk_ena   => brclk_ena_l,
       cpu_ena     => cpu_ena_l,
+      cpu_sample  => cpu_sample_l,
       brclk_phase => brclk_phase_l
       );
 
@@ -78,6 +92,7 @@ BEGIN
       clk            => clk,
       reset_na       => reset_na,
       brclk_ena      => brclk_ena_l,
+      progressive    => progressive,
       hblank         => hblank,
       vblank         => vblank,
       burst          => burst,
@@ -92,15 +107,17 @@ BEGIN
       );
 
   u_arbiter : ENTITY work.uv202_arbiter
+    -- Bus phase is 3 at HBLANK rising (hpos 222).
     PORT MAP (
       clk        => clk,
       reset_na   => reset_na,
       brclk_ena  => brclk_ena_l,
-      cpu_req    => cpu_req,
+      bus_phase  => brclk_phase_l + 1,
+      cpu_req    => cpu_req_sync,
       cpu_class  => cpu_class,
       cpu_grant  => cpu_grant,
-      cpu_wack   => cpu_wack,
-      cpu_stall  => cpu_stall_l,
+      cpu_wack   => cpu_wack_l,
+      cpu_stall  => OPEN,
       umireq0    => umireq0,
       umireq1    => umireq1,
       dmareq0    => dmareq0,
@@ -112,8 +129,14 @@ BEGIN
   brclk_ena   <= brclk_ena_l;
   brclk_phase <= brclk_phase_l;
   cpu_ena_raw <= cpu_ena_l;
-  cpu_stall   <= cpu_stall_l;
+  cpu_wack   <= cpu_wack_l;
 
-  cpu_ce <= cpu_ena_l AND NOT cpu_stall_l;
+  u_cpu_gate : ENTITY work.uv202_cpu_gate
+    PORT MAP (
+      clk => clk, reset_na => reset_na,
+      cpu_raw => cpu_ena_l, cpu_sample => cpu_sample_l,
+      cpu_req => cpu_req, cpu_wack => cpu_wack_l,
+      cpu_ce => cpu_ce, cpu_stall => cpu_stall
+    );
 
 END ARCHITECTURE rtl;

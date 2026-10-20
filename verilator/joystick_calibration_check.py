@@ -11,9 +11,9 @@ import subprocess
 
 
 GAMES = {
-    "gladiator": ("Gladiator (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin", 150, 180, 0x22BE),
-    "checkers": ("Checkers (197x)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin", 260, 280, 0x22BE),
-    "tennis": ("Tennis (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin", 230, 270, 0x1FCB),
+    "gladiator": ("Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin", 150, 180, 0x22BE),
+    "checkers": ("Checkers (1978.05.01)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin", 260, 280, 0x22BE),
+    "tennis": ("Tennis (1978.11.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin", 230, 270, 0x1FCB),
 }
 
 
@@ -73,11 +73,17 @@ def main():
     parser.add_argument("--base", type=int, default=2580)
     parser.add_argument("--step", type=int, default=6)
     parser.add_argument("--curve", action="store_true", help="use shared 1620:23/53 timer curve")
+    parser.add_argument("--auto", action="store_true", help="use the cartridge's linear preset")
+    parser.add_argument("--aim", action="store_true", help="capture Gladiator left/right holds and shots")
     parser.add_argument("--focus", type=int, help="trace BIOS operands in one frame")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--prepare", action="store_true", help="write plan and command without building or running")
     parser.add_argument("--summarize", action="store_true", help="summarize an existing run")
     args = parser.parse_args()
+    if args.auto and args.curve:
+        parser.error("choose --auto or --curve")
+    if args.aim and args.game != "gladiator":
+        parser.error("--aim requires gladiator")
     if args.base < 0 or not 0 <= args.step <= 127 or args.base + args.step * 255 > 16383:
         parser.error("timer range must fit 0..16383 MCLK ticks")
     os.chdir(Path(__file__).resolve().parent)
@@ -88,9 +94,10 @@ def main():
     cart, startup, frame, return_pc = GAMES[args.game]
     command = ["./obj_dir_headless/Vtop", "--cart", f"../software/{cart}", "--press", "SPACE@140:8",
                "--joy-results", str(startup), "--joy-return-pc", f"{return_pc:X}",
-               "--joy-timer-base", str(args.base), "--joy-timer-step", str(args.step),
                "--dump-every", "1", "--ram", "--dump-file", str(args.out / "state.txt"),
                "--outdir", str(args.out), "--prefix", args.game, "--quiet"]
+    if not args.auto:
+        command += ["--joy-timer-base", str(args.base), "--joy-timer-step", str(args.step)]
     if args.focus is not None:
         command += ["--joy-focus", str(args.focus)]
     if args.curve:
@@ -119,6 +126,13 @@ def main():
         for name, v, h in (("up", 0, 128), ("down", 255, 128), ("left", 128, 0), ("right", 128, 255)):
             hold(name, v, h, 8)
     hold("calibrated128", 128, 128, 40, 16)
+    if args.aim:
+        for name, horizontal in (("aim_left", 0), ("aim_right", 255)):
+            fire_frame = frame + 20
+            command += ["--joy", f"FIRE@{fire_frame}:2", "--joy2", f"FIRE@{fire_frame}:2"]
+            shots.extend((fire_frame - 1, fire_frame + 2))
+            hold(name, 128, horizontal, 32, 8)
+        hold("aim_neutral", 128, 128, 32, 8)
     for pot in (112, 144, 128):
         hold(f"region{pot}", pot, pot, 32, 8)
     command += ["--frames", str(frame), "--shot", ",".join(map(str, shots))]
@@ -126,6 +140,8 @@ def main():
             "phases": phases, "command": command}
     if args.curve:
         plan["timing"] = {"base": 1620, "low_step": 23, "high_step": 53, "split": 128}
+    elif args.auto:
+        plan["timing"] = "cartridge preset"
     (args.out / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     print(f"Plan: {args.out / 'plan.json'} ({frame} frames)", flush=True)
     if not args.prepare:

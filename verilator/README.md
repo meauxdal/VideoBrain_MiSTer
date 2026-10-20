@@ -21,9 +21,34 @@ profile only for unrecognized images.
 
 `--expander1 <file>` loads the separate 2K Expander 1 firmware. This support is
 experimental; see [limits and hardware evidence](../docs/EXPANDER1.md).
-`make test-expander1` tests its ROM loading, processor and host clock wiring.
+`make test-expander1` tests its ROM loading, host wiring, 3870 timer and
+interrupt execution.
+`make test-expander1-record` exercises original-ROM recording, decodes its
+digital capture and checks good/bad checksum status. It requires the firmware.
 
+`make replay-apl-tape` boots APL/S and LOADs `refs/tape-observations/apls-test.vbt`,
+with a final screenshot and host signal trace in `out/expander1/apl-load`.
+Override `APL_TAPE` for another image. This is a long run. The headless
+`--playback FILE` option replays the VBT1 waveform directly at the Expander
+input, bypassing SD service; remote stops pause playback without rewinding.
+`--expander-trace FILE` logs host signals, interrupt acknowledgements and
+VideoBrain receive-register writes, including counters and interrupt sources.
+
+## Keyboard files
+
+Use [APL/S source entry](../docs/APL-SOURCE.md) or
+[generic text, physical keys and Music Teacher](../docs/KEYBOARD-INPUT.md).
+`--source FILE@FRAME` accepts VBK1 and VBK2, including built-in Text without a
+cartridge. `make test-apl-source` checks both converters and the RTL loader.
+RAM dump options and tests are disabled; their code and files are preserved.
+The two clean `apl_check.py` controls remain available. Snapshot cases reject
+entry instead of restoring RAM.
+
+<!--
 ## APL/S memory dumps
+
+For clean source entry, use the [source loader](../docs/APL-SOURCE.md).
+The preserved memory dumps below remain an experimental diagnostic path.
 
 The `.bin` files in `software/21 games for apl_s` are 16K MAME CPU memory
 dumps, not cartridge ROMs. Load the Computational Language cartridge first.
@@ -34,7 +59,7 @@ ROM, CPU registers, mapper bank and video registers are not restored.
 ```sh
 mkdir -p out/apl
 ./obj_dir_headless/Vtop \
-  --cart "../software/converted/The Computational Language (APL-S).bin" \
+  --cart "../software/converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
   --apl "../software/21 games for apl_s/guess.bin@300" \
   --frames 330 --shot-last --outdir out/apl
 ```
@@ -42,20 +67,49 @@ mkdir -p out/apl
 The loader checks dump size, system RAM mirrors, cartridge type and fixed ROM
 contents. Use `--press` to enter the program name and NEXT after loading;
 Guess's program name is `GUES`. APL/S uses RUN/STOP as Space and SHIFT as a
-letter/symbol toggle. Guess reaches its limit input prompt after RAM loading.
-Full gameplay coverage is pending.
+letter/symbol toggle. A completed limit-1 game should show a score of `1 1`.
+Other programs and broader gameplay coverage remain pending.
 `bash apl_guess_check.sh` captures startup, RAM loading and the submitted
 `GUES` command, then enters a limit and guess of 1. Inspect its PNGs in
 `out/apl/guess_check` for the completed score of `1 1`.
 
-`python3 apl_check.py --all` captures the 23 numbered reference entries and
+`bash apl_guess_check.sh rtl` uses the same keyboard schedule through the RTL loader
+using core download index 4 (MiSTer OSD index 3). Captures go to
+`out/apl/guess_check_rtl`. `--apl-rtl FILE@F` exercises staging, validation,
+CPU pause, dump replay and resume without resetting the interpreter. The RTL
+replays all 16384 bytes through normal memory writes, including UV201 object
+RAM. Cartridge banking and write-only video controls retain their live values;
+their dump bytes are FF readback, not saved state. ROM remains read-only. The
+harness checks write order, RAM, video state, bank preservation and CPU pause/resume.
+`--apl` remains a RAM-only diagnostic baseline.
+
+`bash apl_load_check.sh [name] [direct|rtl] [frames]` follows the collection author's MAME procedure:
+load the dump, then press NEXT without retyping the saved command. It defaults
+to `clocknye2026` and `rtl`; captures go to `out/apl/load_check/name_mode_trace`.
+Both modes use the same input schedule and record 4096 CPU memory cycles starting
+10 frames before the end in `run.log`. Frames defaults to 360 (minimum 360).
+Longer runs add intermediate and final captures and append the frame count to
+the output directory. This is a long run.
+Dump loading writes `$FF` into write-only UV201 registers, as MAME does; the
+display can look distorted. Continued program execution needs visual verification.
+
+Start with clean execution controls: `python3 apl_check.py --case 00-arithmetic`
+and `python3 apl_check.py --case 00-bars`. Each boots the cartridge without a
+dump. Check echoed input, results and keyboard response after NEXT. Arithmetic
+must show 2 then 5; bars must show heights 10, 20, 30 and then evaluate 1+1 to 2.
+These runs require visual verification, including hardware comparison.
+
+`python3 apl_check.py --all` captures the clean controls, 23 numbered reference entries and
 four variants. This is a long run. Use `--case 04-guess` for one case or
 `--all --dry-run` to list the schedule without simulation. Captures, logs and
 `summary.tsv` go to `out/apl/suite`. A completed capture is not a verified pass.
 Cases without stored programs are entered from the reference listings.
-For diagnostic retries, `--normalize` attempts to clear pending snapshot input
-and leave edit mode; `--settle N` extends the wait after each line. Use
-`--outdir out/apl/retry` to keep the original captures.
+For diagnostic retries, `--normalize` clears pending snapshot input. Add
+`--leave-edit` only for snapshots in edit mode. `--settle N` extends the wait
+after each line; `--trace-final N` traces N CPU memory cycles in the final
+frame. Use `--outdir out/apl/retry` to keep the original captures.
+
+-->
 
 Joystick pulse timing is runtime-configurable without rebuilding. Headless
 defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; use

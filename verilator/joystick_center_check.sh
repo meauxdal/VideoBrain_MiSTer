@@ -8,7 +8,7 @@ out=out/joystick/center1
 mkdir -p "$out"
 
 ./obj_dir_headless/Vtop \
-    --cart "../software/Checkers (197x)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin" \
+    --cart "../software/Checkers (1978.05.01)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN04].bin" \
     --frames 410 \
     --press SPACE@140:8 \
     --press Y@250:8 \

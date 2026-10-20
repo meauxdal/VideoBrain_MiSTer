@@ -89,8 +89,9 @@ BEGIN
       result := ACC_RAM_RD;
     END IF;
 
-  ELSIF (a_eff >= to_unsigned(ADDR_CART2_LO, 14)) AND
-        (a_eff <= to_unsigned(ADDR_CART2_HI, 14)) THEN
+  ELSIF ((a_eff >= to_unsigned(ADDR_CART2_LO, 14)) AND
+         (a_eff <= to_unsigned(ADDR_CART2_HI, 14))) OR
+        (a_eff >= to_unsigned(ADDR_EXP_LO, 14)) THEN
     IF is_write = '1' THEN
       result := ACC_CART_WR;
     ELSE
@@ -275,10 +276,7 @@ BEGIN
               pc1 <= pc0 + 1;
             END IF;
 
-          -- ROMC 0F: the interrupting device supplies the low vector byte and
-          -- all devices copy PC0 into PC1.  This core's terminating ROMC 00 has
-          -- already fetched and discarded the next opcode, so PC0 sits one past
-          -- the interrupted instruction and PC1 must back up over it.
+          -- ROMC 0F saves the unfetched return address and loads the vector low byte.
           WHEN ROMC_0F =>
             IF phase = 1 THEN
               int_ack_l <= '1';
@@ -288,7 +286,7 @@ BEGIN
               dv_l <= '1';
             END IF;
             IF phase = 6 THEN
-              pc1 <= pc0 - 1;
+              pc1 <= pc0;
               pc0(7 DOWNTO 0) <= int_vector(7 DOWNTO 0);
             END IF;
 
@@ -315,8 +313,7 @@ BEGIN
           WHEN ROMC_1B =>
             IF phase = 2 THEN
               io_rd_l <= '1';
-            END IF;
-            IF phase = 6 THEN
+              -- The CPU samples DATA in phase 3.
               dr_l <= io_rdata;
               dv_l <= '1';
             END IF;

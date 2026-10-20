@@ -14,6 +14,7 @@ ENTITY sys_bus IS
 
     ext_addr  : IN  unsigned(13 DOWNTO 0);
     ext_rd    : IN  std_logic;
+    ext_fetch : IN  std_logic := '0';
     ext_wr    : IN  std_logic;
     ext_wdata : IN  uv8;
     ext_rdata : OUT uv8;
@@ -46,7 +47,18 @@ ENTITY sys_bus IS
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
+    cart_unload : IN std_logic := '0';
+    cart_loaded : OUT std_logic := '0';
+    apl_hold : OUT std_logic;
+    apl_paused : IN std_logic := '0';
+    apl_available : OUT std_logic;
+    apl_load_error : OUT std_logic;
+    apl_symbols : OUT std_logic := '0';
+    apl_input_ready : OUT std_logic := '0';
+    apl_key_accepted : OUT std_logic := '0';
 
+    joy_linear_base : OUT unsigned(13 DOWNTO 0) := to_unsigned(2580, 14);
+    joy_linear_step : OUT unsigned(6 DOWNTO 0) := to_unsigned(7, 7);
     unknown_cart_profile : IN uv8
     );
 END ENTITY sys_bus;
@@ -90,6 +102,8 @@ ARCHITECTURE rtl OF sys_bus IS
   END FUNCTION;
 
   SIGNAL a_eff : unsigned(13 DOWNTO 0);
+  SIGNAL bus_wr : std_logic;
+  SIGNAL bus_wdata : uv8;
 
   TYPE rom_t IS ARRAY (0 TO 2047) OF uv8;
   SIGNAL res1_rom : rom_t := (OTHERS => (OTHERS => '0'));
@@ -107,6 +121,21 @@ ARCHITECTURE rtl OF sys_bus IS
 
   TYPE ram_t IS ARRAY (0 TO 1023) OF uv8;
   SIGNAL sys_ram : ram_t := (OTHERS => (OTHERS => '0'));
+  SIGNAL sys_ram_we : std_logic;
+  SIGNAL sys_ram_wa, cart_ram_wa : unsigned(9 DOWNTO 0);
+  SIGNAL sys_ram_wdata, cart_ram_wdata : uv8;
+
+--   TYPE apl_ram_t IS ARRAY (0 TO 16383) OF uv8;
+--   SIGNAL apl_ram : apl_ram_t;
+--   TYPE apl_state_t IS (IDLE, RECEIVE, WAIT_PAUSE, COPY_READ, COPY_WRITE);
+--   SIGNAL apl_state : apl_state_t := IDLE;
+--   SIGNAL apl_count : unsigned(16 DOWNTO 0) := (OTHERS => '0');
+--   SIGNAL apl_bad, apl_error : std_logic := '0';
+--   SIGNAL apl_sys_crc, apl_mirror_crc, apl_rom_crc : uv32 := (OTHERS => '1');
+--   SIGNAL cart_fixed_crc : uv32 := (OTHERS => '1');
+--   SIGNAL apl_copy_addr : unsigned(13 DOWNTO 0) := (OTHERS => '0');
+--   SIGNAL apl_copy_data : uv8;
+--   SIGNAL apl_copy_wr : std_logic;
 
   SIGNAL uv_reg_addr  : uv8;
   SIGNAL uv_reg_we    : std_logic;
@@ -134,6 +163,7 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL dl_res1, dl_res2, dl_cart : std_logic;
   SIGNAL cs1, cs2, exp : std_logic;
   SIGNAL cart_dl_prev : std_logic := '0';
+  SIGNAL cart_loaded_l : std_logic := '0';
   SIGNAL cart_crc     : uv32 := (OTHERS => '1');
   SIGNAL cart_size    : unsigned(16 DOWNTO 0) := (OTHERS => '0');
   SIGNAL cart_auto_type : uv8 := to_unsigned(CART_UNRECOGNIZED, 8);
@@ -149,7 +179,127 @@ ARCHITECTURE rtl OF sys_bus IS
 
 BEGIN
 
+  cart_loaded <= cart_loaded_l;
+  apl_available <= '1' WHEN cart_auto_type = to_unsigned(CART_COMPLANG, 8) ELSE '0';
+  -- Bank D input loop: release verified at 3C14, new key accepted at 3C20.
+  apl_key_accepted <= '1' WHEN reset_na = '1' AND
+    cart_auto_type = to_unsigned(CART_COMPLANG, 8) AND cart_bank = 0 AND
+    ext_rd = '1' AND ext_fetch = '1' AND ext_addr = x"3C20" ELSE '0';
+
+  PROCESS (clk, reset_na) IS
+  BEGIN
+    IF reset_na = '0' THEN
+      apl_input_ready <= '0';
+    ELSIF rising_edge(clk) THEN
+      IF cart_auto_type /= to_unsigned(CART_COMPLANG, 8) OR dl_cart = '1' THEN
+        apl_input_ready <= '0';
+      ELSIF cart_bank = 0 AND ext_rd = '1' AND ext_fetch = '1' THEN
+        IF ext_addr = x"3C14" THEN
+          apl_input_ready <= '1';
+        ELSIF ext_addr = x"3C20" THEN
+          apl_input_ready <= '0';
+        END IF;
+      END IF;
+    END IF;
+  END PROCESS;
+--   apl_load_error <= apl_error;
+--   apl_hold <= '1' WHEN apl_state = WAIT_PAUSE OR apl_state = COPY_READ OR
+--                        apl_state = COPY_WRITE ELSE '0';
+--   apl_copy_wr <= '1' WHEN apl_state = COPY_WRITE AND apl_paused = '1' AND
+--                          reset_na = '1' ELSE '0';
+--   -- Stage the debugger dump; validate before changing live memory.
+--   PROCESS (clk) IS
+--   BEGIN
+--     IF rising_edge(clk) THEN
+--       IF dl_wr = '1' AND dl_index = to_unsigned(4, 8) AND
+--          (apl_state = IDLE OR apl_state = RECEIVE) THEN
+--         IF dl_addr < x"4000" THEN
+--           apl_ram(to_integer(dl_addr(13 DOWNTO 0))) <= dl_data;
+--         END IF;
+--       END IF;
+--       apl_copy_data <= apl_ram(to_integer(apl_copy_addr));
+--     END IF;
+--   END PROCESS;
+
+--   PROCESS (clk) IS
+--   BEGIN
+--     IF rising_edge(clk) THEN
+--       IF reset_na = '0' THEN
+--         apl_state <= IDLE;
+--         apl_error <= '0';
+--       ELSE
+--         CASE apl_state IS
+--           WHEN IDLE =>
+--             IF dl_index = to_unsigned(4, 8) THEN
+--               apl_state <= RECEIVE;
+--               apl_count <= (OTHERS => '0');
+--               apl_sys_crc <= (OTHERS => '1');
+--               apl_mirror_crc <= (OTHERS => '1');
+--               apl_rom_crc <= (OTHERS => '1');
+--               apl_bad <= '0';
+--               apl_error <= '0';
+--               IF cart_auto_type /= to_unsigned(CART_COMPLANG, 8) THEN
+--                 apl_bad <= '1';
+--               END IF;
+--               -- HPS can present the first byte with the download index.
+--               IF dl_wr = '1' THEN
+--                 apl_count <= to_unsigned(1, 17);
+--                 IF dl_addr /= x"0000" THEN apl_bad <= '1'; END IF;
+--               END IF;
+--             END IF;
+--           WHEN RECEIVE =>
+--             IF dl_index /= to_unsigned(4, 8) THEN
+--               IF apl_bad = '0' AND apl_count = to_unsigned(16384, 17) AND
+--                  apl_sys_crc = apl_mirror_crc AND apl_rom_crc = cart_fixed_crc AND
+--                  cart_auto_type = to_unsigned(CART_COMPLANG, 8) THEN
+--                 apl_copy_addr <= (OTHERS => '0');
+--                 apl_state <= WAIT_PAUSE;
+--               ELSE
+--                 apl_error <= '1';
+--                 apl_state <= IDLE;
+--               END IF;
+--             ELSIF dl_wr = '1' THEN
+--               IF resize(dl_addr, 17) /= apl_count OR apl_count >= 16384 THEN
+--                 apl_bad <= '1';
+--               ELSE
+--                 apl_count <= apl_count + 1;
+--               END IF;
+--               IF dl_addr >= x"0C00" AND dl_addr <= x"0FFF" THEN
+--                 apl_sys_crc <= crc32_byte(apl_sys_crc, dl_data);
+--               ELSIF dl_addr >= x"2C00" AND dl_addr <= x"2FFF" THEN
+--                 apl_mirror_crc <= crc32_byte(apl_mirror_crc, dl_data);
+--               ELSIF dl_addr >= x"1000" AND dl_addr <= x"1BFF" THEN
+--                 apl_rom_crc <= crc32_byte(apl_rom_crc, dl_data);
+--               END IF;
+--             END IF;
+--           WHEN WAIT_PAUSE =>
+--             IF apl_paused = '1' THEN apl_state <= COPY_READ; END IF;
+--           WHEN COPY_READ =>
+--             apl_state <= COPY_WRITE;
+--           WHEN COPY_WRITE =>
+--             IF apl_paused = '1' THEN
+--               IF apl_copy_addr = 16383 THEN
+--                 apl_state <= IDLE;
+--               ELSE
+--                 apl_copy_addr <= apl_copy_addr + 1;
+--                 apl_state <= COPY_READ;
+--               END IF;
+--             END IF;
+--         END CASE;
+--       END IF;
+--     END IF;
+--   END PROCESS;
+
+--   -- Replay MAME debugger writes through the normal memory handlers.
+--   a_eff <= cpu_addr_fold(apl_copy_addr) WHEN apl_copy_wr = '1'
+--              ELSE cpu_addr_fold(ext_addr);
+--   bus_wr <= apl_copy_wr OR ext_wr;
+--   bus_wdata <= apl_copy_data WHEN apl_copy_wr = '1' ELSE ext_wdata;
+  apl_load_error <= '0';
+  apl_hold <= '0';
   a_eff <= cpu_addr_fold(ext_addr);
+  bus_wr <= ext_wr;
+  bus_wdata <= ext_wdata;
   cart_effective_type <= cart_auto_type
                          WHEN cart_auto_type /= to_unsigned(CART_UNRECOGNIZED, 8)
                          ELSE unknown_cart_profile;
@@ -184,20 +334,30 @@ BEGIN
       );
 
   uv_reg_addr  <= a_eff(7 DOWNTO 0);
-  uv_reg_we    <= ext_wr WHEN (a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
-                                a_eff <= to_unsigned(ADDR_UV201_HI, 14))
-                  ELSE '0';
-  uv_reg_wdata <= ext_wdata;
+--   -- Dumps contain FF for write-only controls; preserve their live values.
+--   uv_reg_we    <= bus_wr WHEN (a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
+--                                 a_eff <= to_unsigned(ADDR_UV201_HI, 14) AND
+--                                 (apl_copy_wr = '0' OR a_eff(7 DOWNTO 0) <= x"8F"))
+--                   ELSE '0';
+  uv_reg_we <= bus_wr WHEN a_eff >= to_unsigned(ADDR_UV201_LO, 14) AND
+                               a_eff <= to_unsigned(ADDR_UV201_HI, 14) ELSE '0';
+  uv_reg_wdata <= bus_wdata;
 
+
+  sys_ram_we <= bus_wr AND to_std_logic(a_eff >= to_unsigned(ADDR_RAM_LO, 14) AND
+                                      a_eff <= to_unsigned(ADDR_RAM_HI, 14));
+  sys_ram_wa <= a_eff(9 DOWNTO 0);
+  sys_ram_wdata <= bus_wdata;
 
   PROCESS (clk, reset_na) IS
   BEGIN
     IF reset_na = '0' THEN
-      NULL;  -- Hardware reset leaves RAM undefined; BIOS initializes it.
+      apl_symbols <= '0';
     ELSIF rising_edge(clk) THEN
-      IF ext_wr = '1' AND a_eff >= to_unsigned(ADDR_RAM_LO, 14)
-                       AND a_eff <= to_unsigned(ADDR_RAM_HI, 14) THEN
-        sys_ram(to_integer(a_eff - to_unsigned(ADDR_RAM_LO, 14))) <= ext_wdata;
+      IF sys_ram_we = '1' THEN
+        sys_ram(to_integer(sys_ram_wa)) <= sys_ram_wdata;
+        -- Observe the interpreter's letter/symbol latch without changing RAM.
+        IF sys_ram_wa = 16#3E2# THEN apl_symbols <= sys_ram_wdata(0); END IF;
       END IF;
     END IF;
   END PROCESS;
@@ -219,7 +379,9 @@ BEGIN
         rdata_l <= sys_ram(to_integer(a_eff - to_unsigned(ADDR_RAM_LO, 14)));
 
       ELSIF a_eff <= to_unsigned(ADDR_CART2_HI, 14) THEN
-        IF cart_ram_rd = '1' THEN
+        IF cart_loaded_l = '0' THEN
+          rdata_l <= (OTHERS => '1');
+        ELSIF cart_ram_rd = '1' THEN
           rdata_l <= cart_ram(to_integer(cart_ram_a));
         ELSE
           cart_cpu_sel <= '1';
@@ -254,7 +416,8 @@ BEGIN
   END PROCESS;
 
   ext_rdata <= cart_cpu_rdata WHEN cart_cpu_sel = '1' ELSE rdata_l;
-  bb_cart_rdata <= bb_cart_ram_rdata WHEN bb_cart_ram_sel = '1'
+  bb_cart_rdata <= (OTHERS => '1') WHEN cart_loaded_l = '0' ELSE
+                  bb_cart_ram_rdata WHEN bb_cart_ram_sel = '1'
                   ELSE bb_cart_rom_rdata;
 
 
@@ -275,20 +438,42 @@ BEGIN
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
-      IF dl_index = to_unsigned(2, 8) THEN
+      IF cart_unload = '1' THEN
+        cart_loaded_l <= '0';
+        cart_dl_prev <= '0';
+        cart_crc <= (OTHERS => '1');
+        cart_size <= (OTHERS => '0');
+        cart_auto_type <= to_unsigned(CART_UNRECOGNIZED, 8);
+        joy_linear_base <= to_unsigned(2580, 14);
+        joy_linear_step <= to_unsigned(7, 7);
+      ELSIF dl_index = to_unsigned(2, 8) THEN
         cart_dl_prev <= '1';
         IF dl_wr = '1' THEN
           IF dl_addr = to_unsigned(0, 16) THEN
+            cart_loaded_l <= '0';
+--          cart_fixed_crc <= crc32_byte((OTHERS => '1'), dl_data);
             cart_crc <= crc32_byte((OTHERS => '1'), dl_data);
             cart_size <= to_unsigned(1, cart_size'length);
             cart_auto_type <= to_unsigned(CART_UNRECOGNIZED, 8);
+            joy_linear_base <= to_unsigned(2580, 14);
+            joy_linear_step <= to_unsigned(7, 7);
           ELSE
+--             IF dl_addr < x"0C00" THEN
+--               cart_fixed_crc <= crc32_byte(cart_fixed_crc, dl_data);
+--             END IF;
             cart_crc <= crc32_byte(cart_crc, dl_data);
             cart_size <= cart_size + 1;
           END IF;
         END IF;
       ELSIF cart_dl_prev = '1' THEN
         cart_dl_prev <= '0';
+        IF cart_size /= 0 THEN cart_loaded_l <= '1'; END IF;
+        -- Tennis uses fixed scaling instead of the BIOS gain selection.
+        IF cart_size = to_unsigned(16#1000#, cart_size'length) AND
+           (NOT cart_crc) = CART_CRC_TENNIS THEN
+          joy_linear_base <= to_unsigned(2644, 14);
+          joy_linear_step <= to_unsigned(24, 7);
+        END IF;
         IF cart_size = to_unsigned(16#0800#, cart_size'length) AND
            (NOT cart_crc) = CART_CRC_TIMESHARE THEN
           cart_auto_type <= to_unsigned(CART_TIMESHARE, 8);
@@ -331,7 +516,9 @@ BEGIN
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
-      IF dl_cart = '1' THEN
+      IF cart_unload = '1' THEN
+        cart_big <= '0';
+      ELSIF dl_cart = '1' THEN
         IF dl_addr(11) = '1' THEN
           cart_big <= '1';
         ELSIF dl_addr = x"0000" THEN
@@ -341,13 +528,15 @@ BEGIN
     END IF;
   END PROCESS;
 
-  cart_ram_we <= ext_wr AND cart_ram_rd;
+  cart_ram_we <= bus_wr AND cart_ram_rd;
+  cart_ram_wa <= cart_ram_a;
+  cart_ram_wdata <= bus_wdata;
 
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
       IF cart_ram_we = '1' THEN
-        cart_ram(to_integer(cart_ram_a)) <= ext_wdata;
+        cart_ram(to_integer(cart_ram_wa)) <= cart_ram_wdata;
       END IF;
     END IF;
   END PROCESS;
@@ -387,11 +576,11 @@ BEGIN
 
   -- /CS1 is 1000-17FF and /CS2 is 1800-1FFF; the expansion window at
   -- 3000-3FFF has no chip select and only some mappers answer there.
-  cs1 <= to_std_logic(a_eff >= to_unsigned(16#1000#, 14) AND
+  cs1 <= cart_loaded_l AND to_std_logic(a_eff >= to_unsigned(16#1000#, 14) AND
                       a_eff <= to_unsigned(16#17FF#, 14));
-  cs2 <= to_std_logic(a_eff >= to_unsigned(16#1800#, 14) AND
+  cs2 <= cart_loaded_l AND to_std_logic(a_eff >= to_unsigned(16#1800#, 14) AND
                       a_eff <= to_unsigned(16#1FFF#, 14));
-  exp <= to_std_logic(a_eff >= to_unsigned(ADDR_EXP_LO, 14));
+  exp <= cart_loaded_l AND to_std_logic(a_eff >= to_unsigned(ADDR_EXP_LO, 14));
 
   cart_a <= resize(a_eff(11 DOWNTO 0), 12) AND (cart_big & "11111111111");
   PROCESS (a_eff, cart_a, cart_effective_type, cs1, exp, cart_bank) IS
@@ -422,7 +611,9 @@ BEGIN
                                       (0, 2, 2, 0), (2, 2, 2, 2));
   BEGIN
     IF rising_edge(clk) THEN
-      IF dl_cart = '1' AND dl_addr = x"0000" THEN
+      IF cart_unload = '1' THEN
+        cart_bank <= 0;
+      ELSIF dl_cart = '1' AND dl_addr = x"0000" THEN
         cart_bank <= 0;
       -- APL's ROM bus conflict makes both data and address select the bank.
       ELSIF reset_na = '1' AND ext_wr = '1' AND cs1 = '1' AND

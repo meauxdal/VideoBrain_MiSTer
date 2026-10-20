@@ -17,17 +17,24 @@ ENTITY videobrain_core IS
   PORT (
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
+    progressive : IN std_logic := '0';
 
     kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
     joy_fire   : IN std_logic_vector(3 DOWNTO 0);
     joy_pots   : IN std_logic_vector(63 DOWNTO 0);
+    joy_connected : IN std_logic := '1';
     joy_timer_base : IN unsigned(13 DOWNTO 0);
     joy_timer_step : IN unsigned(6 DOWNTO 0);
     joy_timer_curve : IN std_logic;
+    joy_timer_auto : IN std_logic := '0';
 
     audio_code : OUT std_logic_vector(1 DOWNTO 0);
     audio_stb  : OUT std_logic;
     joy_enable : OUT std_logic;
+    expander_record_data : OUT std_logic;
+    expander_record_enable : OUT std_logic;
+    expander_playback_data : IN std_logic := '1';
+    expander_playback_enable : OUT std_logic;
 
     f8_po_a_n : OUT uv8;
     f8_po_b_n : OUT uv8;
@@ -69,7 +76,14 @@ ENTITY videobrain_core IS
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
+    cart_unload : IN std_logic := '0';
+    cart_loaded : OUT std_logic := '0';
     unknown_cart_profile: IN uv8;
+    apl_available : OUT std_logic;
+    apl_load_error : OUT std_logic;
+    apl_symbols : OUT std_logic := '0';
+    apl_input_ready : OUT std_logic := '0';
+    apl_key_accepted : OUT std_logic := '0';
 
     pc0 : OUT uv16;
     pc1 : OUT uv16;
@@ -85,6 +99,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL tick : std_logic;
   SIGNAL phase : uint4;
   SIGNAL cpu_ce : std_logic;
+  SIGNAL cpu_ce_raw, apl_hold, apl_paused : std_logic;
 
   SIGNAL ext_addr  : unsigned(13 DOWNTO 0);
   SIGNAL ext_rd    : std_logic;
@@ -117,11 +132,13 @@ ARCHITECTURE rtl OF videobrain_core IS
 
   SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
   SIGNAL kbd_b_in_n : uv8;
-  SIGNAL expander_data_n, expander_interrupt_n : std_logic;
+  SIGNAL expander_data_n, expander_clock_n, expander_interrupt_n : std_logic;
   SIGNAL port1_wr_l : std_logic;
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
   SIGNAL joy_timer : unsigned(13 DOWNTO 0) := (OTHERS => '0');
+  SIGNAL joy_linear_base : unsigned(13 DOWNTO 0);
+  SIGNAL joy_linear_step : unsigned(6 DOWNTO 0);
   SIGNAL joy_timer_active : std_logic := '0';
   SIGNAL joy_capture_stb : std_logic := '0';
   SIGNAL joy_capture_x : uv8 := (OTHERS => '0');
@@ -159,6 +176,14 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL uv_yint_ho_l : std_logic;
 
 BEGIN
+
+--   -- Stop between ROMC cycles after the arbiter has drained CPU writes.
+--   apl_paused <= apl_hold WHEN phase = 0 AND ext_req = '0' AND
+--                              ext_wr = '0' AND io_wr = '0' ELSE '0';
+--   cpu_ce <= cpu_ce_raw AND NOT apl_paused;
+
+  apl_paused <= '0';
+  cpu_ce <= cpu_ce_raw;
 
   u_cpu : ENTITY work.f8_cpu
     PORT MAP (
@@ -253,6 +278,7 @@ BEGIN
       clk            => clk,
       reset_na       => reset_na,
       cpu_req        => ext_req,
+      progressive    => progressive,
       cpu_class      => ext_class,
       cpu_grant      => ext_grant,
       cpu_wack       => OPEN,
@@ -265,7 +291,7 @@ BEGIN
       brclk_ena      => brclk_ena_l,
       brclk_phase    => OPEN,
       cpu_ena_raw    => OPEN,
-      cpu_ce         => cpu_ce,
+      cpu_ce         => cpu_ce_raw,
       hblank         => hblank_l,
       vblank         => vblank_l,
       burst          => burst,
@@ -286,6 +312,7 @@ BEGIN
       reset_na       => reset_na,
       ext_addr       => ext_addr,
       ext_rd         => ext_rd,
+      ext_fetch      => to_std_logic(romc = ROMC_00),
       ext_wr         => ext_wr,
       ext_wdata      => ext_wdata,
       ext_rdata      => ext_rdata,
@@ -313,6 +340,17 @@ BEGIN
       dl_data        => dl_data,
       dl_wr          => dl_wr,
       dl_index       => dl_index,
+      cart_unload    => cart_unload,
+      cart_loaded    => cart_loaded,
+      apl_hold       => apl_hold,
+      apl_paused     => apl_paused,
+      apl_available  => apl_available,
+      apl_load_error => apl_load_error,
+      apl_symbols    => apl_symbols,
+      apl_input_ready => apl_input_ready,
+      apl_key_accepted => apl_key_accepted,
+      joy_linear_base => joy_linear_base,
+      joy_linear_step => joy_linear_step,
       unknown_cart_profile => unknown_cart_profile
       );
 
@@ -339,7 +377,8 @@ BEGIN
   f8_po_b_n <= po_b_n_l;
   joy_enable <= joy_enable_l;
 
-  pi_b_n_l <= kbd_b_in_n AND unsigned'("11" &
+  pi_b_n_l <= kbd_b_in_n AND unsigned'('1' &
+                    (po_b_n_l(6) AND expander_clock_n) &
                     (po_b_n_l(5) AND expander_data_n) & "11111");
 
   u_expander1 : ENTITY work.expander1
@@ -348,6 +387,9 @@ BEGIN
       clk => clk, reset_na => reset_na,
       host_data_n => po_b_n_l(5), host_clock_n => po_b_n_l(6),
       data_n => expander_data_n, interrupt_n => expander_interrupt_n,
+      clock_n => expander_clock_n,
+      record_data => expander_record_data, record_enable => expander_record_enable,
+      playback_data => expander_playback_data, playback_enable => expander_playback_enable,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index
       );
@@ -396,13 +438,16 @@ BEGIN
           ELSE
             joy_timer <= to_unsigned(4564 + 53 * (to_integer(pot_v) - 128), joy_timer'length);
           END IF;
+        ELSIF joy_timer_auto = '1' THEN
+          joy_timer <= joy_linear_base + resize(pot_v * joy_linear_step, joy_timer'length);
         ELSE
           joy_timer <= joy_timer_base + resize(pot_v * joy_timer_step, joy_timer'length);
         END IF;
         joy_armed <= '0';
         joy_timer_active <= '1';
         out_v := '1';
-      ELSIF joy_timer_active = '1' THEN
+      -- Unplugged pots leave the timing capacitor without a charging path.
+      ELSIF joy_timer_active = '1' AND joy_connected = '1' THEN
         IF joy_timer = 0 THEN
           joy_timer_active <= '0';
           out_v := '0';

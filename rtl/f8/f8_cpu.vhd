@@ -4,6 +4,10 @@
 -- DO 8/2020
 --------------------------------------------------------------------------------
 -- With help from MAME F8 model
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- From Grabulosaure's ChannelF_MiSTer, rtl/chf/f8_cpu.vhd.
+-- Modified for VideoBrain, 2026-09-19 through 2026-10-18.
+-- Licensing notice added 2026-10-20; see LICENSE and LICENSING.md.
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -52,6 +56,8 @@ ARCHITECTURE rtl OF f8_cpu IS
   END FUNCTION;
 
   SIGNAL phase_l : uint4;
+  SIGNAL interrupt_accept : std_logic;
+  SIGNAL interrupt_cycle : std_logic := '0';
 
   SIGNAL madrs : uint11; -- 256 * 8 = 2048 microcode entries
   SIGNAL opcode : uv8;
@@ -80,7 +86,12 @@ BEGIN
   phase<=phase_l;
   
   ----------------------------------------------------------
-  romc<=ROMC_01 WHEN (bcc='1' AND test='1') OR
+  interrupt_accept <= '1' WHEN phase_l=1 AND mop.romc=ROMC_00 AND
+                      intreq='1' AND iozcs(4)='1' AND NOT int_inhibited(opcode)
+                      ELSE '0';
+
+  romc<=ROMC_10 WHEN interrupt_accept='1' OR interrupt_cycle='1' ELSE
+        ROMC_01 WHEN (bcc='1' AND test='1') OR
          (opcode=x"8F" AND visarl/=7 AND mop.romc=ROMC_03) ELSE
         ROMC_03 WHEN (bcc='1' AND test='0') OR
          (opcode=x"8F" AND visarl=7 AND mop.romc=ROMC_03) ELSE
@@ -137,9 +148,11 @@ BEGIN
           WHEN 0 =>
             test<=testp;
             bcc<=bccp;
+            interrupt_cycle <= '0';
             
           WHEN 1 =>
-            NULL;
+            -- Replace the fetch before the bus interface starts its read.
+            interrupt_cycle <= interrupt_accept;
           WHEN 2 =>
             NULL;  -- <dw :=> <AVOIR>
             
@@ -222,11 +235,7 @@ BEGIN
           WHEN 7 =>
             IF len_v=S THEN
               IF mop.romc=ROMC_00 THEN -- IFETCH
-                -- ICB set and a request pending: run the interrupt sequence
-                -- instead of dispatching the opcode just fetched.  That opcode
-                -- is discarded and re-fetched on return, which is why ROMC 0F
-                -- backs PC1 up by one.
-                IF intreq='1' AND iozcs(4)='1' AND NOT int_inhibited(opcode) THEN
+                IF interrupt_cycle='1' THEN
                   opcode<=OP_INTERRUPT;
                   txt<=OPTXT(to_integer(OP_INTERRUPT));
                   madrs<=to_integer(OP_INTERRUPT)*8;
@@ -243,7 +252,7 @@ BEGIN
           WHEN 11 =>
             IF len_v=L THEN
               IF mop.romc=ROMC_00 THEN -- IFETCH
-                IF intreq='1' AND iozcs(4)='1' AND NOT int_inhibited(opcode) THEN
+                IF interrupt_cycle='1' THEN
                   opcode<=OP_INTERRUPT;
                   txt<=OPTXT(to_integer(OP_INTERRUPT));
                   madrs<=to_integer(OP_INTERRUPT)*8;
@@ -271,6 +280,7 @@ BEGIN
           txt<=OPTXT(to_integer(OP_RESET));
           madrs<=to_integer(OP_RESET)*8;
           phase_l<=0;
+          interrupt_cycle<='0';
           iozcs<="00000";
           port1_wr<='0';
         END IF;
