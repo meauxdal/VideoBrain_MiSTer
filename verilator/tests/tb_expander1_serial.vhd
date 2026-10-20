@@ -5,11 +5,11 @@ USE std.env.ALL;
 USE work.base_pack.ALL;
 
 ENTITY tb_expander1_serial IS
-  GENERIC (firmware : string := "");
+  GENERIC (firmware : string := ""; baud_rate : positive := 300);
 END ENTITY;
 
 ARCHITECTURE test OF tb_expander1_serial IS
-  CONSTANT bit_time : time := 1 sec / 300;
+  CONSTANT bit_time : time := 1 sec / baud_rate;
   SIGNAL clk : std_logic := '0';
   SIGNAL reset_na : std_logic := '0';
   SIGNAL host_data_n, host_clock_n : std_logic := '1';
@@ -45,7 +45,7 @@ BEGIN
     PROCEDURE receive_byte(SIGNAL pin : IN std_logic; expected : uv8) IS
       VARIABLE value : uv8;
     BEGIN
-      WAIT UNTIL falling_edge(pin) FOR 15 ms;
+      WAIT UNTIL falling_edge(pin) FOR 5 * bit_time;
       ASSERT pin = '0' REPORT "Serial start timed out" SEVERITY failure;
       WAIT FOR bit_time / 2;
       ASSERT pin = '0' REPORT "Invalid serial start bit" SEVERITY failure;
@@ -76,7 +76,7 @@ BEGIN
     FOR test IN 0 TO 1 LOOP
       WAIT UNTIL running;
       copy_done <= false;
-      WAIT UNTIL falling_edge(copy_line) FOR 15 ms;
+      WAIT UNTIL falling_edge(copy_line) FOR 5 * bit_time;
       ASSERT copy_line = '0' REPORT "Receive copy timed out" SEVERITY failure;
       WAIT FOR bit_time / 2;
       ASSERT copy_line = '0' REPORT "Invalid copied start bit" SEVERITY failure;
@@ -100,16 +100,16 @@ BEGIN
       WAIT UNTIL running;
       host_done <= false;
       LOOP
-        WAIT UNTIL falling_edge(interrupt_n) FOR 15 ms;
+        WAIT UNTIL falling_edge(interrupt_n) FOR 5 * bit_time;
         ASSERT interrupt_n = '0' REPORT "Host receive timed out" SEVERITY failure;
         EXIT WHEN clock_n = '1';
       END LOOP;
       FOR i IN 0 TO 7 LOOP
-        WAIT UNTIL falling_edge(interrupt_n) FOR 5 ms;
+        WAIT UNTIL falling_edge(interrupt_n) FOR 2 * bit_time;
         ASSERT interrupt_n = '0' REPORT "Host receive bit timed out" SEVERITY failure;
         value(i) := NOT clock_n;
       END LOOP;
-      WAIT UNTIL falling_edge(interrupt_n) FOR 5 ms;
+      WAIT UNTIL falling_edge(interrupt_n) FOR 2 * bit_time;
       ASSERT interrupt_n = '0' AND clock_n = '0' AND value = x"3C"
         REPORT "Incorrect host serial receive" SEVERITY failure;
       host_done <= true;
@@ -160,12 +160,14 @@ BEGIN
     END PROCEDURE;
     PROCEDURE serial_bit(value : std_logic) IS
     BEGIN
-      WAIT UNTIL falling_edge(interrupt_n) FOR 5 ms;
+      WAIT UNTIL falling_edge(interrupt_n) FOR 2 * bit_time;
       ASSERT interrupt_n = '0' REPORT "Serial timer stopped" SEVERITY failure;
       host_data_n <= NOT value;
     END PROCEDURE;
   BEGIN
     ASSERT firmware /= "" REPORT "Supply the original 2K firmware" SEVERITY failure;
+    ASSERT baud_rate = 110 OR baud_rate = 300
+      REPORT "Unsupported test baud rate" SEVERITY failure;
     WAIT FOR 1 us;
     ASSERT modem_txd = '1' AND printer_txd = '1'
       REPORT "Unloaded serial outputs are not idle" SEVERITY failure;
@@ -191,14 +193,14 @@ BEGIN
       WAIT FOR 100 us;
       host_clock_n <= '0';
       transfer(4);
-      transfer(2);
+      IF baud_rate = 110 THEN transfer(1); ELSE transfer(2); END IF;
       IF test = 0 THEN transfer(16#0D#); ELSE transfer(16#32#); END IF;
       host_data_n <= '0';
       running <= true;
       serial_bit('0');
       FOR i IN 0 TO 7 LOOP serial_bit(payload(i)); END LOOP;
       serial_bit('1');
-      WAIT FOR 12 ms;
+      WAIT FOR 4 * bit_time;
       ASSERT tx_done AND copy_done AND host_done AND rx_done
         REPORT "Serial transaction did not complete" SEVERITY failure;
       reset_na <= '0';
@@ -214,7 +216,7 @@ BEGIN
 
   PROCESS IS
   BEGIN
-    WAIT FOR 200 ms;
+    WAIT FOR 1 sec;
     ASSERT false REPORT "Serial simulation timed out" SEVERITY failure;
   END PROCESS;
 END ARCHITECTURE;

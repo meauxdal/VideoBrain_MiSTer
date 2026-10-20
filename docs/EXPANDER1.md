@@ -13,8 +13,9 @@ EDIT
 ```
 
 The 3870 timer, interrupt control ports and digital cassette SAVE/LOAD path
-are implemented. See [SD tape images](TAPE.md). Serial peripherals, Expander 2
-and the Timeshare modem are not supported.
+are implemented. See [SD tape images](TAPE.md). The modem serial port connects
+to MiSTer's HPS UART. Expander 2 acoustic modem behavior and a connected
+printer are not implemented.
 
 The 2K firmware dump has CRC-32 `dac31abc`. Load it from the OSD's
 System > Load Expander 1 ROM entry, or put it in the VideoBrain games folder as `boot1.rom`.
@@ -55,13 +56,19 @@ EXT INT is currently held high; pulse width and event modes are tested at
 the timer module but await peripheral wiring in Expander 1. Ports 4/5 expose
 digital serial inputs on bit 7 and outputs on bit 0. The serial interface
 uses logical mark/space levels (idle high), before RS-232 voltage conversion.
-It is not yet connected through the core to a MiSTer serial interface.
+The modem port connects to MiSTer's HPS UART, with synchronized receive input.
+The printer input remains idle and its output is unconnected.
 
 Serial command `04` takes a timing selector and routing flags. Timeshare uses
 `04 01 0D` and `04 02 0D` for 110 and 300 baud. Flags `0D` route host data to
 the modem and modem input to both the host and printer. The timer vector at
 `0020` contains `LR P0,Q`; command `04` sets Q to `041A`. Timer control `AA`
 selects /40 and enables timer interrupts, with external interrupts disabled.
+
+Select the MiSTer UART service and set its baud rate to match Timeshare:
+300 or 110. This configures the HPS endpoint; the cartridge and Expander ROM
+still control the VideoBrain's serial timing. The connection uses TX/RX only;
+HPS handshakes are held asserted. Live MiSTer communication remains unverified.
 
 The modem connector is separate from the host cable. `Set 2/Image (73).jpg`
 corrects its pins to receive 4, transmit 2, and signal ground 1.
@@ -75,8 +82,9 @@ return, CPU interrupt masking, reset and oversize rejection.
 
 `make -C verilator test-expander1-serial` runs the original ROM with command
 `04 02 0D`, simultaneous host transmit and 300-baud modem receive, and checks
-host delivery and printer copying. It also checks reverse routing (`32`),
-start/data/stop bits, and reset with retained firmware. This validates the
+host delivery and printer copying. It repeats at 110 baud (`04 01 0D`).
+Both rates check reverse routing (`32`), start/data/stop bits, and reset with
+retained firmware. This validates the
 digital serial boundary, not the analog line drivers or Expander 2 modem.
 
 `make -C verilator test-expander1-record` additionally runs the original ROM

@@ -23,7 +23,8 @@ module emu
 
 assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
-assign {UART_RTS, UART_TXD, UART_DTR} = 0;
+// The modem cable has no flow control; assert the HPS's active-low handshakes.
+assign {UART_RTS, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
@@ -47,7 +48,7 @@ wire [1:0] ar = status[122:121];
 
 `include "build_id.v"
 localparam CONF_STR = {
-	"VideoBrain;;",
+	"VideoBrain;UART300:110;",
 	"F1,BIN,Load Cartridge;",
 	"d8S0,VBT,Mount Tape;",
 	"T[23],Rewind Tape;",
@@ -385,6 +386,8 @@ videobrain_core core
 	.expander_record_enable (tape_record_enable),
 	.expander_playback_data (tape_playback_data),
 	.expander_playback_enable (tape_playback_enable),
+	.expander_modem_rxd (UART_RXD),
+	.expander_modem_txd (UART_TXD),
 	.f8_po_a_n  (),
 	.f8_po_b_n  (),
 

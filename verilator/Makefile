@@ -191,6 +191,8 @@ test-expander1-serial: test-expander1
 	$(GHDL) -a --std=08 --workdir=out/expander1 tests/tb_expander1_serial.vhd
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
 		"-gfirmware=$(EXPANDER1_ROM)" --assert-level=error --ieee-asserts=disable
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
+		"-gfirmware=$(EXPANDER1_ROM)" -gbaud_rate=110 --assert-level=error --ieee-asserts=disable
 
 .PHONY: test-expander1-serial
 
