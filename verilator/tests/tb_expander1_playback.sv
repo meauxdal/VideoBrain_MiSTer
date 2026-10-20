@@ -9,7 +9,8 @@ wire playback_data;
 reg [15:0] dl_addr = 0;
 reg [7:0] dl_data = 0;
 reg dl_wr = 0;
-expander1 dut(.*,.dl_index(8'd3));
+expander1 dut(.*,.dl_index(8'd3),.modem_rxd(1'b1),.modem_txd(),
+             .printer_rxd(1'b1),.printer_txd());
 reg [7:0] firmware[2048];
 reg img_mounted = 0, rewind = 0;
 wire busy, writable, error;

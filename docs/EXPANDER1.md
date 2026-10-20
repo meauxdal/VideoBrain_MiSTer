@@ -52,8 +52,16 @@ modes, and separate interrupt latches. Timer interrupts take priority at
 rate before prescaling. Port 6 reads the EXT INT pin in bit 7.
 
 EXT INT is currently held high; pulse width and event modes are tested at
-the timer module but await peripheral wiring in Expander 1. Parallel ports
-4/5 still provide latch readback only.
+the timer module but await peripheral wiring in Expander 1. Ports 4/5 expose
+digital serial inputs on bit 7 and outputs on bit 0. The serial interface
+uses logical mark/space levels (idle high), before RS-232 voltage conversion.
+It is not yet connected through the core to a MiSTer serial interface.
+
+Serial command `04` takes a timing selector and routing flags. Timeshare uses
+`04 01 0D` and `04 02 0D` for 110 and 300 baud. Flags `0D` route host data to
+the modem and modem input to both the host and printer. The timer vector at
+`0020` contains `LR P0,Q`; command `04` sets Q to `041A`. Timer control `AA`
+selects /40 and enables timer interrupts, with external interrupts disabled.
 
 The modem connector is separate from the host cable. `Set 2/Image (73).jpg`
 corrects its pins to receive 4, transmit 2, and signal ground 1.
@@ -64,6 +72,12 @@ corrects its pins to receive 4, transmit 2, and signal ground 1.
 reload, readback, interrupt masking, priority and vector retention. Synthetic
 firmware checks download, host lines, CPU port readback, timer ISR entry and
 return, CPU interrupt masking, reset and oversize rejection.
+
+`make -C verilator test-expander1-serial` runs the original ROM with command
+`04 02 0D`, simultaneous host transmit and 300-baud modem receive, and checks
+host delivery and printer copying. It also checks reverse routing (`32`),
+start/data/stop bits, and reset with retained firmware. This validates the
+digital serial boundary, not the analog line drivers or Expander 2 modem.
 
 `make -C verilator test-expander1-record` additionally runs the original ROM
 with a simulated host. Override `EXPANDER1_ROM` if needed. It records one byte

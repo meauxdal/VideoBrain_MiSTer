@@ -20,6 +20,10 @@ ENTITY expander1 IS
     record_enable : OUT std_logic;
     playback_data : IN std_logic := '1';
     playback_enable : OUT std_logic;
+    modem_rxd   : IN std_logic := '1';
+    modem_txd   : OUT std_logic;
+    printer_rxd : IN std_logic := '1';
+    printer_txd : OUT std_logic;
     dl_addr  : IN unsigned(15 DOWNTO 0);
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
@@ -104,12 +108,18 @@ BEGIN
   record_enable <= NOT po_a_n(1) WHEN port1_ready = '1' ELSE '0';
   -- P0.0 drives the U07/U02 playback remote-control optocoupler.
   playback_enable <= NOT po_a_n(0) WHEN port1_ready = '1' ELSE '0';
-  io_rdata <= port4 WHEN io_addr = 4 ELSE port5 WHEN io_addr = 5 ELSE timer_rdata;
+  -- Serial levels are logical mark/space, with mark (idle) high.
+  -- Port reads invert the open-drain pins; a written one holds a pin low.
+  io_rdata <= (port4 OR unsigned'(printer_rxd & "0000000")) WHEN io_addr = 4 ELSE
+              (port5 OR unsigned'(modem_rxd & "0000000")) WHEN io_addr = 5 ELSE
+              timer_rdata;
+  modem_txd <= port5(0) WHEN port1_ready = '1' ELSE '1';
+  printer_txd <= port4(0) WHEN port1_ready = '1' ELSE '1';
 
   ce_phi <= ce WHEN phase MOD 2 = 1 ELSE '0';
   int_ack <= '1' WHEN ce = '1' AND romc = ROMC_13 AND phase = 6 ELSE '0';
 
-  -- TODO: Connect EXT INT and parallel ports to the peripheral circuitry.
+  -- TODO: Connect EXT INT and the remaining peripheral circuitry.
   u_timer : ENTITY work.f3870_timer
     PORT MAP (
       clk => clk, reset_na => cpu_reset_na, ce_phi => ce_phi,
