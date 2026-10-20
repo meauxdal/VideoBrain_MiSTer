@@ -23,7 +23,8 @@ module emu
 
 assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
-assign {UART_RTS, UART_TXD, UART_DTR} = 0;
+// The modem cable has no flow control; assert the HPS's active-low handshakes.
+assign {UART_RTS, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
@@ -47,25 +48,22 @@ wire [1:0] ar = status[122:121];
 
 `include "build_id.v"
 localparam CONF_STR = {
-	"VideoBrain;;",
+	"VideoBrain;UART300:110;",
 	"F1,BIN,Load Cartridge;",
 	"d8S0,VBT,Mount Tape;",
 	"T[23],Rewind Tape;",
-	"H8-Tape busy;",
-	"H9-Tape error;",
 	"-;",
 	"P3,Input;",
 	"P3-;",
-	"P3O[5],Joystick,Connected,Disconnected;",
+	"P3O[5],Joysticks,Connected,Disconnected;",
 	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3T[20],Calibrate Sticks;",
 	"P3-;",
+	"P3O[29],Esc Reset,On,Off;",
 	"P3F4,VBK,Load Keyboard File;",
 	"P3O[18],Music Mode,Playback,Record;",
 	"P3O[19],Music Repeat,Off,On;",
-	"H2P3-Keyboard entry active;",
-	"H3P3-Keyboard file rejected;",
 	"P1,Video;",
 	"P1-;",
 	"P1O[21],240p,Off,On;",
@@ -74,8 +72,10 @@ localparam CONF_STR = {
 	"P1O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"P2,System;",
 	"P2-;",
+	"P2F0,BIN,Load BIOS;",
 	"P2F2,BIN,Load Expander 1 ROM;",
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
+	"P2O[22],Info Messages,On,Off;",
 	//"P2O[26:24],Audio Test,Off,500 Hz,1 kHz,2 kHz,4 kHz;",
 	"P2-;",
 	"P2T[27],Master Control (Soft Reset);",
@@ -84,6 +84,7 @@ localparam CONF_STR = {
 	"R[0],Reset;",
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
+	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound;",
 	"v,1;",
 	"V,v",`BUILD_DATE
 };
@@ -112,7 +113,9 @@ wire [7:0] tape_buff_dout, tape_buff_din;
 wire tape_buff_wr, tape_mounted, tape_readonly;
 wire [63:0] tape_size;
 wire tape_record_data, tape_record_enable, tape_playback_data, tape_playback_enable;
-wire tape_busy, tape_error;
+wire tape_busy, tape_error, tape_rewound;
+reg info_req = 0;
+reg [7:0] info = 0, pending_info = 0;
 wire [31:0] sd_lba[1];
 wire [5:0] sd_blk_cnt[1];
 wire [7:0] sd_buff_din[1];
@@ -133,8 +136,9 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.status(status),
 	.status_in(128'd0),
 	.status_set(1'b0),
-	.status_menumask({5'd0, ~cart_loaded, ~tape_error, ~tape_busy, 2'b00,
-	                 1'b0, !joystick_connected, ~source_error, ~source_busy, 2'b11}),
+	.status_menumask({5'd0, ~cart_loaded, 5'd0, !joystick_connected, 4'b0011}),
+	.info_req(info_req),
+	.info(info),
 
 	.img_mounted(tape_mounted),
 	.img_readonly(tape_readonly),
@@ -192,7 +196,7 @@ wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
 wire source_dl = ioctl_download && (ioctl_index[7:0] == 8'd4);
 wire apl_available, apl_load_error;
-wire apl_symbols, source_busy, source_error;
+wire apl_symbols, source_busy, source_error, source_started;
 wire apl_input_ready, apl_key_accepted;
 wire [35:0] source_keys;
 wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
@@ -217,7 +221,7 @@ reg        key_toggle  = 0;
 
 always @(posedge clk_sys) begin
 	key_toggle <= ps2_key[10];
-	if (system_reset) master_control <= 0;
+	if (system_reset || status[29]) master_control <= 0;
 	else if (key_toggle != ps2_key[10] && key_code == 'h076)
 		master_control <= key_pressed;  // ESC = MASTER CONTROL
 	if (reset) kbd_matrix <= 0;
@@ -308,6 +312,27 @@ wire audio_stb;
 reg source_vs_d = 0;
 always @(posedge clk_sys) source_vs_d <= vid_vs;
 
+reg source_started_d = 0, source_error_d = 0, tape_error_d = 0;
+always @(posedge clk_sys) begin
+	source_started_d <= source_started;
+	source_error_d <= source_error;
+	tape_error_d <= tape_error;
+	info_req <= 0;
+	if (reset || status[22]) pending_info <= 0;
+	else begin
+		// Wait for the menu to close. New events replace older messages.
+		if (!OSD_STATUS && vid_vs && !source_vs_d && pending_info != 0) begin
+			info <= pending_info;
+			info_req <= 1;
+			pending_info <= 0;
+		end
+		if (source_started && !source_started_d) pending_info <= 1;
+		if (tape_rewound) pending_info <= 4;
+		if (tape_error && !tape_error_d) pending_info <= 3;
+		if (source_error && !source_error_d) pending_info <= 2;
+	end
+end
+
 // Switch before VSYNC; keep software-visible field parity toggling.
 reg progressive = 0;
 reg field_d = 0;
@@ -334,6 +359,7 @@ apl_source_loader source_loader (
 	.enabled(!OSD_STATUS),
 	.cancel(|kbd_matrix),
 	.busy(source_busy),
+	.started(source_started),
 	.complete(),
 	.error(source_error),
 	.keys(source_keys)
@@ -354,6 +380,7 @@ videobrain_tape tape
 	.busy(tape_busy),
 	.writable(),
 	.error(tape_error),
+	.rewound(tape_rewound),
 	.sd_lba(tape_lba),
 	.sd_rd(tape_rd),
 	.sd_wr(tape_wr),
@@ -385,6 +412,8 @@ videobrain_core core
 	.expander_record_enable (tape_record_enable),
 	.expander_playback_data (tape_playback_data),
 	.expander_playback_enable (tape_playback_enable),
+	.expander_modem_rxd (UART_RXD),
+	.expander_modem_txd (UART_TXD),
 	.f8_po_a_n  (),
 	.f8_po_b_n  (),
 

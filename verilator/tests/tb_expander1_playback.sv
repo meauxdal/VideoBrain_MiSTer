@@ -9,7 +9,8 @@ wire playback_data;
 reg [15:0] dl_addr = 0;
 reg [7:0] dl_data = 0;
 reg dl_wr = 0;
-expander1 dut(.*,.dl_index(8'd3));
+expander1 dut(.*,.dl_index(8'd3),.modem_rxd(1'b1),.modem_txd(),
+             .printer_rxd(1'b1),.printer_txd());
 reg [7:0] firmware[2048];
 reg img_mounted = 0, rewind = 0;
 wire busy, writable, error;
@@ -17,7 +18,7 @@ wire [31:0] sd_lba;
 wire sd_rd, sd_wr, sd_ack, sd_buff_wr;
 wire [13:0] sd_buff_addr;
 wire [7:0] sd_buff_dout, sd_buff_din;
-videobrain_tape tape(.*,.reset(!reset_na),.img_readonly(1'b0),.img_size(64'd16384),
+videobrain_tape tape(.*,.rewound(),.reset(!reset_na),.img_readonly(1'b0),.img_size(64'd16384),
                      .sd_buff_addr(sd_buff_addr[8:0]));
 tape_sd_model card(.*);
 task transfer(input [7:0] value, output [7:0] result);

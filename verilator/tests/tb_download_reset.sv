@@ -129,6 +129,45 @@ initial begin
                 $fatal(1, "Unexpected reset for PS/2 code %h, pressed %0d", code, pressed);
         end
     end
+    status[29] = 1;
+    ps2_key = {!ps2_key[10], 1'b1, 9'h076};
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.reset !== 0 || dut.master_control !== 0)
+        $fatal(1, "Disabled ESC asserted MASTER CONTROL");
+    ps2_key = {!ps2_key[10], 1'b0, 9'h076};
+    repeat (2) @(posedge clk);
+    #1;
+    ps2_key = {!ps2_key[10], 1'b1, 9'h005};
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.kbd_matrix[35] !== 1 || dut.reset !== 0)
+        $fatal(1, "Disabling ESC blocked F1");
+    ps2_key = {!ps2_key[10], 1'b0, 9'h005};
+    repeat (2) @(posedge clk);
+    #1;
+    status[27] = 1;
+    #1;
+    if (dut.reset !== 1 || dut.system_reset !== 0)
+        $fatal(1, "Disabling ESC blocked OSD MASTER CONTROL");
+    status[27] = 0;
+    status[29] = 0;
+    ps2_key = {!ps2_key[10], 1'b1, 9'h076};
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.master_control !== 1) $fatal(1, "Reenabled ESC did not reset");
+    status[29] = 1;
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.reset !== 0 || dut.master_control !== 0)
+        $fatal(1, "Disabling held ESC did not release MASTER CONTROL");
+    status[29] = 0;
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.reset !== 0) $fatal(1, "Reenabling held ESC retriggered reset");
+    ps2_key = {!ps2_key[10], 1'b0, 9'h076};
+    repeat (2) @(posedge clk);
+    #1;
     $display("Download reset checks passed");
     $finish;
 end
