@@ -15,6 +15,7 @@ videobrain_core native(
     .joy_connected(1'b1), .joy_timer_base(delay_ticks), .joy_timer_step(7'd0),
     .joy_timer_curve(curve), .joy_timer_auto(1'b0),
     .dl_addr(16'd0), .dl_data(8'd0), .dl_wr(1'b0), .dl_index(8'd0),
+    .cart_unload(1'b0), .cart_loaded(),
     .unknown_cart_profile(8'd0)
 );
 videobrain_core progressive(
@@ -23,6 +24,7 @@ videobrain_core progressive(
     .joy_connected(1'b1), .joy_timer_base(delay_ticks), .joy_timer_step(7'd0),
     .joy_timer_curve(curve), .joy_timer_auto(1'b0),
     .dl_addr(16'd0), .dl_data(8'd0), .dl_wr(1'b0), .dl_index(8'd0),
+    .cart_unload(1'b0), .cart_loaded(),
     .unknown_cart_profile(8'd0)
 );
 

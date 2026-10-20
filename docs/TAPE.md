@@ -1,20 +1,20 @@
 # Tape images
 
 Load Expander 1 firmware. Copy `examples/tape/blank.vbt` to the SD card with a
-new name, then choose **Tape > Mount Tape**. Set **Arm Recording** to **On** before
-issuing the cartridge's SAVE command. Arming starts a new recording at the beginning
-of the image. It stays **On** across record requests so multi-record saves append
-all their blocks. Select **Off** after SAVE; starting playback also disarms it.
+new name, then choose **Mount Tape** on the main menu. Issue the cartridge's
+SAVE command to record. The first SAVE after mounting, rewinding, playback or
+reset replaces the recording from the beginning. Subsequent SAVE requests append,
+including the separate records in one workspace save. Mounting and playback do
+not write the image. Read-only images reject recording.
 Wait for **Tape busy** and the user LED to clear before unmounting or switching
 cores. **Tape error** reports a controller failure,
 even if the cartridge reports TAPE OK.
 
 Issue the cartridge's LOAD or VERIFY command to replay the mounted recording.
-Playback resumes from its current position across remote stops. Remount the image
-to rewind before another LOAD or VERIFY. Both remotes enabled is a setup state
-and does not start a transfer. Reset disarms recording, rewinds and cancels tape
-activity. An interrupted recording is invalid; arm it again to reuse the image.
-Read-only images cannot be armed.
+Playback resumes from its current position across remote stops. Use
+**Tape > Rewind Tape** before repeating LOAD or VERIFY. Both remotes enabled
+is a setup state and does not start a transfer. Reset rewinds and cancels tape
+activity. An interrupted recording is invalid; a new SAVE can replace it.
 
 `python tools/new_tape.py [path.vbt]` creates an 8 MiB blank. Omitting the path
 uses a timestamped name. Existing files are never replaced. Creating and mounting

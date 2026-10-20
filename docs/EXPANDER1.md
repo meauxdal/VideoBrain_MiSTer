@@ -84,7 +84,7 @@ completion and continued interpreter operation. Full-machine SAVE capture and
 MiSTer SD SAVE/LOAD verification are still pending.
 
 `make -C verilator test-expander1-playback` records two distinct payloads through
-the original ROM under one recording arm, resets and remounts the SD image,
+the original ROM without OSD arming, resets and remounts the SD image,
 then checks successive LOAD payloads, CRCs and success status. The host uses
 record timing 00 and receive timing 01, with
 receive mode 01 to return data. The controller also checks recording protection,

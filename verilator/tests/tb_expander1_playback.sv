@@ -11,8 +11,8 @@ reg [7:0] dl_data = 0;
 reg dl_wr = 0;
 expander1 dut(.*,.dl_index(8'd3));
 reg [7:0] firmware[2048];
-reg img_mounted = 0, arm = 0;
-wire busy, writable, armed, error;
+reg img_mounted = 0, rewind = 0;
+wire busy, writable, error;
 wire [31:0] sd_lba;
 wire sd_rd, sd_wr, sd_ack, sd_buff_wr;
 wire [13:0] sd_buff_addr;
@@ -71,12 +71,8 @@ initial begin
     reset_na = 1;
     #100000;
     wait(writable);
-    @(negedge clk);
-    arm = 1;
-    @(negedge clk);
-    wait(armed);
     initialize_remotes();
-    if (!armed) $fatal(1,"Remote initialization consumed recording arm");
+    if (card.writes != 0) $fatal(1,"Remote initialization changed image");
     for (integer record = 0; record < 2; record = record + 1) begin
         host_data_n = 1;
         host_clock_n = 0;
@@ -95,7 +91,7 @@ initial begin
         if (data_n || !clock_n) $fatal(1,"Recording status %0d",record);
         @(posedge interrupt_n);
         wait(!busy);
-        if (error || !armed) $fatal(1,"Tape SAVE %0d failed",record);
+        if (error) $fatal(1,"Tape SAVE %0d failed",record);
         if (record == 0 && card.word_at(8) != 685) $fatal(1,"First recording length");
     end
     if (card.word_at(8) <= 685) $fatal(1,"Second recording did not append");

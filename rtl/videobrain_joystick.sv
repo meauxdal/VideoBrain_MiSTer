@@ -85,7 +85,7 @@ for (i = 0; i < 4; i = i + 1) begin : sticks
 end
 endgenerate
 
-// Reserved presets use Auto. Curve takes precedence in the core.
+// Reserved presets use Auto.
 assign timer_auto = (preset != 2'd1 && preset != 2'd2);
 assign timer_base = (preset == 2'd1) ? 14'd2644 : 14'd2580;
 assign timer_step = (preset == 2'd1) ? 7'd24 : 7'd7;

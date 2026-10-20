@@ -1,8 +1,9 @@
 # Audio diagnostic
 
-The supplied Happy Birthday comparison closely matches lower hardware notes.
-Its MiSTer upper harmonics are too weak; the retuned filter needs hardware
-listening. Periodic timing modulation is present before
+Audio is accepted for release after hardware listening with the retuned filter.
+The remaining high-note grit is an open accuracy question. The supplied Happy
+Birthday capture predates that retune and has weak upper harmonics.
+Periodic timing modulation is present before
 filtering in the held-note capture; CPU/bus timing and analog response remain
 separate accuracy targets. Regular test tones establish timing cleanliness,
 not faithful original-machine filtering.
@@ -12,7 +13,7 @@ source ahead of the existing audio filter. It uses no CPU, ROM, keyboard or
 interrupt timing. The computer continues running. Off selects normal audio.
 This is an isolation test, not a sound correction. Filtering rounds its output.
 
-The test tones sound steady on the user's core. Normal audio still needs comparison.
+The test tones sound steady on the user's core.
 Low nonharmonic noise alone does not establish faithful sound.
 
 Matched Happy Birthday recordings contain the same 25 notes. On the high C5,

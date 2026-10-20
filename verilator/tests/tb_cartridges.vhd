@@ -20,6 +20,8 @@ ARCHITECTURE test OF tb_cartridges IS
   SIGNAL dl_data : uv8 := (OTHERS => '0');
   SIGNAL dl_wr : std_logic := '0';
   SIGNAL dl_index, fallback : uv8 := (OTHERS => '0');
+  SIGNAL cart_unload : std_logic := '0';
+  SIGNAL cart_loaded : std_logic;
   SIGNAL apl_hold, apl_error, apl_available : std_logic;
   SIGNAL apl_symbols : std_logic;
   SIGNAL fetch : std_logic := '0';
@@ -49,6 +51,7 @@ BEGIN
       uv_obj_addr => (OTHERS => '0'), uv_obj_rdata => OPEN,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index, unknown_cart_profile => fallback,
+      cart_unload => cart_unload, cart_loaded => cart_loaded,
       apl_hold => apl_hold, apl_paused => apl_paused,
       apl_available => apl_available, apl_load_error => apl_error,
       apl_symbols => apl_symbols,
@@ -173,6 +176,12 @@ BEGIN
 --       tick;
 --     END PROCEDURE;
   BEGIN
+    tick;
+    ASSERT cart_loaded = '0' REPORT "Cartridge present at power-on" SEVERITY failure;
+    read_at(16#1000#, 255); dma_at(16#1800#, 255);
+    dl_addr <= x"0000"; dl_data <= x"A6"; dl_index <= x"00"; dl_wr <= '1'; tick;
+    dl_data <= x"5A"; dl_index <= x"01"; tick;
+    dl_wr <= '0'; dl_index <= x"FF"; tick;
     -- Give each chip a distinct value to expose bank/address aliasing.
     dl_index <= to_unsigned(2, 8);
     dl_wr <= '1';
@@ -365,6 +374,27 @@ BEGIN
     load_signature(4096, x"78F61A44", 24, 2644);
     load_signature(2048, x"23469D84", 7); -- Tennis CRC, wrong length.
     load_signature(4096, x"78F61A45", 7); -- Altered Tennis fingerprint.
+    load_signature(4096, x"78F61A44", 24, 2644);
+    ASSERT cart_loaded = '1' REPORT "Loaded cartridge absent" SEVERITY failure;
+    write_at(16#0C00#, 16#A5#);
+    cart_unload <= '1'; reset_na <= '0'; tick;
+    cart_unload <= '0'; reset_na <= '1'; tick; tick;
+    ASSERT cart_loaded = '0' AND apl_available = '0' AND
+           joy_base = 2580 AND joy_step = 7
+      REPORT "Unload retained cartridge state" SEVERITY failure;
+    FOR mapper IN CART_STD TO CART_INFOMAN LOOP
+      fallback <= to_unsigned(mapper, 8); tick;
+      read_at(16#1000#, 255); read_at(16#1800#, 255);
+      read_at(16#3000#, 255); read_at(16#3800#, 255);
+      dma_at(16#1000#, 255); dma_at(16#1800#, 255);
+    END LOOP;
+    read_at(16#0C00#, 16#A5#);
+    read_at(16#0000#, 16#A6#); read_at(16#2000#, 16#5A#);
+    dma_at(16#0000#, 16#5A#);
+    reset_na <= '0'; tick; reset_na <= '1'; tick;
+    ASSERT cart_loaded = '0' REPORT "Reset restored unloaded cartridge" SEVERITY failure;
+    load_signature(4096, x"BB09D7FB", 7);
+    ASSERT cart_loaded = '1' REPORT "Replacement cartridge absent" SEVERITY failure;
     REPORT "Cartridge tests passed";
     std.env.stop;
     WAIT;

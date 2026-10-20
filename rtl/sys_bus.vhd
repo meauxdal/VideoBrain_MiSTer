@@ -47,6 +47,8 @@ ENTITY sys_bus IS
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
+    cart_unload : IN std_logic := '0';
+    cart_loaded : OUT std_logic := '0';
     apl_hold : OUT std_logic;
     apl_paused : IN std_logic := '0';
     apl_available : OUT std_logic;
@@ -161,6 +163,7 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL dl_res1, dl_res2, dl_cart : std_logic;
   SIGNAL cs1, cs2, exp : std_logic;
   SIGNAL cart_dl_prev : std_logic := '0';
+  SIGNAL cart_loaded_l : std_logic := '0';
   SIGNAL cart_crc     : uv32 := (OTHERS => '1');
   SIGNAL cart_size    : unsigned(16 DOWNTO 0) := (OTHERS => '0');
   SIGNAL cart_auto_type : uv8 := to_unsigned(CART_UNRECOGNIZED, 8);
@@ -176,6 +179,7 @@ ARCHITECTURE rtl OF sys_bus IS
 
 BEGIN
 
+  cart_loaded <= cart_loaded_l;
   apl_available <= '1' WHEN cart_auto_type = to_unsigned(CART_COMPLANG, 8) ELSE '0';
   -- Bank D input loop: release verified at 3C14, new key accepted at 3C20.
   apl_key_accepted <= '1' WHEN reset_na = '1' AND
@@ -375,7 +379,9 @@ BEGIN
         rdata_l <= sys_ram(to_integer(a_eff - to_unsigned(ADDR_RAM_LO, 14)));
 
       ELSIF a_eff <= to_unsigned(ADDR_CART2_HI, 14) THEN
-        IF cart_ram_rd = '1' THEN
+        IF cart_loaded_l = '0' THEN
+          rdata_l <= (OTHERS => '1');
+        ELSIF cart_ram_rd = '1' THEN
           rdata_l <= cart_ram(to_integer(cart_ram_a));
         ELSE
           cart_cpu_sel <= '1';
@@ -410,7 +416,8 @@ BEGIN
   END PROCESS;
 
   ext_rdata <= cart_cpu_rdata WHEN cart_cpu_sel = '1' ELSE rdata_l;
-  bb_cart_rdata <= bb_cart_ram_rdata WHEN bb_cart_ram_sel = '1'
+  bb_cart_rdata <= (OTHERS => '1') WHEN cart_loaded_l = '0' ELSE
+                  bb_cart_ram_rdata WHEN bb_cart_ram_sel = '1'
                   ELSE bb_cart_rom_rdata;
 
 
@@ -431,10 +438,19 @@ BEGIN
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
-      IF dl_index = to_unsigned(2, 8) THEN
+      IF cart_unload = '1' THEN
+        cart_loaded_l <= '0';
+        cart_dl_prev <= '0';
+        cart_crc <= (OTHERS => '1');
+        cart_size <= (OTHERS => '0');
+        cart_auto_type <= to_unsigned(CART_UNRECOGNIZED, 8);
+        joy_linear_base <= to_unsigned(2580, 14);
+        joy_linear_step <= to_unsigned(7, 7);
+      ELSIF dl_index = to_unsigned(2, 8) THEN
         cart_dl_prev <= '1';
         IF dl_wr = '1' THEN
           IF dl_addr = to_unsigned(0, 16) THEN
+            cart_loaded_l <= '0';
 --          cart_fixed_crc <= crc32_byte((OTHERS => '1'), dl_data);
             cart_crc <= crc32_byte((OTHERS => '1'), dl_data);
             cart_size <= to_unsigned(1, cart_size'length);
@@ -451,6 +467,7 @@ BEGIN
         END IF;
       ELSIF cart_dl_prev = '1' THEN
         cart_dl_prev <= '0';
+        IF cart_size /= 0 THEN cart_loaded_l <= '1'; END IF;
         -- Tennis uses fixed scaling instead of the BIOS gain selection.
         IF cart_size = to_unsigned(16#1000#, cart_size'length) AND
            (NOT cart_crc) = CART_CRC_TENNIS THEN
@@ -499,7 +516,9 @@ BEGIN
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
-      IF dl_cart = '1' THEN
+      IF cart_unload = '1' THEN
+        cart_big <= '0';
+      ELSIF dl_cart = '1' THEN
         IF dl_addr(11) = '1' THEN
           cart_big <= '1';
         ELSIF dl_addr = x"0000" THEN
@@ -557,11 +576,11 @@ BEGIN
 
   -- /CS1 is 1000-17FF and /CS2 is 1800-1FFF; the expansion window at
   -- 3000-3FFF has no chip select and only some mappers answer there.
-  cs1 <= to_std_logic(a_eff >= to_unsigned(16#1000#, 14) AND
+  cs1 <= cart_loaded_l AND to_std_logic(a_eff >= to_unsigned(16#1000#, 14) AND
                       a_eff <= to_unsigned(16#17FF#, 14));
-  cs2 <= to_std_logic(a_eff >= to_unsigned(16#1800#, 14) AND
+  cs2 <= cart_loaded_l AND to_std_logic(a_eff >= to_unsigned(16#1800#, 14) AND
                       a_eff <= to_unsigned(16#1FFF#, 14));
-  exp <= to_std_logic(a_eff >= to_unsigned(ADDR_EXP_LO, 14));
+  exp <= cart_loaded_l AND to_std_logic(a_eff >= to_unsigned(ADDR_EXP_LO, 14));
 
   cart_a <= resize(a_eff(11 DOWNTO 0), 12) AND (cart_big & "11111111111");
   PROCESS (a_eff, cart_a, cart_effective_type, cs1, exp, cart_bank) IS
@@ -592,7 +611,9 @@ BEGIN
                                       (0, 2, 2, 0), (2, 2, 2, 2));
   BEGIN
     IF rising_edge(clk) THEN
-      IF dl_cart = '1' AND dl_addr = x"0000" THEN
+      IF cart_unload = '1' THEN
+        cart_bank <= 0;
+      ELSIF dl_cart = '1' AND dl_addr = x"0000" THEN
         cart_bank <= 0;
       -- APL's ROM bus conflict makes both data and address select the bank.
       ELSIF reset_na = '1' AND ext_wr = '1' AND cs1 = '1' AND

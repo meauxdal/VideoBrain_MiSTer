@@ -1,29 +1,14 @@
 # VideoBrain Family Computer for MiSTer
 
-An FPGA implementation of the 1977 VideoBrain Family Computer: Fairchild F8 (3850 CPU, 3853 SMI) with the Umtech UV201 video chip and UV202 clock/bus chip. 
+An FPGA implementation of the 1977 VideoBrain Family Computer, with its
+Fairchild F8 CPU, Umtech UV201 video chip and UV202 clock/bus chip.
 
 ## Status
 
-- All cartridges reach their expected first screen
-- Joystick works (timing is approximate)
-- 15.7 kHz analog video
-- Expander 1 tape SAVE/LOAD through [SD tape images](docs/TAPE.md)
-- No Expander 2 / modem support
-- Integer scaling and scandoubler support
-
-## Experimental 240p
-
-Video > 240p (Experimental) defaults to Off. On presents each successive field
-as a progressive picture with fixed 263-line timing and 242 visible rows, at
-about 59.695 Hz. Field parity still toggles; horizontal and joystick timer clocks
-are unchanged. Vertical rollover moves by one line on alternate fields.
-Joystick reads spanning rollover can change raw values and rejection; see the
-[measurement notes](verilator/joystick_verification.md#experimental-240p).
-HDMI stability, joystick gameplay and SAVE raster effects need MiSTer verification.
-
-## Joystick
-
-Set Input > Joystick=Connected in the OSD. Stick Timing=Linear and Linear Preset=Auto are the defaults; Tennis and Gladiator presets can also be selected manually. Curve remains available. Paired Sticks lets the right stick and Fire 2 control the paired joystick: 1+2 / 3+4, or Doubles for 1+3 / 2+4. At first-game start, use Input > Calibrate Sticks while the game is reading the joystick channels. See [joystick timing and verification](docs/JOYSTICK.md).
+All eighteen cartridges reach their expected first screen. Joystick timing
+and analog audio response remain approximations. Expander 1 supports tape
+SAVE/LOAD through SD images; Expander 2 and modem peripherals are unsupported.
+See [cartridge coverage](docs/CARTRIDGES.md).
 
 ## Installing
 
@@ -47,9 +32,43 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 
 Information Manager and APL/S: The Computational Language need assembled ROM images. See [cartridge assembly](docs/CARTRIDGES.md#split-cartridge-conversion) for chip order and padding. Copy the assembled `.bin` files to the VideoBrain games folder and load them through the OSD. The core selects their mappers automatically.
 
-## APL/S source entry
+## Using the core
 
-Boot APL/S and wait for its input prompt. Choose **Keyboard Entry > Load Keyboard File**, select a `.vbk` file and close the OSD. The core types the listing through the keyboard. Ready-to-load controls and their text sources are in `examples/apl`. See [conversion, cancellation and limits](docs/APL-SOURCE.md). For other programs and Music Teacher 1, see [keyboard input](docs/KEYBOARD-INPUT.md).
+The main menu provides the three file actions:
+
+| Action | Use |
+| --- | --- |
+| Load Cartridge | Load a `.bin` cartridge and restart the machine. |
+| Load Keyboard File | Type a `.vbk` file into the running program. |
+| Mount Tape | Mount a `.vbt` image for the program's LOAD, VERIFY or SAVE commands. |
+
+**Unload Cartridge** returns to the built-in BIOS. **Reset** restarts the
+machine with its cartridge retained. **System > Master Control** and Esc
+provide the machine's Master Control button.
+
+For APL/S, wait for its input prompt before loading a keyboard file. Entry
+starts when the OSD closes. Ready-to-load examples are in `examples/apl`.
+See [APL/S entry](docs/APL-SOURCE.md) and [other programs and music](docs/KEYBOARD-INPUT.md).
+Keyboard Entry holds Music Mode and Auto-Repeat settings.
+
+Tape recording starts when the program issues SAVE; mounting alone does not
+change the image. Tape holds Rewind Tape and busy/error indicators.
+See [tape setup and recording behavior](docs/TAPE.md).
+
+## Joystick
+
+Joysticks default to Connected. **Input > Stick Preset > Auto** selects
+the cartridge's linear timing; Tennis and Gladiator can also be selected
+manually. Use **Calibrate Sticks** while the game is reading the joystick.
+Paired Sticks lets a controller's right stick and Fire 2 operate another
+joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
+
+## Video
+
+Native output is interlaced, with integer scaling and scandoubler options.
+**Video > 240p** provides experimental progressive output at about 59.695 Hz.
+It changes vertical rollover and can affect joystick reads across that boundary.
+See [240p verification](verilator/joystick_verification.md#experimental-240p).
 
 ## Keyboard
 
@@ -67,7 +86,8 @@ VideoBrain SHIFT is a toggle (think CapsLock on a modern keyboard). In the BIOS,
 
 ## Building
 
-Use Quartus 17.0.2
+Use Quartus 17.0.2. Simulation and regression instructions are in
+[verilator/README.md](verilator/README.md).
 
 ## Sources
 

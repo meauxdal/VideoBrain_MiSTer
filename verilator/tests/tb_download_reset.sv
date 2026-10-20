@@ -82,10 +82,25 @@ initial begin
     pll_locked = 1;
     #1;
     if (dut.reset !== 0) $fatal(1, "Reset did not release");
+    if (dut.joystick_connected !== 1) $fatal(1, "Joystick did not default to connected");
+    status[5] = 1;
+    #1;
+    if (dut.joystick_connected !== 0) $fatal(1, "Joystick did not disconnect");
+    status = 0;
+    status[27] = 1;
+    #1;
+    if (dut.reset !== 1 || dut.system_reset !== 0)
+        $fatal(1, "OSD MASTER CONTROL did not use the warm reset path");
+    status = 0;
+    status[28] = 1;
+    #1;
+    if (dut.reset !== 1 || dut.system_reset !== 1)
+        $fatal(1, "Cartridge unload did not reset the machine");
+    status = 0;
 
     // Menu visibility and unrelated status bits have no reset connection.
     check_no_reset = 1;
-    osd_status = 1; status = ~128'd1;
+    osd_status = 1; status = ~(128'd1 | (128'd1 << 27) | (128'd1 << 28));
     #1;
     osd_status = 0; status = 0;
     #1;

@@ -47,18 +47,18 @@ wire [1:0] ar = status[122:121];
 localparam CONF_STR = {
 	"VideoBrain;;",
 	"F1,BIN,Load Cartridge;",
+	"F4,VBK,Load Keyboard File;",
+	"d8S0,VBT,Mount Tape;",
+	"-;",
 	"P5,Tape;",
-	"d8P5S0,VBT,Mount Tape;",
-	"D6P5O[22],Arm Recording,Off,On;",
 	"H8P5-Tape busy;",
 	"P5T[23],Rewind Tape;",
 	"H9P5-Tape error;",
 	"-;",
 	"P3,Input;",
 	"P3-;",
-	"P3O[5],Joystick,Disconnected,Connected;",
-	"D4P3O[8],Stick Timing,Linear,Curve;",
-	"D5P3O[15:14],Linear Preset,Auto,Tennis,Gladiator;",
+	"P3O[5],Joystick,Connected,Disconnected;",
+	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3T[20],Calibrate Sticks;",
 	"P1,Video;",
@@ -69,7 +69,6 @@ localparam CONF_STR = {
 	"P1O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"P4,Keyboard Entry;",
 	"P4-;",
-	"P4F4,VBK,Load Keyboard File;",
 	"P4O[18],Music Mode,Playback,Record;",
 	"P4O[19],Auto-Repeat,Off,On;",
 	"H2P4-Keyboard entry active;",
@@ -80,21 +79,21 @@ localparam CONF_STR = {
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
 	"P2O[26:24],Audio Test,Off,500 Hz,1 kHz,2 kHz,4 kHz;",
 	"P2-;",
-//  Failed attempt to make extant APL/S RAM dumps compatible
-//  They load but don't execute properly
-//	"H0P2F3,BIN,Load APL/S RAM Dump;",
-//	"H1P2-APL/S dump rejected;",
-	"P2T[0],Reset;",
+	"P2T[27],Master Control;",
 	"-;",
-	"R[0],Reset and Close OSD;",
+	"DAR[28],Unload Cartridge;",
+	"R[0],Reset;",
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
+	"v,1;",
 	"V,v",`BUILD_DATE
 };
 
 wire forced_scandoubler;
 wire   [1:0] buttons;
 wire [127:0] status;
+wire joystick_connected = ~status[5];
+wire cart_loaded;
 wire  [10:0] ps2_key;
 wire  [31:0] joystick_0, joystick_1, joystick_2, joystick_3;
 wire [15:0] joystick_l_analog_0, joystick_l_analog_1;
@@ -114,13 +113,7 @@ wire [7:0] tape_buff_dout, tape_buff_din;
 wire tape_buff_wr, tape_mounted, tape_readonly;
 wire [63:0] tape_size;
 wire tape_record_data, tape_record_enable, tape_playback_data, tape_playback_enable;
-wire tape_busy, tape_writable, tape_armed, tape_error;
-reg tape_arm_status_d = 0, tape_arm_mismatch_d = 0;
-wire tape_arm_mismatch = status[22] == tape_arm_status_d && status[22] != tape_armed;
-always @(posedge clk_sys) begin
-	tape_arm_status_d <= status[22];
-	tape_arm_mismatch_d <= tape_arm_mismatch;
-end
+wire tape_busy, tape_error;
 wire [31:0] sd_lba[1];
 wire [5:0] sd_blk_cnt[1];
 wire [7:0] sd_buff_din[1];
@@ -139,11 +132,10 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.buttons(buttons),
 	.status(status),
-	.status_in({status[127:23], tape_armed, status[21:0]}),
-	.status_set(tape_arm_mismatch && !tape_arm_mismatch_d),
-//	.status_menumask({10'd0, !status[5] | status[8], !status[5], ~source_error, ~source_busy, ~apl_load_error, ~apl_available}),
-	.status_menumask({6'd0, ~tape_error, ~tape_busy, ~tape_armed, ~tape_writable,
-	                 !status[5] | status[8], !status[5], ~source_error, ~source_busy, 2'b11}),
+	.status_in(128'd0),
+	.status_set(1'b0),
+	.status_menumask({5'd0, ~cart_loaded, ~tape_error, ~tape_busy, 2'b00,
+	                 1'b0, !joystick_connected, ~source_error, ~source_busy, 2'b11}),
 
 	.img_mounted(tape_mounted),
 	.img_readonly(tape_readonly),
@@ -192,14 +184,13 @@ pll pll
 
 reg master_control = 0;
 // Keep download out of the index decode to avoid a reset pulse on VBK start.
-wire system_reset = RESET | status[0] | buttons[1] |
+wire system_reset = RESET | status[0] | status[28] | buttons[1] |
                     (ioctl_download && (ioctl_index[7:0] != 8'd4)) | ~pll_locked;
-wire reset = system_reset | master_control;
+wire reset = system_reset | master_control | status[27];
 
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
 wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
-// wire apl_dl = ioctl_download && (ioctl_index[7:0] == 8'd3);
 wire source_dl = ioctl_download && (ioctl_index[7:0] == 8'd4);
 wire apl_available, apl_load_error;
 wire apl_symbols, source_busy, source_error;
@@ -208,14 +199,6 @@ wire [35:0] source_keys;
 wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
                                     (ioctl_index[7:0] == 8'd2));
 
-// wire [7:0] dl_index = apl_dl                ? 8'd4 :
-//                       expander_dl           ? 8'd3 :
-//                       cart_dl               ? 8'd2 :
-//                       boot_dl               ? (ioctl_addr[11] ? 8'd1 : 8'd0) : 8'hff;
-//
-// wire [15:0] dl_addr = apl_dl ? (|ioctl_addr[24:16] ? 16'hffff : ioctl_addr[15:0]) :
-//                      (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_addr[11:0]};
-// wire        dl_wr   = (boot_dl | cart_dl | expander_dl | apl_dl) & ioctl_wr;
 wire [7:0] dl_index = expander_dl           ? 8'd3 :
                       cart_dl               ? 8'd2 :
                       boot_dl               ? (ioctl_addr[11] ? 8'd1 : 8'd0) : 8'hff;
@@ -302,7 +285,7 @@ videobrain_joystick joysticks (
 	.reset(reset),
 	.frame_tick(vid_vs && !source_vs_d),
 	.calibrate(status[20]),
-	.enabled(status[5]),
+	.enabled(joystick_connected),
 	.paired(status[17:16]),
 	.preset(status[15:14]),
 	.buttons({joystick_3, joystick_2, joystick_1, joystick_0}),
@@ -364,14 +347,13 @@ videobrain_tape tape
 	.img_mounted(tape_mounted),
 	.img_readonly(tape_readonly),
 	.img_size(tape_size),
-	.arm(status[22]),
+	.rewind(status[23]),
 	.record_data(tape_record_data),
 	.record_enable(tape_record_enable),
 	.playback_enable(tape_playback_enable),
 	.playback_data(tape_playback_data),
 	.busy(tape_busy),
-	.writable(tape_writable),
-	.armed(tape_armed),
+	.writable(),
 	.error(tape_error),
 	.sd_lba(tape_lba),
 	.sd_rd(tape_rd),
@@ -392,10 +374,10 @@ videobrain_core core
 	.kbd_matrix (source_busy ? source_keys : kbd_matrix),
 	.joy_fire   (joy_fire),
 	.joy_pots   (joy_pots),
-	.joy_connected (status[5]),
+	.joy_connected (joystick_connected),
 	.joy_timer_base (joy_timer_base),
 	.joy_timer_step (joy_timer_step),
-	.joy_timer_curve (status[8]),
+	.joy_timer_curve (1'b0),
 	.joy_timer_auto (joy_timer_auto),
 	.audio_code (audio_code),
 	.audio_stb  (audio_stb),
@@ -441,6 +423,8 @@ videobrain_core core
 	.dl_data    (ioctl_dout),
 	.dl_wr      (dl_wr),
 	.dl_index   (dl_index),
+	.cart_unload(status[28]),
+	.cart_loaded(cart_loaded),
 	.unknown_cart_profile ({5'd0, status[11:9]}),
 	.apl_available (apl_available),
 	.apl_load_error (apl_load_error),

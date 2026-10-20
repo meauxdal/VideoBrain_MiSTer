@@ -8,14 +8,12 @@ module videobrain_tape #(
     input wire img_readonly,
     input wire [63:0] img_size,
     input wire rewind,
-    input wire arm,
     input wire record_data,
     input wire record_enable,
     input wire playback_enable,
     output reg playback_data = 1,
     output wire busy,
     output wire writable,
-    output reg armed = 0,
     output reg error = 0,
     output reg [31:0] sd_lba = 0,
     output reg sd_rd = 0,
@@ -40,11 +38,11 @@ reg [31:0] produced = 0, transferred = 0, consumed = 0;
 reg [9:0] io_base = 0;
 reg [30:0] elapsed = 1, remaining = 0;
 reg level = 1, playing = 0, playback_started = 0;
-reg record_d = 0, playback_d = 0, arm_d = 0;
+reg record_d = 0, playback_d = 0, record_session = 0;
 reg rewind_d = 0, rewind_pending = 0;
 
 wire rewind_request = rewind && !rewind_d && mounted && valid &&
-                      !armed && !mount_pending && !reset && !img_mounted &&
+                      !mount_pending && !reset && !img_mounted &&
                       (mode == IDLE || mode == PLAY) &&
                       (io_state == 0 || operation == READ_DATA);
 
@@ -111,7 +109,6 @@ endtask
 always @(posedge clk) begin
     record_d <= record_remote;
     playback_d <= playback_remote;
-    arm_d <= arm;
     rewind_d <= rewind;
 
     if (sd_buff_wr && operation == HEADER && io_state != 0) begin
@@ -150,7 +147,7 @@ always @(posedge clk) begin
         endcase
     end
 
-    if (io_state == 0 && !rewind_pending && !rewind_request) begin
+    if (io_state == 0 && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
         if (mount_pending) begin
             mount_pending <= 0;
             header_magic <= 0;
@@ -168,20 +165,15 @@ always @(posedge clk) begin
             request(READ_DATA, 1 + (transferred >> 7), transferred[9:0]);
     end
 
-    if (arm != arm_d) begin
-        armed <= arm && writable;
-        if (arm && writable) begin
-            produced <= 0;
-            playback_started <= 0;
-            error <= 0;
-        end
-    end
-
-    if (record_remote && !record_d && !rewind_pending && !rewind_request) begin
-        if (armed && writable) begin
+    if (record_remote && !record_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
+        if (writable) begin
             mode <= RECORD;
-            // Rewrite the last partial sector when appending another record.
-            transferred <= produced & 32'hffffff80;
+            if (record_session) transferred <= produced & 32'hffffff80;
+            else begin
+                produced <= 0;
+                transferred <= 0;
+            end
+            record_session <= 1;
             elapsed <= 1;
             level <= record_data;
             playback_started <= 0;
@@ -189,7 +181,7 @@ always @(posedge clk) begin
             error <= 0;
             request(INVALIDATE, 0, 0);
         end else begin
-            armed <= 0;
+            record_session <= 0;
             error <= 1;
         end
     end
@@ -201,15 +193,15 @@ always @(posedge clk) begin
                 level <= record_data;
                 if (!record_remote) mode <= FLUSH;
             end else begin
-                armed <= 0;
+                record_session <= 0;
                 error <= 1;
                 mode <= IDLE;
             end
         end else elapsed <= elapsed + 1'b1;
     end
 
-    if (playback_remote && !playback_d && !rewind_pending && !rewind_request) begin
-        armed <= 0;
+    if (playback_remote && !playback_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
+        record_session <= 0;
         if (!busy && valid && length != 0) begin
             mode <= PLAY;
             if (!playback_started) begin
@@ -263,6 +255,7 @@ always @(posedge clk) begin
         consumed <= 0;
         remaining <= 0;
         playback_started <= 0;
+        record_session <= 0;
         playing <= 0;
         playback_data <= 1;
         level <= 1;
@@ -274,7 +267,7 @@ always @(posedge clk) begin
     if (reset || img_mounted) begin
         rewind_pending <= 0;
         mode <= IDLE;
-        armed <= 0;
+        record_session <= 0;
         playback_started <= 0;
         playing <= 0;
         playback_data <= 1;

@@ -11,6 +11,9 @@ Known raw dumps are identified by CRC-32 and use the matching slot behavior.
 images: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman.
 Assembled APL/S and Information Manager images are also identified automatically.
 
+**Unload Cartridge** on the main menu removes the cartridge and resets to the
+built-in BIOS. Reset and Master Control retain the cartridge and its RAM.
+
 Fingerprints for all sixteen released single-image cartridges come from MAME's
 [VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
 

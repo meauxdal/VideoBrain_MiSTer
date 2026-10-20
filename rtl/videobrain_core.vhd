@@ -76,6 +76,8 @@ ENTITY videobrain_core IS
     dl_data  : IN uv8;
     dl_wr    : IN std_logic;
     dl_index : IN uv8;
+    cart_unload : IN std_logic := '0';
+    cart_loaded : OUT std_logic := '0';
     unknown_cart_profile: IN uv8;
     apl_available : OUT std_logic;
     apl_load_error : OUT std_logic;
@@ -338,6 +340,8 @@ BEGIN
       dl_data        => dl_data,
       dl_wr          => dl_wr,
       dl_index       => dl_index,
+      cart_unload    => cart_unload,
+      cart_loaded    => cart_loaded,
       apl_hold       => apl_hold,
       apl_paused     => apl_paused,
       apl_available  => apl_available,

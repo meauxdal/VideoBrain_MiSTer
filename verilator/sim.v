@@ -146,6 +146,8 @@ module top(
       .dl_data    (ioctl_dout),
       .dl_wr      (dl_wr),
       .dl_index   (ioctl_download ? ioctl_index : 8'hff),
+      .cart_unload(1'b0),
+      .cart_loaded(),
       .unknown_cart_profile (cart_type),
       .apl_available (apl_available),
       .apl_load_error (apl_load_error),
