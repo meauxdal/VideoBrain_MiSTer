@@ -73,7 +73,7 @@ module top(
       .symbols(apl_symbols), .enabled(1'b1), .cancel(|kbd_matrix),
       .input_ready(apl_input_ready), .key_accepted(apl_key_accepted),
       .music_playback(1'b0), .auto_repeat(1'b0),
-      .busy(source_busy), .complete(source_complete), .error(source_error), .keys(source_keys)
+      .busy(source_busy), .started(), .complete(source_complete), .error(source_error), .keys(source_keys)
    );
 
    wire [15:0] pc0 /*verilator public_flat*/;

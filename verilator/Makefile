@@ -368,3 +368,11 @@ test-download-reset:
 	vvp out/download_reset/test
 
 .PHONY: test-download-reset
+
+test-status-messages:
+	@mkdir -p out/status_messages
+	iverilog -g2012 -i -I.. -s tb_status_messages -o out/status_messages/test \
+		tests/tb_status_messages.sv ../VideoBrain.sv
+	vvp out/status_messages/test
+
+.PHONY: test-status-messages

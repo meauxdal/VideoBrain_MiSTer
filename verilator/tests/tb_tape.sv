@@ -5,7 +5,7 @@ always #5 clk = ~clk;
 reg reset = 1, img_mounted = 0, img_readonly = 0, rewind = 0;
 reg [63:0] img_size = 16384;
 reg record_data = 1, record_enable = 0, playback_enable = 0;
-wire playback_data, busy, writable, error;
+wire playback_data, busy, writable, error, rewound;
 wire [31:0] sd_lba;
 wire sd_rd, sd_wr, sd_ack, sd_buff_wr;
 wire [13:0] sd_buff_addr;
@@ -34,6 +34,13 @@ task run_record(input integer edges);
 endtask
 
 integer writes_before;
+integer rewinds = 0;
+always @(negedge clk) begin
+    if (rewound) begin
+        if (busy || error || reset || img_mounted) $fatal(1,"Premature rewind confirmation");
+        rewinds = rewinds + 1;
+    end
+end
 initial begin
     repeat(3) @(negedge clk);
     reset = 0;
@@ -110,6 +117,8 @@ initial begin
     @(negedge clk);
     rewind = 0;
     wait(!busy);
+    @(negedge clk); #1;
+    if (rewinds != 1) $fatal(1,"Missing rewind confirmation");
     run_record(3);
     if (error || card.word_at(8) != 4) $fatal(1,"SAVE after rewind did not replace");
 

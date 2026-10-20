@@ -18,6 +18,7 @@ module apl_source_loader #(
     input wire enabled,
     input wire cancel,
     output wire busy,
+    output reg started = 0,
     output reg complete = 0,
     output reg error = 0,
     output reg [35:0] keys = 0
@@ -36,7 +37,7 @@ reg [11:0] position = 0;
 reg [7:0] memory [0:4095];
 reg [7:0] token;
 reg [7:0] frames = 0;
-reg shifting = 0, shifted = 0, started = 0;
+reg shifting = 0, shifted = 0;
 reg timed = 0;
 reg playback = 0;
 reg recording = 0;

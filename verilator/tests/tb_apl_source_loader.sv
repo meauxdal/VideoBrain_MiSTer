@@ -10,7 +10,7 @@ reg input_ready = 0, key_accepted = 0;
 reg emulate_input = 1;
 integer input_cycles = 0;
 reg music_playback = 0, auto_repeat = 0;
-wire busy, error, complete;
+wire busy, error, complete, started;
 wire [35:0] keys;
 apl_source_loader #(.LINE_FRAMES(3)) dut (.*);
 reg [7:0] packet [0:4103];
@@ -78,7 +78,7 @@ task send_packet(input integer count, input integer wrong_addr);
     for (integer n = 0; n < count; n = n + 1) begin
         wr = 1; addr = n == wrong_addr ? 25'(n + 1) : 25'(n); data = packet[n];
         tick;
-        if (keys != 0) $fatal(1, "Typed before validation");
+        if (keys != 0 || started) $fatal(1, "Started before validation");
     end
     download = 0; wr = 0; tick; tick;
 endtask
@@ -95,10 +95,10 @@ task check_handshake;
     packet[8] = 0; packet[9] = 0; packet[10] = 8'h9b; packet[11] = 8'h61;
     init_packet(4); send_packet(12, -1);
     repeat (200) tick;
-    if (keys != 0 || !busy) $fatal(1, "Typed before input ready");
+    if (keys != 0 || !busy || started) $fatal(1, "Started before input ready");
     input_ready = 1;
     repeat (6) tick;
-    if (keys != 1 || presses != 1) $fatal(1, "Ready did not start entry");
+    if (keys != 1 || presses != 1 || !started) $fatal(1, "Ready did not start entry");
     repeat (200) tick;
     if (keys != 1 || presses != 1) $fatal(1, "Released before acceptance");
     // Every return to input must follow an accepted key and a release scan.
