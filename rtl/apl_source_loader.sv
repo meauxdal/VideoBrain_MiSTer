@@ -20,6 +20,7 @@ module apl_source_loader #(
     output wire busy,
     output reg started = 0,
     output reg complete = 0,
+    output reg aborted = 0,
     output reg error = 0,
     output reg [35:0] keys = 0
 );
@@ -93,6 +94,7 @@ always @(posedge clk) begin
         keys <= 0;
         started <= 0;
         complete <= 0;
+        aborted <= 0;
     end else if (download && !download_d) begin
         state <= RECEIVE;
         bad <= wr && (addr != 0 || data != "V");
@@ -104,6 +106,7 @@ always @(posedge clk) begin
         keys <= 0;
         started <= 0;
         complete <= 0;
+        aborted <= 0;
         timed <= 0;
         payload_phase <= 0;
         playback <= music_playback;
@@ -114,6 +117,7 @@ always @(posedge clk) begin
         state <= IDLE;
         keys <= 0;
         error <= !timed && !available;
+        aborted <= timed || available;
     end else begin
         case (state)
             RECEIVE: begin

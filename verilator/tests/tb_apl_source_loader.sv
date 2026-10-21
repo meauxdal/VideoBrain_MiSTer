@@ -10,7 +10,7 @@ reg input_ready = 0, key_accepted = 0;
 reg emulate_input = 1;
 integer input_cycles = 0;
 reg music_playback = 0, auto_repeat = 0;
-wire busy, error, complete, started;
+wire busy, error, complete, started, aborted;
 wire [35:0] keys;
 apl_source_loader #(.LINE_FRAMES(3)) dut (.*);
 reg [7:0] packet [0:4103];
@@ -81,6 +81,7 @@ task send_packet(input integer count, input integer wrong_addr);
         if (keys != 0 || started) $fatal(1, "Started before validation");
     end
     download = 0; wr = 0; tick; tick;
+    if (aborted) $fatal(1, "Download retained aborted status");
 endtask
 
 task finish_entry;
@@ -129,7 +130,7 @@ endtask
 
 task check_clock;
     integer file_handle, count, expected, mode;
-    file_handle = $fopen("../software/2 VideoBrain Keyboard Input Files (vbk)/21-apl_s-games-james-price/21-clock.vbk", "rb");
+    file_handle = $fopen("../software/2 Keyboard Entry (VBK)/21-apl_s-games-james-price/21-clock.vbk", "rb");
     if (!file_handle) $fatal(1, "Cannot open Clock VBK");
     count = $fread(packet, file_handle);
     $fclose(file_handle);
@@ -320,11 +321,12 @@ initial begin
     send_packet(12, -1);
     while (keys == 0) tick;
     cancel = 1; tick; cancel = 0;
-    if (busy || keys != 0 || complete) $fatal(1, "Cancel left a key held or reported completion");
+    if (busy || keys != 0 || complete || !aborted || error)
+        $fatal(1, "Cancel left a key held or reported completion");
     send_packet(12, -1);
     while (keys == 0) tick;
     enabled = 0; tick;
-    if (busy || keys != 0) $fatal(1, "OSD cancel failed");
+    if (busy || keys != 0 || !aborted || error || complete) $fatal(1, "OSD cancel failed");
     enabled = 1;
 
     // Missing SHIFT acknowledgement must fail rather than keep toggling.

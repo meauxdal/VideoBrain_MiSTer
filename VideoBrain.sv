@@ -56,18 +56,21 @@ localparam CONF_STR = {
 	"T[23],Rewind Playback Tape;",
 	"T[30],Rewind Record Tape;",
 	"-;",
-	"P3,Input;",
+	"P3,Joysticks;",
 	"P3-;",
 	"P3O[5],Joysticks,Connected,Disconnected;",
 	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
-	"D4P3T[20],Calibrate Sticks;",
-	"P3-;",
-	"P3F4,VBK,Load Keyboard File;",
-	"P3O[18],Music Mode,Playback,Record;",
-	"P3O[19],Music Repeat,Off,On;",
-	"-;",
-	"P3O[29],Esc Reset,On,Off;",
+	"D4P3R[20],Calibrate Sticks;",
+	"P4,Keyboard;",
+	"P4-;",
+	"P4F4,VBK,Load Keyboard File;",
+	"P4O[31],VBK in OSD,Abort,Keep Running;",
+	"H5P4O[18],Music Mode,Playback,Record;",
+	"h5D5P4O[18],Music Mode,Playback;",
+	"P4O[19],Music Repeat,Off,On;",
+	"P4-;",
+	"P4O[29],Esc Reset,On,Off;",
 	"P1,Video;",
 	"P1-;",
 	"P1O[21],240p,Off,On;",
@@ -88,7 +91,7 @@ localparam CONF_STR = {
 	"R[0],Reset;",
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
-	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished;",
+	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard file aborted,Calibrating sticks;",
 	"v,1;",
 	"V,v",`BUILD_DATE
 };
@@ -122,7 +125,7 @@ wire [1:0] tape_deck_busy, tape_deck_error, tape_deck_rewound;
 wire tape_busy = |tape_deck_busy;
 wire tape_error = |tape_deck_error;
 wire tape_rewound = |tape_deck_rewound;
-wire [15:0] menu_mask = {5'd0, ~cart_loaded, 1'b0, ~tape_busy, 3'b000,
+wire [15:0] menu_mask = {5'd0, ~cart_loaded, 1'b0, ~tape_busy, 2'b00, status[19],
                          !joystick_connected, 4'b0011};
 reg info_req = 0;
 reg [7:0] info = 0, pending_info = 0;
@@ -203,7 +206,9 @@ wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
 wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
 wire source_dl = ioctl_download && (ioctl_index[7:0] == 8'd4);
 wire apl_available, apl_load_error;
-wire apl_symbols, source_busy, source_error, source_started, source_complete;
+wire apl_symbols, source_busy, source_error, source_started, source_complete, source_aborted;
+wire source_enabled = !OSD_STATUS || (status[31] && source_started);
+wire source_music_playback = !status[18] || status[19];
 wire apl_input_ready, apl_key_accepted;
 wire [35:0] source_keys;
 wire expander_dl = ioctl_download && ((ioctl_index == 16'd64) ||
@@ -289,12 +294,14 @@ wire [3:0] joy_fire;
 wire [13:0] joy_timer_base;
 wire [6:0] joy_timer_step;
 wire joy_timer_auto;
+wire joy_calibrating;
 
 videobrain_joystick joysticks (
 	.clk(clk_sys),
 	.reset(reset),
 	.frame_tick(vid_vs && !source_vs_d),
 	.calibrate(status[20]),
+	.calibrating(joy_calibrating),
 	.enabled(joystick_connected),
 	.paired(status[17:16]),
 	.preset(status[15:14]),
@@ -320,12 +327,15 @@ reg source_vs_d = 0;
 always @(posedge clk_sys) source_vs_d <= vid_vs;
 
 reg source_started_d = 0, source_complete_d = 0, source_error_d = 0;
+reg source_aborted_d = 0, joy_calibrating_d = 0;
 reg tape_busy_d = 0, tape_error_d = 0;
 reg [5:0] tape_info_frames = 0;
 always @(posedge clk_sys) begin
 	source_started_d <= source_started;
 	source_complete_d <= source_complete;
 	source_error_d <= source_error;
+	source_aborted_d <= source_aborted;
+	joy_calibrating_d <= joy_calibrating;
 	tape_busy_d <= tape_busy;
 	tape_error_d <= tape_error;
 	info_req <= 0;
@@ -336,14 +346,16 @@ always @(posedge clk_sys) begin
 		// Defer until the menu closes; newer events replace stale notices.
 		if (!OSD_STATUS && vid_vs && !source_vs_d) begin
 			if (pending_info != 0) begin
-				info <= pending_info;
-				info_req <= 1;
+				if (pending_info != 9 || joy_calibrating) begin
+					info <= pending_info;
+					info_req <= 1;
+				end
 				pending_info <= 0;
 				tape_info_frames <= 0;
-			end else if (tape_busy && !tape_error) begin
+			end else if (joy_calibrating || (tape_busy && !tape_error)) begin
 				// Refresh the transient popup once per second while busy.
 				if (tape_info_frames == 59) begin
-					info <= 5;
+					info <= joy_calibrating ? 9 : 5;
 					info_req <= 1;
 					tape_info_frames <= 0;
 				end else tape_info_frames <= tape_info_frames + 1'b1;
@@ -351,6 +363,8 @@ always @(posedge clk_sys) begin
 		end
 		if (source_started && !source_started_d) pending_info <= 1;
 		if (source_complete && !source_complete_d) pending_info <= 7;
+		if (source_aborted && !source_aborted_d) pending_info <= 8;
+		if (joy_calibrating && !joy_calibrating_d) pending_info <= 9;
 		if (tape_busy && !tape_busy_d) pending_info <= 5;
 		if (!tape_busy && tape_busy_d && !tape_error) pending_info <= 6;
 		if (tape_rewound) pending_info <= 4;
@@ -380,13 +394,14 @@ apl_source_loader source_loader (
 	.symbols(apl_symbols),
 	.input_ready(apl_input_ready),
 	.key_accepted(apl_key_accepted),
-	.music_playback(~status[18]),
+	.music_playback(source_music_playback),
 	.auto_repeat(status[19]),
-	.enabled(!OSD_STATUS),
+	.enabled(source_enabled),
 	.cancel(|kbd_matrix),
 	.busy(source_busy),
 	.started(source_started),
 	.complete(source_complete),
+	.aborted(source_aborted),
 	.error(source_error),
 	.keys(source_keys)
 );

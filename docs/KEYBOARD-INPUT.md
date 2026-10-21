@@ -1,8 +1,9 @@
 # Keyboard input files
 
-Choose **Load Keyboard File** on the main menu and select a `.vbk`. Entry starts
-when the OSD closes and uses the actual keyboard matrix. Typing, opening the
-OSD, or resetting cancels it.
+Choose **Keyboard > Load Keyboard File** and select a `.vbk`. Entry starts
+when the OSD closes and uses the actual keyboard matrix. Typing or resetting
+cancels it. **VBK in OSD** defaults to **Abort**; **Keep Running** lets active
+entry continue while mounting tapes or changing OSD settings.
 Loading a keyboard file does not reset the machine; confirmed on APL/S in RC7.
 The loader checks the complete file before pressing any key. Start at the
 intended input screen; files do not interpret prompt contents.
@@ -12,8 +13,8 @@ Hardware checks reported on 2026-10-19 found no restarts across four fresh-boot
 CHANGE loads and one CLOCK load. The cause remains unconfirmed; treat this as
 an unresolved issue that may recur, rather than a verified fix.
 
-The Input submenu contains file loading, Music Mode and Music Repeat.
-Keyboard entry start, finish and invalid-file notices appear as popups after
+The Keyboard submenu contains file loading, Music Mode and Music Repeat.
+Keyboard entry start, finish, abort and invalid-file notices appear as popups after
 the OSD closes.
 
 APL/S VBK1 files retain their format and live SHIFT handling. Entry waits for
@@ -77,14 +78,15 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
 then load an example from `examples/music`. Each generated song erases the
 previous recording, selects Middle, enters the notes, and ends with No-Record.
-**Keyboard Entry > Music Mode** selects **Playback** (default) or **Record**.
+**Keyboard > Music Mode** selects **Playback** (default) or **Record**.
 Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
 Playback keeps Record off and ignores that replay request, playing the file live.
 Regenerate older music files to use this setting; their physical Record/Replay
 keys retain their original behavior.
 After recording, press physical T to replay the stored song again.
-**Keyboard Entry > Auto-Repeat** restarts the file from the top until a keyboard key or
-opening the OSD cancels entry. Use Playback for continuous music; the loader
+**Keyboard > Music Repeat** restarts the file from the top until entry is
+canceled. Repeat forces Playback and grays out Music Mode, preserving the
+selected mode for when Repeat is turned off. The loader
 does not wait for the cartridge's Replay routine. Use lower SHIFT and files
 generated with `--start-mode letters` so each music pass starts in the same mode.
 This uses the cartridge's own recorder and
