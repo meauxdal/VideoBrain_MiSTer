@@ -190,7 +190,7 @@ BEGIN
   apl_key_accepted <= '1' WHEN reset_na = '1' AND
     ext_rd = '1' AND ext_fetch = '1' AND
     ((cart_auto_type = to_unsigned(CART_COMPLANG, 8) AND cart_bank = 0 AND
-      ext_addr = x"3C20") OR (music_input = '1' AND ext_addr = x"14E4")) ELSE '0';
+      ext_addr = x"3C20") OR (music_input = '1' AND ext_addr = x"1154")) ELSE '0';
 
   PROCESS (clk, reset_na) IS
   BEGIN
@@ -201,9 +201,11 @@ BEGIN
         apl_input_ready <= '0';
       ELSIF music_input = '1' THEN
         IF ext_rd = '1' AND ext_fetch = '1' THEN
-          IF ext_addr = x"14D8" THEN
+          -- Idle input and live note polling both confirm key release.
+          IF ext_addr = x"14D8" OR ext_addr = x"158F" THEN
             apl_input_ready <= '1';
-          ELSIF ext_addr = x"14C8" OR ext_addr = x"14E4" THEN
+          ELSIF ext_addr = x"10A1" OR ext_addr = x"1154" OR
+                ext_addr = x"14C8" OR ext_addr = x"14E4" THEN
             apl_input_ready <= '0';
           END IF;
         END IF;

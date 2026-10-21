@@ -127,12 +127,15 @@ Without this option, bank controls retain their 8/8 timing.
 
 Experimental `--bank-ready` replaces bank changes with ROM-acknowledged
 controls. Use it instead of `--bank-fields`, with `--min-hold 2 --gap 2`.
-The loader waits for key readiness, holds the octave key until acceptance,
-then waits for confirmed release before continuing. Note/rest durations are
+The loader observes idle input and live note polling, holds the octave key
+until the ROM applies the bank, then waits for confirmed release before
+continuing. Note/rest durations are
 unchanged; no fixed bank time is subtracted. Each handshake stage times out
 after 255 fields and stops entry on failure. This requires an updated core
 and either original ED01 (CRC32 C8FEE8CD) or the current static-staff patch
-(CRC32 F4390144). Hardware timing and playback remain unverified.
+(CRC32 F4390144). Static-staff simulation completed Low, High and Middle
+changes with DAC transitions for all four test notes. Each bank key to next
+note key took two fields (about 33 ms). Hardware playback remains unverified.
 Trial files are `examples/music-tests/octaves-ready.vbk` and
 `examples/music/ready/bach-cello-suite-1-prelude-full.vbk`.
 

@@ -1,0 +1,1 @@
+BARH ((Z=INDE 7)MIN(8-Z)){MUL}14

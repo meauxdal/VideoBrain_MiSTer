@@ -206,6 +206,10 @@ BEGIN
     ASSERT apl_input_ready = '0' REPORT "Unrecognized ROM enabled music readiness" SEVERITY failure;
     addr <= to_unsigned(16#14E4#, 14); tick;
     ASSERT apl_key_accepted = '0' REPORT "Unrecognized ROM accepted music key" SEVERITY failure;
+    addr <= to_unsigned(16#158F#, 14); tick;
+    ASSERT apl_input_ready = '0' REPORT "Unrecognized ROM enabled live music input" SEVERITY failure;
+    addr <= to_unsigned(16#1154#, 14); tick;
+    ASSERT apl_key_accepted = '0' REPORT "Unrecognized ROM accepted music bank" SEVERITY failure;
     fetch <= '0';
     read_at(16#1000#, 16);
     read_at(16#1BFF#, 17);
@@ -401,6 +405,8 @@ BEGIN
     ASSERT cart_loaded = '1' REPORT "Replacement cartridge absent" SEVERITY failure;
     IF music_image /= "" THEN
       load_file(music_image);
+      read_at(16#158F#, 16#18#);
+      read_at(16#1154#, 16#72#);
       addr <= to_unsigned(16#14D8#, 14); tick;
       ASSERT apl_input_ready = '0' REPORT "Music data read signalled ready" SEVERITY failure;
       fetch <= '1'; tick;
@@ -409,16 +415,34 @@ BEGIN
       ASSERT apl_input_ready = '1' AND apl_key_accepted = '0'
         REPORT "Music data read accepted key" SEVERITY failure;
       fetch <= '1'; tick;
+      ASSERT apl_input_ready = '0' AND apl_key_accepted = '0'
+        REPORT "Music key acknowledged before bank selection" SEVERITY failure;
+      addr <= to_unsigned(16#1154#, 14); tick;
       ASSERT apl_input_ready = '0' AND apl_key_accepted = '1'
-        REPORT "Music acceptance not detected" SEVERITY failure;
+        REPORT "Music bank selection not detected" SEVERITY failure;
       addr <= to_unsigned(16#34D8#, 14); tick;
       ASSERT apl_input_ready = '0' REPORT "Music alias signalled ready" SEVERITY failure;
-      addr <= to_unsigned(16#34E4#, 14); tick;
+      addr <= to_unsigned(16#3154#, 14); tick;
       ASSERT apl_key_accepted = '0' REPORT "Music alias accepted key" SEVERITY failure;
       addr <= to_unsigned(16#14D8#, 14); tick;
       ASSERT apl_input_ready = '1' REPORT "Music input did not resume" SEVERITY failure;
       addr <= to_unsigned(16#14C8#, 14); tick;
       ASSERT apl_input_ready = '0' REPORT "Music entry retained readiness" SEVERITY failure;
+      -- Live playing accepts the next key without the idle input routine.
+      addr <= to_unsigned(16#158F#, 14); tick;
+      ASSERT apl_input_ready = '1' REPORT "Live note release not detected" SEVERITY failure;
+      addr <= to_unsigned(16#10A1#, 14); tick;
+      ASSERT apl_input_ready = '0' REPORT "Live note acceptance retained readiness" SEVERITY failure;
+      addr <= to_unsigned(16#158F#, 14); tick;
+      ASSERT apl_input_ready = '1' REPORT "Live bank input not ready" SEVERITY failure;
+      fetch <= '0'; addr <= to_unsigned(16#1154#, 14); tick;
+      ASSERT apl_input_ready = '1' AND apl_key_accepted = '0'
+        REPORT "Music bank data read accepted key" SEVERITY failure;
+      fetch <= '1'; tick;
+      ASSERT apl_input_ready = '0' AND apl_key_accepted = '1'
+        REPORT "Live bank selection not detected" SEVERITY failure;
+      addr <= to_unsigned(16#14D8#, 14); tick;
+      ASSERT apl_input_ready = '1' REPORT "Live bank release not detected" SEVERITY failure;
       addr <= to_unsigned(16#14D8#, 14); tick;
       fetch <= '0'; reset_na <= '0'; tick; reset_na <= '1'; tick;
       ASSERT apl_input_ready = '0' REPORT "Music reset retained readiness" SEVERITY failure;
