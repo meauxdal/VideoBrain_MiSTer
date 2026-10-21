@@ -168,6 +168,7 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL cart_size    : unsigned(16 DOWNTO 0) := (OTHERS => '0');
   SIGNAL cart_auto_type : uv8 := to_unsigned(CART_UNRECOGNIZED, 8);
   SIGNAL cart_effective_type : uv8;
+  SIGNAL music_input : std_logic;
 
   -- Set when a cartridge download writes above 17FF. A 2K image never does,
   -- and its upper half must mirror the lower rather than read as zero.
@@ -181,17 +182,32 @@ BEGIN
 
   cart_loaded <= cart_loaded_l;
   apl_available <= '1' WHEN cart_auto_type = to_unsigned(CART_COMPLANG, 8) ELSE '0';
+  -- ED01 and the static-staff patch share the keyboard routine.
+  music_input <= '1' WHEN cart_loaded_l = '1' AND dl_cart = '0' AND
+    cart_size = to_unsigned(2048, cart_size'length) AND
+    (NOT cart_crc = CART_CRC_MUSICTEACHER1 OR NOT cart_crc = x"F4390144") ELSE '0';
   -- Bank D input loop: release verified at 3C14, new key accepted at 3C20.
   apl_key_accepted <= '1' WHEN reset_na = '1' AND
-    cart_auto_type = to_unsigned(CART_COMPLANG, 8) AND cart_bank = 0 AND
-    ext_rd = '1' AND ext_fetch = '1' AND ext_addr = x"3C20" ELSE '0';
+    ext_rd = '1' AND ext_fetch = '1' AND
+    ((cart_auto_type = to_unsigned(CART_COMPLANG, 8) AND cart_bank = 0 AND
+      ext_addr = x"3C20") OR (music_input = '1' AND ext_addr = x"14E4")) ELSE '0';
 
   PROCESS (clk, reset_na) IS
   BEGIN
     IF reset_na = '0' THEN
       apl_input_ready <= '0';
     ELSIF rising_edge(clk) THEN
-      IF cart_auto_type /= to_unsigned(CART_COMPLANG, 8) OR dl_cart = '1' THEN
+      IF dl_cart = '1' OR cart_unload = '1' THEN
+        apl_input_ready <= '0';
+      ELSIF music_input = '1' THEN
+        IF ext_rd = '1' AND ext_fetch = '1' THEN
+          IF ext_addr = x"14D8" THEN
+            apl_input_ready <= '1';
+          ELSIF ext_addr = x"14C8" OR ext_addr = x"14E4" THEN
+            apl_input_ready <= '0';
+          END IF;
+        END IF;
+      ELSIF cart_auto_type /= to_unsigned(CART_COMPLANG, 8) THEN
         apl_input_ready <= '0';
       ELSIF cart_bank = 0 AND ext_rd = '1' AND ext_fetch = '1' THEN
         IF ext_addr = x"3C14" THEN

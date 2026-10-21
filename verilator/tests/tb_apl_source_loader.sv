@@ -154,6 +154,71 @@ task check_clock;
     $display("Clock VBK: all 437 tokens emitted through final NEXT");
 endtask
 
+task check_bank_ready;
+    emulate_input = 0; input_ready = 0; key_accepted = 0;
+    presses = 0; frame_tick = 1;
+    for (integer bank = 0; bank < 3; bank = bank + 1) begin
+        packet[8 + bank * 3] = 8'hfa + 8'(bank);
+        packet[9 + bank * 3] = 1; packet[10 + bank * 3] = 0;
+    end
+    // Follow bank controls with a timed note.
+    packet[17] = 29; packet[18] = 5; packet[19] = 2;
+    init_packet(12); packet[3] = "2";
+    send_packet(20, -1);
+    for (integer bank = 0; bank < 3; bank = bank + 1) begin
+        repeat (20) tick;
+        if (keys != 0 || presses != bank || !busy)
+            $fatal(1, "Bank pressed before readiness");
+        input_ready = 1;
+        repeat (20) tick;
+        if (keys != (36'd1 << (bank == 0 ? 33 : bank == 1 ? 19 : 22)))
+            $fatal(1, "Bank released without acknowledgment");
+        input_ready = 0; key_accepted = 1; tick; key_accepted = 0;
+        repeat (20) tick;
+        if (keys != 0 || presses != bank + 1 || !busy)
+            $fatal(1, "Bank advanced before release readiness");
+        input_ready = 1;
+        // No field tick is needed to finish a bank control.
+        frame_tick = 0;
+        repeat (2) tick;
+        input_ready = 0;
+        repeat (15) tick;
+        if (bank != 2) frame_tick = 1;
+    end
+    if (keys != (36'd1 << 29)) $fatal(1, "Timed note did not follow banks");
+    for (integer field = 0; field < 5; field = field + 1) begin
+        frame_tick = 1; tick; frame_tick = 0; tick;
+        if ((keys != 0) != (field < 4)) $fatal(1, "Bank changed note hold duration");
+    end
+    frame_tick = 1;
+    finish_entry;
+    if (error || !complete || presses != 4 || observed[3] != 29)
+        $fatal(1, "Acknowledged banks lost the following timed note");
+
+    // A missing hook must stop safely, with no held key.
+    init_packet(3); packet[3] = "2"; input_ready = 0;
+    send_packet(11, -1); finish_entry;
+    if (!error || complete) $fatal(1, "Missing bank readiness ignored");
+    input_ready = 1;
+    send_packet(11, -1);
+    while (keys == 0) tick;
+    input_ready = 0;
+    finish_entry;
+    if (!error || complete) $fatal(1, "Missing bank acceptance ignored");
+    input_ready = 1;
+    send_packet(11, -1);
+    while (keys == 0) tick;
+    input_ready = 0; key_accepted = 1; tick; key_accepted = 0;
+    finish_entry;
+    if (!error || complete) $fatal(1, "Missing bank release ignored");
+    input_ready = 1;
+    send_packet(11, -1);
+    while (keys == 0) tick;
+    cancel = 1; tick; cancel = 0;
+    if (busy || keys != 0 || complete) $fatal(1, "Bank cancel failed");
+    emulate_input = 1; input_ready = 0;
+endtask
+
 task check_music_limit(input integer notes, input bit playback_mode, input bit repeat_song);
     integer offset, entered, expected;
     // Generated music preamble, rests/bank changes, and No-Record/Replay tail.
@@ -366,6 +431,7 @@ initial begin
     if (busy || keys != 0 || complete) $fatal(1, "Repeat OSD cancel failed");
     enabled = 1; auto_repeat = 0; music_playback = 0;
 
+    check_bank_ready;
     check_music_limit(78, 0, 0);
     check_music_limit(79, 0, 0);
     check_music_limit(80, 0, 0);

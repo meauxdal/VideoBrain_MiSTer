@@ -26,7 +26,9 @@ module apl_source_loader #(
 
 localparam IDLE = 0, RECEIVE = 1, WAIT_START = 2, READ_KEY = 3,
            SELECT_KEY = 4, HOLD_KEY = 5, RELEASE_KEY = 6,
-           READ_HOLD = 8, SELECT_HOLD = 9, READ_GAP = 10, SELECT_GAP = 11;
+           BANK_READY = 7, READ_HOLD = 8, SELECT_HOLD = 9, READ_GAP = 10,
+           SELECT_GAP = 11, BANK_HOLD = 12, BANK_RELEASE = 13;
+localparam [7:0] MUSIC_LOW = 8'hfa, MUSIC_MIDDLE = 8'hfb, MUSIC_HIGH = 8'hfc;
 localparam [7:0] MUSIC_REPLAY = 8'hfd, MUSIC_RECORD = 8'hfe;
 reg [3:0] state = IDLE;
 reg download_d = 0;
@@ -145,7 +147,7 @@ always @(posedge clk) begin
                             default: begin
                                 crc <= crc_byte(crc, data);
                                 if (timed) begin
-                                    if ((payload_phase == 0 && data > 35 && data < MUSIC_REPLAY) ||
+                                    if ((payload_phase == 0 && data > 35 && data < MUSIC_LOW) ||
                                         (payload_phase == 1 && data == 0)) bad <= 1;
                                     payload_phase <= payload_phase == 2 ? 0 : payload_phase + 1'b1;
                                 end else if (!valid_key(data)) bad <= 1;
@@ -199,6 +201,9 @@ always @(posedge clk) begin
                     keys <= 0;
                     frames <= 0;
                     state <= RELEASE_KEY;
+                end else if (event_key >= MUSIC_LOW && event_key <= MUSIC_HIGH) begin
+                    frames <= 255;
+                    state <= BANK_READY;
                 end else begin
                     case (event_key)
                         MUSIC_REPLAY: keys <= playback ? 36'd0 : 36'd1 << 12;
@@ -214,6 +219,32 @@ always @(posedge clk) begin
                     if (event_key == 11 && music_notes != 0) recording <= 0;
                     frames <= hold_frames;
                     state <= HOLD_KEY;
+                end
+            end
+            BANK_READY, BANK_HOLD, BANK_RELEASE: begin
+                if (state == BANK_READY && input_ready) begin
+                    case (event_key)
+                        MUSIC_LOW: keys <= 36'd1 << 33;
+                        MUSIC_MIDDLE: keys <= 36'd1 << 19;
+                        MUSIC_HIGH: keys <= 36'd1 << 22;
+                        default: keys <= 0;
+                    endcase
+                    frames <= 255;
+                    state <= BANK_HOLD;
+                end else if (state == BANK_HOLD && key_accepted) begin
+                    keys <= 0;
+                    frames <= 255;
+                    state <= BANK_RELEASE;
+                end else if (state == BANK_RELEASE && input_ready) begin
+                    frames <= 0;
+                    state <= RELEASE_KEY;
+                end else if (frame_tick) begin
+                    if (frames > 1) frames <= frames - 1'b1;
+                    else begin
+                        keys <= 0;
+                        error <= 1;
+                        state <= IDLE;
+                    end
                 end
             end
             HOLD_KEY: if (!timed && key_accepted) begin

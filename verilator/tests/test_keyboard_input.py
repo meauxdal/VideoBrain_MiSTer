@@ -7,7 +7,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from apl_source import encode
-from keyboard_input import MUSIC_RECORD, MUSIC_REPLAY, keyboard_text, music, physical_keys
+from keyboard_input import MUSIC_BANKS, MUSIC_RECORD, MUSIC_REPLAY, keyboard_text, music, physical_keys
 
 
 def events(data):
@@ -29,6 +29,7 @@ def music_pitches(body):
     bank = 0
     pitches = []
     for key, _, _ in body:
+        key = {0xfa: 33, 0xfb: 19, 0xfc: 22}.get(key, key)
         if key in (33, 19, 22):
             bank = {33: 12, 19: 0, 22: -12}[key]
         elif key != 255:
@@ -39,6 +40,33 @@ def music_pitches(body):
 
 
 class KeyboardTests(unittest.TestCase):
+    def test_music_bank_ready(self):
+        text = 'T120 O2 C O5 B O3 C'
+        timed = events(music(text, 'letters', gap=2, min_hold=2))[5:-3]
+        ready = events(music(text, 'letters', gap=2, min_hold=2, bank_ready=True))[5:-3]
+        self.assertEqual([event for event in ready if event[0] in MUSIC_BANKS.values()],
+                         [(0xfa, 1, 0), (0xfc, 1, 0), (0xfb, 1, 0)])
+        self.assertEqual([event for event in ready if event[0] not in MUSIC_BANKS.values()],
+                         [event for event in timed if event[0] not in (33, 19, 22)])
+        self.assertEqual(music_pitches(ready), [36, 83, 48])
+        with self.assertRaisesRegex(ValueError, 'mutually exclusive'):
+            music(text, 'letters', bank_fields=2, bank_ready=True)
+
+    def test_music_bank_ready_examples(self):
+        directory = Path(__file__).resolve().parents[2] / 'examples'
+        for source, output in (
+            ('music-tests/octaves.mml', 'music-tests/octaves-ready.vbk'),
+            ('music/bach-cello-suite-1-prelude-full.mml',
+             'music/ready/bach-cello-suite-1-prelude-full.vbk'),
+        ):
+            with self.subTest(source=source), redirect_stderr(io.StringIO()):
+                text = (directory / source).read_text()
+                data = music(text, 'letters', gap=2, min_hold=2, bank_ready=True)
+                self.assertEqual(data, (directory / output).read_bytes())
+                original = music(text, 'letters', gap=2, min_hold=2)
+                self.assertEqual(music_pitches(events(data)[5:-3]),
+                                 music_pitches(events(original)[5:-3]))
+
     def test_apl_hold_final(self):
         normal = encode("EDIT DEMO\nA=1\nENDE\nRUN DEMO\n")
         held = encode("EDIT DEMO\nA=1\nENDE\nRUN DEMO\n", hold_final=True)

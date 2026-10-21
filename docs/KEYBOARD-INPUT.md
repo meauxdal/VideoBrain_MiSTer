@@ -124,6 +124,18 @@ confirmed successful live playback at 2/2 with the static-staff ROM and Playback
 mode on 2026-10-18. Smooth files are in `examples/music/smooth`, generated with `--min-hold 2 --gap 2
 --bank-fields 2`; their MML sources remain in `examples/music`.
 Without this option, bank controls retain their 8/8 timing.
+
+Experimental `--bank-ready` replaces bank changes with ROM-acknowledged
+controls. Use it instead of `--bank-fields`, with `--min-hold 2 --gap 2`.
+The loader waits for key readiness, holds the octave key until acceptance,
+then waits for confirmed release before continuing. Note/rest durations are
+unchanged; no fixed bank time is subtracted. Each handshake stage times out
+after 255 fields and stops entry on failure. This requires an updated core
+and either original ED01 (CRC32 C8FEE8CD) or the current static-staff patch
+(CRC32 F4390144). Hardware timing and playback remain unverified.
+Trial files are `examples/music-tests/octaves-ready.vbk` and
+`examples/music/ready/bach-cello-suite-1-prelude-full.vbk`.
+
 The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
 Key-off gaps may also consume entries. The loader enters at most 79 note keys in
@@ -145,7 +157,7 @@ setup, recording, and sound routines. Program 2's visual teaching is affected.
 Live playback improvement is hardware-confirmed; recording behavior remains
 unverified.
 
-TODO: Explore further ROM changes to eliminate remaining octave-switch delays.
+TODO: Measure acknowledged octave-switch timing on hardware.
 Improve the mostly static display: accumulated note overdraw produces glitched
 "8b" markers as every possible note pixel fills in. Preserve sound timing when
 restoring or replacing visual feedback.
@@ -203,7 +215,11 @@ VBK2 also accepts FE for the music Record/No-Record selector (inside shifted
 mode), and FD for Replay (inside lower mode). The menu setting is latched at
 download: Record maps FE to Z and FD to T; Playback maps FE to COMMA and FD
 to a silent wait with the encoded duration. Older cores reject these events.
+FA/FB/FC select Low/Middle/High with ROM acknowledgment. Their hold/gap bytes
+are placeholders (the converter emits 1/0); handshake state determines timing.
+These controls require lower SHIFT, as do physical octave keys.
 Auto-Repeat applies to both VBK1 and VBK2 and can be disabled during entry.
 
 `make test-apl-source` runs both converters' tests and the loader RTL tests.
+`make test-music-input` checks the ED01 and static-staff readiness hooks.
 Full simulator captures and Quartus builds are separate checks.
