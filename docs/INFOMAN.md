@@ -1,4 +1,69 @@
-# Information Manager disassembly
+# Information Manager
+
+## Using the cartridge
+
+Load the cartridge and [Expander 1 firmware](EXPANDER1.md). The initial menu
+shows PROGRAM / ENTER / REVIEW / EDIT. NEXT is F3; SPECIAL is F4.
+
+### Create a small database
+
+Mount a fresh writable [blank tape](TAPE.md) before confirming the definition.
+This ENTER path records incrementally; it does not wait for a separate SAVE.
+
+| Prompt | Type | Press |
+|---|---|---|
+| Initial `:` | `ENTER` | NEXT |
+| `DB:` | `TEST` | NEXT |
+| `NAME:` | `ITEM` | NEXT |
+| `LENGTH:` | `008` | NEXT |
+| `TYPE:` | `A` | NEXT |
+| Next empty `NAME:` | Nothing | SPECIAL |
+| `OK (Y/N)?` | `Y` | NEXT |
+| `ITEM:` | `APPLE` | NEXT |
+| Next empty `ITEM:` | Nothing | SPECIAL |
+
+Hardware testing completed entry and returned to the main page. The saved image
+contains nine CRC-valid blocks: three identical copies each of the 253-byte
+TEST definition (ITEM, length 008, type A), the eight-byte `APPLE   ` record,
+and the zero-length end marker. Saving is verified; hardware reload verification
+is pending.
+
+The ROM writes the definition after Y, each completed record before the next
+field prompt, and an end marker when SPECIAL finishes record entry. Each write
+is repeated three times. Allow the transfer pauses and wait for the user LED
+to clear before unmounting. Tape idle only reports controller inactivity.
+
+### Reload verification
+
+After returning to the main page, rewinding and selecting REVIEW produced
+I/O ERR after a long pause. Before/after captures differ only at header bytes
+8-11: interval count 18681 becomes FFFFFFFF (incomplete recording). All waveform
+bytes remain unchanged. Keep the before-REVIEW image as the valid source.
+
+REVIEW's `05 00 02` setup enables the record remote before switching to playback.
+Immediate recording invalidation made the controller flush and reject playback
+as busy. The controller now defers writes until a signal transition or record
+stop; a transition-free switch to playback preserves the image and playback
+position. The original-firmware two-record SAVE/LOAD test passes with this setup,
+as do controller timing, append, protection and interruption tests. InfoMan's
+complete reload still needs a new RBF and hardware testing.
+
+Keep a copy of the recorded tape before testing. A definition-only capture
+cannot establish a successful record reload.
+
+1. Finish entry with SPECIAL at an empty ITEM prompt and wait for tape activity
+   to end. Preserve the resulting image.
+2. Start the cartridge again with Expander 1 loaded and mount the saved image.
+3. Choose **Tape > Rewind Tape** before playback.
+4. At the initial `:`, type `REVIEW` and press NEXT (F3).
+5. Record the next prompt or error before entering further commands.
+
+The REVIEW path at 119D calls 3BAF to read the database definition, then 3B49
+to read a record, before accepting a command through 1228. This identifies a
+loading candidate, not a verified review-command recipe. Record display,
+end-of-tape handling and further keyboard functions still need testing.
+
+## Disassembly
 
 Local listing: `refs/infoman/infoman.lst`. Regenerate with:
 
@@ -9,7 +74,7 @@ python tools/disassemble_infoman.py --unidasm C:/Users/Elle/Downloads/mame0289b_
 The listing retains addresses and every ROM byte. It uses MAME's F8 syntax,
 labels branch targets, and separates identified tables from instructions.
 It is an annotated static disassembly, not assembler input or a recovered
-manual. Runtime command behavior and peripheral transactions remain untested.
+manual. The usage checks above cover only part of the runtime behavior.
 The listing stays under ignored `refs/`, consistent with the other local
 cartridge disassemblies.
 

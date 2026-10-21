@@ -40,6 +40,8 @@ reg [9:0] io_base = 0;
 reg [30:0] elapsed = 1, remaining = 0;
 reg level = 1, playing = 0, playback_started = 0;
 reg record_d = 0, playback_d = 0, record_session = 0;
+reg record_started = 0;
+reg record_level = 1;
 reg rewind_d = 0, rewind_pending = 0;
 
 wire rewind_request = rewind && !rewind_d && mounted && valid &&
@@ -50,19 +52,24 @@ wire rewind_request = rewind && !rewind_d && mounted && valid &&
 // APL/S enables both remotes at startup, then selects one for a transfer.
 wire record_remote = record_enable && !playback_enable;
 wire playback_remote = playback_enable && !record_enable;
+// A remote-only setup can switch to playback without recording data.
+wire record_cancel = mode == RECORD && !record_started && playback_remote;
 
 // Four KiB absorbs SD service latency without changing the tape clock.
 wire [31:0] buffer_sample;
 reg [1:0] sd_byte;
 reg [7:0] header_byte;
 wire [9:0] buffer_index = io_base + {3'd0, sd_buff_addr[8:2]};
-wire capture = mode == RECORD && !reset && !img_mounted && !error &&
-               (!record_remote || record_data != level || &elapsed);
-wire capture_room = produced < capacity && produced - transferred < 1024;
-wire [31:0] capture_sample = {level, elapsed};
+wire [31:0] capture_position = record_started || record_session ? produced : 0;
+wire [31:0] capture_base = record_started ? transferred :
+                           record_session ? produced & 32'hffffff80 : 0;
+wire capture = mode == RECORD && !record_cancel && !reset && !img_mounted && !error &&
+               (!record_remote || record_data != record_level || &elapsed);
+wire capture_room = capture_position < capacity && capture_position - capture_base < 1024;
+wire [31:0] capture_sample = {record_level, elapsed};
 wire capture_write = capture && capture_room;
 wire sd_write = sd_buff_wr && operation == READ_DATA && io_state != 0;
-wire [9:0] write_index = capture_write ? produced[9:0] : buffer_index;
+wire [9:0] write_index = capture_write ? capture_position[9:0] : buffer_index;
 wire [9:0] read_index = mode == PLAY ? consumed[9:0] : buffer_index;
 wire [31:0] write_length = operation == COMMIT ? produced : 32'hffffffff;
 assign busy = mode != IDLE || io_state != 0 || mount_pending || rewind_pending;
@@ -156,7 +163,7 @@ always @(posedge clk) begin
             header_clock <= 0;
             header_length <= 0;
             request(HEADER, 0, 0);
-        end else if (mode == RECORD || mode == FLUSH) begin
+        end else if ((mode == RECORD && record_started) || mode == FLUSH) begin
             if (!error && produced > transferred &&
                 (produced - transferred >= 128 || mode == FLUSH))
                 request(WRITE_DATA, 1 + (transferred >> 7), transferred[9:0]);
@@ -170,29 +177,32 @@ always @(posedge clk) begin
     if (record_remote && !record_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
         if (writable) begin
             mode <= RECORD;
-            if (record_session) transferred <= produced & 32'hffffff80;
-            else begin
-                produced <= 0;
-                transferred <= 0;
-            end
-            record_session <= 1;
+            record_started <= 0;
             elapsed <= 1;
-            level <= record_data;
-            playback_started <= 0;
-            valid <= 0;
+            record_level <= record_data;
             error <= 0;
-            request(INVALIDATE, 0, 0);
         end else begin
             record_session <= 0;
             error <= 1;
         end
     end
     if (mode == RECORD) begin
-        if (capture) begin
+        if (record_cancel) begin
+            mode <= IDLE;
+            record_session <= 0;
+        end else if (capture) begin
             if (capture_room) begin
-                produced <= produced + 1'b1;
+                if (!record_started) begin
+                    record_started <= 1;
+                    record_session <= 1;
+                    transferred <= capture_base;
+                    playback_started <= 0;
+                    valid <= 0;
+                    request(INVALIDATE, 0, 0);
+                end
+                produced <= capture_position + 1'b1;
                 elapsed <= 1;
-                level <= record_data;
+                record_level <= record_data;
                 if (!record_remote) mode <= FLUSH;
             end else begin
                 record_session <= 0;
@@ -204,7 +214,7 @@ always @(posedge clk) begin
 
     if (playback_remote && !playback_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
         record_session <= 0;
-        if (!busy && valid && length != 0) begin
+        if ((!busy || record_cancel) && valid && length != 0) begin
             mode <= PLAY;
             if (!playback_started) begin
                 transferred <= 0;
@@ -259,6 +269,7 @@ always @(posedge clk) begin
         remaining <= 0;
         playback_started <= 0;
         record_session <= 0;
+        record_started <= 0;
         playing <= 0;
         playback_data <= 1;
         level <= 1;
@@ -272,6 +283,7 @@ always @(posedge clk) begin
         rewind_pending <= 0;
         mode <= IDLE;
         record_session <= 0;
+        record_started <= 0;
         playback_started <= 0;
         playing <= 0;
         playback_data <= 1;

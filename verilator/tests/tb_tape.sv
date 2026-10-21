@@ -81,6 +81,25 @@ initial begin
     if (error) $fatal(1,"Recorded mount failed");
     writes_before = card.writes;
     @(negedge clk);
+    record_enable = 1;
+    repeat(100) @(negedge clk);
+    if (error || card.writes != writes_before || card.word_at(8) != 1707)
+        $fatal(1,"Record remote setup changed image");
+    record_enable = 0;
+    playback_enable = 1;
+    wait(dut.playing || error);
+    @(negedge clk);
+    if (error || !dut.playing || card.writes != writes_before)
+        $fatal(1,"Record setup to playback handoff failed");
+    playback_enable = 0;
+    @(negedge clk);
+    wait(!busy);
+    reset = 1;
+    repeat(3) @(negedge clk);
+    reset = 0;
+    mount_image();
+    writes_before = card.writes;
+    @(negedge clk);
     playback_enable = 1;
     record_enable = 1;
     repeat(3) @(negedge clk);
@@ -96,7 +115,9 @@ initial begin
                 playback_enable = 0;
                 @(negedge clk);
                 wait(!busy);
+                record_enable = 1;
                 repeat(20) @(negedge clk);
+                record_enable = 0;
                 playback_enable = 1;
                 wait(dut.playing);
                 @(negedge clk);
@@ -137,8 +158,25 @@ initial begin
 
     img_readonly = 0;
     mount_image();
+    run_record(0);
+    if (error || card.word_at(8) != 1 || card.word_at(512) != {record_data,31'd40})
+        $fatal(1,"Constant recording lost");
+    writes_before = card.writes;
     @(negedge clk);
     record_enable = 1;
+    repeat(10) @(negedge clk);
+    reset = 1;
+    record_enable = 0;
+    repeat(3) @(negedge clk);
+    reset = 0;
+    wait(!busy);
+    mount_image();
+    if (error || card.writes != writes_before || card.word_at(8) != 1)
+        $fatal(1,"Reset during remote setup changed image");
+    @(negedge clk);
+    record_enable = 1;
+    repeat(3) @(negedge clk);
+    record_data = !record_data;
     repeat(10) @(negedge clk);
     reset = 1;
     record_enable = 0;

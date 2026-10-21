@@ -17,6 +17,9 @@ Playback resumes from its current position across remote stops. Use
 **Tape > Rewind Tape** before repeating LOAD or VERIFY. Both remotes enabled
 is a setup state and does not start a transfer. Reset rewinds and cancels tape
 activity. An interrupted recording is invalid; a new SAVE can replace it.
+If the record remote switches to playback without a signal transition, the
+image and playback position are preserved. Actual recordings retain the initial
+constant signal interval before the first transition.
 
 `python tools/new_tape.py [path.vbt]` creates an 8 MiB blank. Omitting the path
 uses a timestamped name. Existing files are never replaced. Creating and mounting
