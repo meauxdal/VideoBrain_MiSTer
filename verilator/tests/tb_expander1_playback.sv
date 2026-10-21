@@ -13,7 +13,7 @@ expander1 dut(.*,.dl_index(8'd3),.modem_rxd(1'b1),.modem_txd(),
              .printer_rxd(1'b1),.printer_txd());
 reg [7:0] firmware[2048];
 reg img_mounted = 0, rewind = 0;
-wire busy, writable, error;
+wire busy, writable, error, rewound;
 wire [31:0] sd_lba;
 wire sd_rd, sd_wr, sd_ack, sd_buff_wr;
 wire [13:0] sd_buff_addr;
