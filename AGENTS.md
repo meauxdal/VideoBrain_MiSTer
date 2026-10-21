@@ -2,6 +2,14 @@
 
 Read every session.
 
+## Git branches
+
+- `main` is reserved for the current upstream `origin/main`. Never treat an outdated, ahead, or diverged local `main` as current main.
+- Before starting or resuming work, and after any reported merge or branch switch, fetch `origin` and check the branch, working tree, and ahead/behind counts. Switching branches or fetching alone does not synchronize local `main`.
+- Local `main` must match freshly fetched `origin/main` exactly before starting work. Fast-forward it when safe. If fetching fails or `main` has local commits or conflicts, stop and report the discrepancy before editing.
+- Make task changes and commits on a separate, clearly named branch based on verified current main. Never commit task work directly to `main`.
+- Preserve existing local work when reconciling branches. Never discard commits, hard-reset, or force-push to conceal a mismatch. Explain the recovery needed and ask before any destructive action.
+
 ## Philosophy
 
 - Historical preservation and overall machine accuracy is paramount
