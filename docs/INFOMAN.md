@@ -56,21 +56,61 @@ controller timing, append, protection and interruption tests.
 
 The REVIEW path at 119D calls 3BAF to read the database definition, then 3B49
 to read a record, before accepting a command through 1228. Multiple records,
-additional field types, editing and further keyboard functions still need
-hardware testing.
+additional field types and further keyboard functions still need hardware testing.
 
-### EDIT setup (hardware verification pending)
+### EDIT records
 
 Mount the saved database as **Playback Tape** and a separate writable blank
 as **Record Tape**. Rewind both, then type `EDIT` at the main `:` and press NEXT.
-Record the next prompt before changing data. Use different files for input and
-output; inspect the output separately after finishing.
+At `/`, type `PRINT ALL` and press NEXT. Hardware testing displayed `ITEM: APPLE`
+with the A underlined. Pressing NEXT without changing the field reached
+END OF TAPE and returned to `/`. After EXIT and Tape idle, mounting the output
+as Playback Tape, rewinding and using REVIEW / PRINT ALL displayed ITEM: APPLE
+and END OF TAPE. The unchanged-record EDIT round trip is hardware-verified.
+
+Changing APPLE to PEPSI and accepting with NEXT (F3) also survived output
+recording and reload: REVIEW / PRINT ALL displayed `ITEM: PEPSI` with the edited
+tape in the playback deck and the record deck empty. To finish an edit, return
+to `/`, enter `EXIT` with NEXT, and wait for Tape idle before mounting the output
+as Playback Tape and rewinding it. REVIEW does not require a record image.
+Use different files for input and output; inspect the output separately after
+finishing.
 
 EDIT reads the definition (3BAF), writes it (3BD1), then reads the first record
 (3B49). Independent deck controllers preserve the source cursor while output
 flushes. The original-firmware test exercises read/write/read across separate
-images and replays the output, checking payloads, CRCs and status. The complete
-InfoMan EDIT dialogue still needs hardware testing.
+images and replays the output, checking payloads, CRCs and status.
+
+## Further research
+
+The following capabilities are inferred from the ROM, not hardware-verified
+operating instructions. Recognized keywords alone do not establish complete
+syntax or availability in REVIEW versus EDIT.
+
+| Capability | Evidence and open questions |
+|---|---|
+| Multiple fields and records | ENTER loops over field definitions and records. Verify field order, record boundaries and reload of several records. |
+| Numeric fields | TYPE accepts I and M as well as A; numeric conversion and storage paths exist. Establish formatting, precision, signs and length limits. |
+| Adding records | ADD has a field-entry loop in EDIT's grammar. Establish insertion position, completion keys and output persistence. |
+| Deleting and replacing | DELETE and REPLACE have command paths distinct from interactive PRINT ALL editing. Establish record selection and which records are retained. |
+| Record selection | Grammar and handlers support numbers, field names, value comparisons and wildcard handling. Establish exact syntax and matching rules. |
+| Field selection | FLD configures field processing/display. Establish selection syntax and ordering. |
+| Database description | DESC leads toward the field-definition display path. Test whether it lists names, types and lengths; do not assume it means descending sort. |
+| Counts and totals | Accumulation routines and COUNT=, TOTAL= and GRAND TOTAL= strings support numeric reporting. Distinguish TOTAL from TOT configuration. |
+| Grouped summaries | SORT FIELD: and per-value counts/totals suggest grouping by a field. Physical reordering of tape records is not established. |
+| Tape merging | MERGE processes remaining input, prompts for rewind/NEXT, then reads another definition and record. Establish schema compatibility and tape-change procedure. |
+| Printer reports | PTR, printer character conversion and output routines indicate a hard-copy path. Establish syntax, routing and peripheral requirements. |
+
+Next, create three records with a text identifier, a repeated category and a
+numeric value. After establishing numeric entry, values 2, 3 and 7 in categories
+A, A and B give expected count 3, grand total 12 and category totals 5 and 7.
+Use this fixture to test selection, field display, ADD/DELETE/REPLACE, grouping
+and totals. Preserve each input and inspect/reload each output separately.
+
+Single-deck append or editing remains unestablished. EDIT with only the record
+deck populated produced I/O ERR; ENTER starts by defining a database. REVIEW's
+grammar and write-suppression path do not currently suggest a persistent ADD
+workflow. A keyboard map should distinguish verified keys from inferred ones.
 
 ## Disassembly
 
@@ -108,6 +148,9 @@ its physical size is 1 KB. ROM dates are September 25/26, 1978.
 
 Entry is 1012. The menu-selection code at 1068 checks the input's BIOS glyph
 codes: `EN` branches to 10AD, `ED` to 11E1, and initial `R` to 119D.
+The menu checks only these prefixes, not the complete words. `REVIE` was
+hardware-verified to select REVIEW. This does not establish prefix matching
+for commands at the `/` prompt.
 10AD clears the field count and collects field definitions. The other paths
 process records using different interpreter requests.
 
