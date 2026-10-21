@@ -38,7 +38,7 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
 | APL/S: The Computational Language | 16K | comp_language | correct | Assembled MAME image; full program execution coverage pending. |
-| Information Manager | 8K | info_manager | correct | Prototype; with Expander 1 firmware, reaches PROGRAM / ENTER / REVIEW / EDIT without I/O ERR. Serial operations need investigation. |
+| Information Manager | 8K | info_manager | correct | Prototype; requires Expander 1 firmware. One-record database entry, tape save, REVIEW and PRINT ALL verified on hardware. See [usage notes](INFOMAN.md). |
 
 ## Split cartridge conversion
 

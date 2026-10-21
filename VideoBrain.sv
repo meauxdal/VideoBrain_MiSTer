@@ -50,8 +50,10 @@ wire [1:0] ar = status[122:121];
 localparam CONF_STR = {
 	"VideoBrain;UART300:110;",
 	"F1,BIN,Load Cartridge;",
-	"d8S0,VBT,Mount Tape;",
-	"T[23],Rewind Tape;",
+	"d8S0,VBT,Mount Playback Tape;",
+	"d8S1,VBT,Mount Record Tape;",
+	"T[23],Rewind Playback Tape;",
+	"T[30],Rewind Record Tape;",
 	"-;",
 	"P3,Input;",
 	"P3-;",
@@ -106,26 +108,27 @@ wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
 wire [15:0] ioctl_index;
-wire [31:0] tape_lba;
-wire tape_rd, tape_wr, tape_ack;
+wire [31:0] tape_lba[2];
+wire [1:0] tape_rd, tape_wr, tape_ack;
 wire [13:0] tape_buff_addr;
-wire [7:0] tape_buff_dout, tape_buff_din;
-wire tape_buff_wr, tape_mounted, tape_readonly;
+wire [7:0] tape_buff_dout, tape_buff_din[2];
+wire tape_buff_wr, tape_readonly;
+wire [1:0] tape_mounted;
 wire [63:0] tape_size;
 wire tape_record_data, tape_record_enable, tape_playback_data, tape_playback_enable;
-wire tape_busy, tape_error, tape_rewound;
+wire [1:0] tape_deck_busy, tape_deck_error, tape_deck_rewound;
+wire tape_busy = |tape_deck_busy;
+wire tape_error = |tape_deck_error;
+wire tape_rewound = |tape_deck_rewound;
 wire [15:0] menu_mask = {5'd0, ~cart_loaded, 1'b0, ~tape_busy, 3'b000,
                          !joystick_connected, 4'b0011};
 reg info_req = 0;
 reg [7:0] info = 0, pending_info = 0;
-wire [31:0] sd_lba[1];
-wire [5:0] sd_blk_cnt[1];
-wire [7:0] sd_buff_din[1];
-assign sd_lba[0] = tape_lba;
+wire [5:0] sd_blk_cnt[2];
 assign sd_blk_cnt[0] = 0;
-assign sd_buff_din[0] = tape_buff_din;
+assign sd_blk_cnt[1] = 0;
 
-hps_io #(.CONF_STR(CONF_STR)) hps_io
+hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
 (
 	.clk_sys(clk_sys),
 	.HPS_BUS(HPS_BUS),
@@ -145,14 +148,14 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.img_mounted(tape_mounted),
 	.img_readonly(tape_readonly),
 	.img_size(tape_size),
-	.sd_lba(sd_lba),
+	.sd_lba(tape_lba),
 	.sd_blk_cnt(sd_blk_cnt),
 	.sd_rd(tape_rd),
 	.sd_wr(tape_wr),
 	.sd_ack(tape_ack),
 	.sd_buff_addr(tape_buff_addr),
 	.sd_buff_dout(tape_buff_dout),
-	.sd_buff_din(sd_buff_din),
+	.sd_buff_din(tape_buff_din),
 	.sd_buff_wr(tape_buff_wr),
 
 	.ioctl_download(ioctl_download),
@@ -386,30 +389,16 @@ apl_source_loader source_loader (
 	.keys(source_keys)
 );
 
-videobrain_tape tape
-(
-	.clk(clk_sys),
-	.reset(reset),
-	.img_mounted(tape_mounted),
-	.img_readonly(tape_readonly),
-	.img_size(tape_size),
-	.rewind(status[23]),
-	.record_data(tape_record_data),
-	.record_enable(tape_record_enable),
-	.playback_enable(tape_playback_enable),
-	.playback_data(tape_playback_data),
-	.busy(tape_busy),
-	.writable(),
-	.error(tape_error),
-	.rewound(tape_rewound),
-	.sd_lba(tape_lba),
-	.sd_rd(tape_rd),
-	.sd_wr(tape_wr),
-	.sd_ack(tape_ack),
-	.sd_buff_addr(tape_buff_addr[8:0]),
-	.sd_buff_dout(tape_buff_dout),
-	.sd_buff_din(tape_buff_din),
-	.sd_buff_wr(tape_buff_wr)
+videobrain_tapes tapes (
+	.clk(clk_sys), .reset(reset),
+	.img_mounted(tape_mounted), .img_readonly(tape_readonly), .img_size(tape_size),
+	.rewind({status[30], status[23]}),
+	.record_data(tape_record_data), .record_enable(tape_record_enable),
+	.playback_enable(tape_playback_enable), .playback_data(tape_playback_data),
+	.busy(tape_deck_busy), .error(tape_deck_error), .rewound(tape_deck_rewound),
+	.sd_lba(tape_lba), .sd_rd(tape_rd), .sd_wr(tape_wr), .sd_ack(tape_ack),
+	.sd_buff_addr(tape_buff_addr[8:0]), .sd_buff_dout(tape_buff_dout),
+	.sd_buff_din(tape_buff_din), .sd_buff_wr(tape_buff_wr)
 );
 
 videobrain_core core

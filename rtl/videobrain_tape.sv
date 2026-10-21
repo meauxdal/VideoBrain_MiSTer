@@ -1,6 +1,8 @@
 `timescale 1ns/1ps
 module videobrain_tape #(
-    parameter CLOCK_HZ = 14318180
+    parameter CLOCK_HZ = 14318180,
+    parameter RECORDING = 1,
+    parameter PLAYBACK = 1
 )(
     input wire clk,
     input wire reset,
@@ -66,8 +68,9 @@ wire [31:0] capture_base = record_started ? transferred :
 wire capture = mode == RECORD && !record_cancel && !reset && !img_mounted && !error &&
                (!record_remote || record_data != record_level || &elapsed);
 wire capture_room = capture_position < capacity && capture_position - capture_base < 1024;
+wire capture_allowed = mounted && recognized && !readonly;
 wire [31:0] capture_sample = {record_level, elapsed};
-wire capture_write = capture && capture_room;
+wire capture_write = capture && capture_room && capture_allowed;
 wire sd_write = sd_buff_wr && operation == READ_DATA && io_state != 0;
 wire [9:0] write_index = capture_write ? capture_position[9:0] : buffer_index;
 wire [9:0] read_index = mode == PLAY ? consumed[9:0] : buffer_index;
@@ -174,8 +177,8 @@ always @(posedge clk) begin
             request(READ_DATA, 1 + (transferred >> 7), transferred[9:0]);
     end
 
-    if (record_remote && !record_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
-        if (writable) begin
+    if (RECORDING && record_remote && !record_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
+        if (writable || (!PLAYBACK && !busy)) begin
             mode <= RECORD;
             record_started <= 0;
             elapsed <= 1;
@@ -191,7 +194,12 @@ always @(posedge clk) begin
             mode <= IDLE;
             record_session <= 0;
         end else if (capture) begin
-            if (capture_room) begin
+            if (!capture_allowed) begin
+                mode <= IDLE;
+                record_session <= 0;
+                // Setup alone does not require a recording image.
+                if (record_data != record_level) error <= 1;
+            end else if (capture_room) begin
                 if (!record_started) begin
                     record_started <= 1;
                     record_session <= 1;
@@ -212,7 +220,7 @@ always @(posedge clk) begin
         end else elapsed <= elapsed + 1'b1;
     end
 
-    if (playback_remote && !playback_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
+    if (PLAYBACK && playback_remote && !playback_d && !rewind_pending && !rewind_request && !reset && !img_mounted) begin
         record_session <= 0;
         if ((!busy || record_cancel) && valid && length != 0) begin
             mode <= PLAY;
@@ -223,6 +231,9 @@ always @(posedge clk) begin
             end
             playback_started <= 1;
             playing <= 0;
+            error <= 0;
+        end else if (!RECORDING && (!mounted || (valid && length == 0))) begin
+            // A playback motor can be enabled during record-only setup.
             error <= 0;
         end else error <= 1;
     end
