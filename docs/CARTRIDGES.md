@@ -32,7 +32,7 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's
 | Music Teacher 1 | 2K | standard | correct | "PLAY/RECORD 1 / LEARN A SONG 2". |
 | Pinball | 2K | standard | correct | Background fix validated. |
 | Tennis | 4K | standard | **plays** | RUN/STOP starts the game: court, net, scoreboard, player sprites. |
-| Timeshare | 2K | timeshare | correct | "TIMESHARE" title on cyan, then the screen blanks around frame 130. See below. |
+| Timeshare | 2K | timeshare | correct | Interactive Telehack sessions verified at 300 baud through Expander 1 and MiSTer's UART. See below. |
 | Vice Versa | 4K | standard | correct | Advances to "YOU PLAY FIRST ? Y OR N". |
 | VideoArtist | 2K | standard | correct | Design selection menu. |
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
@@ -89,15 +89,17 @@ before frame 150; Lemonade Stand needs about 280 frames to reach its menu.
 Use the input each cartridge requests. Holding SPACE in Financier or Music
 Teacher 1 does not establish a rendering fault.
 
+## Timeshare serial communication
+
+With Expander 1 firmware loaded, Timeshare supports interactive Telehack
+sessions through MiSTer's HPS UART and a Linux Telnet bridge at 300 baud.
+Command pagination, Zork's opening screen, weather, and date output have been
+verified on MiSTer with the server set to 24 columns and 15 lines. See
+[Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). Earlier captures
+without a working peripheral path blanked after the title. Expander 2 acoustic
+modem behavior and live 110-baud operation remain unverified.
+
 ## Open questions
-
-### Timeshare blanks after its title
-
-The title renders correctly on cyan, then the screen goes blank around frame
-130 and stays blank. Timeshare is the communications cartridge and expects the
-Expander 2 and modem, which are not implemented. Blanking is the expected
-behavior in this configuration by all accounts. Additional investigation is 
-warranted.
 
 ### Financier after an invalid key
 

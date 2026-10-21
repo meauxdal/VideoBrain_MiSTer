@@ -35,6 +35,8 @@ ENTITY videobrain_core IS
     expander_record_enable : OUT std_logic;
     expander_playback_data : IN std_logic := '1';
     expander_playback_enable : OUT std_logic;
+    expander_modem_rxd : IN std_logic := '1';
+    expander_modem_txd : OUT std_logic;
 
     f8_po_a_n : OUT uv8;
     f8_po_b_n : OUT uv8;
@@ -133,6 +135,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL po_a_n_l, po_b_n_l, pi_b_n_l : uv8;
   SIGNAL kbd_b_in_n : uv8;
   SIGNAL expander_data_n, expander_clock_n, expander_interrupt_n : std_logic;
+  SIGNAL modem_rxd_meta, modem_rxd_sync : std_logic := '1';
   SIGNAL port1_wr_l : std_logic;
   SIGNAL key_latch_l : uv8;
   SIGNAL joy_enable_l : std_logic;
@@ -381,6 +384,17 @@ BEGIN
                     (po_b_n_l(6) AND expander_clock_n) &
                     (po_b_n_l(5) AND expander_data_n) & "11111");
 
+  PROCESS (clk, reset_na) IS
+  BEGIN
+    IF reset_na = '0' THEN
+      modem_rxd_meta <= '1';
+      modem_rxd_sync <= '1';
+    ELSIF rising_edge(clk) THEN
+      modem_rxd_meta <= expander_modem_rxd;
+      modem_rxd_sync <= modem_rxd_meta;
+    END IF;
+  END PROCESS;
+
   u_expander1 : ENTITY work.expander1
     GENERIC MAP (CLK_DIV_MCLK => CLK_DIV_MCLK)
     PORT MAP (
@@ -390,6 +404,8 @@ BEGIN
       clock_n => expander_clock_n,
       record_data => expander_record_data, record_enable => expander_record_enable,
       playback_data => expander_playback_data, playback_enable => expander_playback_enable,
+      modem_rxd => modem_rxd_sync, modem_txd => expander_modem_txd,
+      printer_rxd => '1', printer_txd => OPEN,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index
       );

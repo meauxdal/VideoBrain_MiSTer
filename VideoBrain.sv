@@ -23,7 +23,8 @@ module emu
 
 assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
-assign {UART_RTS, UART_TXD, UART_DTR} = 0;
+// The modem cable has no flow control; assert the HPS's active-low handshakes.
+assign {UART_RTS, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0;
@@ -47,18 +48,19 @@ wire [1:0] ar = status[122:121];
 
 `include "build_id.v"
 localparam CONF_STR = {
-	"VideoBrain;;",
+	"VideoBrain;UART300:110;",
 	"F1,BIN,Load Cartridge;",
 	"d8S0,VBT,Mount Tape;",
 	"T[23],Rewind Tape;",
 	"-;",
 	"P3,Input;",
 	"P3-;",
-	"P3O[5],Joystick,Connected,Disconnected;",
+	"P3O[5],Joysticks,Connected,Disconnected;",
 	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3T[20],Calibrate Sticks;",
 	"P3-;",
+	"P3O[29],Esc Reset,On,Off;",
 	"P3F4,VBK,Load Keyboard File;",
 	"P3O[18],Music Mode,Playback,Record;",
 	"P3O[19],Music Repeat,Off,On;",
@@ -70,8 +72,10 @@ localparam CONF_STR = {
 	"P1O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
 	"P2,System;",
 	"P2-;",
+	"P2F0,BIN,Load BIOS;",
 	"P2F2,BIN,Load Expander 1 ROM;",
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
+	"P2O[22],Info Messages,On,Off;",
 	//"P2O[26:24],Audio Test,Off,500 Hz,1 kHz,2 kHz,4 kHz;",
 	"P2-;",
 	"P2T[27],Master Control (Soft Reset);",
@@ -219,7 +223,7 @@ reg        key_toggle  = 0;
 
 always @(posedge clk_sys) begin
 	key_toggle <= ps2_key[10];
-	if (system_reset) master_control <= 0;
+	if (system_reset || status[29]) master_control <= 0;
 	else if (key_toggle != ps2_key[10] && key_code == 'h076)
 		master_control <= key_pressed;  // ESC = MASTER CONTROL
 	if (reset) kbd_matrix <= 0;
@@ -320,7 +324,7 @@ always @(posedge clk_sys) begin
 	tape_busy_d <= tape_busy;
 	tape_error_d <= tape_error;
 	info_req <= 0;
-	if (reset) begin
+	if (reset || status[22]) begin
 		pending_info <= 0;
 		tape_info_frames <= 0;
 	end else begin
@@ -429,6 +433,8 @@ videobrain_core core
 	.expander_record_enable (tape_record_enable),
 	.expander_playback_data (tape_playback_data),
 	.expander_playback_enable (tape_playback_enable),
+	.expander_modem_rxd (UART_RXD),
+	.expander_modem_txd (UART_TXD),
 	.f8_po_a_n  (),
 	.f8_po_b_n  (),
 

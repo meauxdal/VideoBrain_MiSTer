@@ -52,7 +52,8 @@ NEXT unless `--hold-final` suppresses the last one. NEXT receives an additional
 | Money Minder / VB-1000 | Use `keys`. It replaces text entry with a cash-register layout. Digits are the printed numeric positions without automatic SHIFT; punctuation and dollar formatting are automatic. Category keys depend on SHIFT. SPACE is ENTER/INITIAL VALUE, not a text space. Follow its account prompts. |
 | Wordwise 1 | Use `keys` for numeric position moves and NEXT; it builds words by moving displayed letters, rather than by typing words. |
 | Wordwise 2 | Its typing exercises accept printed character keys. Use `keyboard` for an appropriate exercise or `keys` for prompts; inspect the expected line before submitting NEXT. |
-| Other titles, including Information Manager and Timeshare | Physical key scripts are available. Their text/mode transitions have not been established here; do not assume the APL/S mapping. |
+| Timeshare | F5 sends Carriage Return; F4 is CONTROL. Shift is held, not toggled; Shift+H types `/`. Hold F4 + Shift and tap D for full duplex or H for half duplex/local echo. Live UART sessions are verified; automatic text-profile mode handling is not. See [Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). |
+| Other titles, including Information Manager | Physical key scripts are available. Their text/mode transitions have not been established here; do not assume the APL/S mapping. |
 
 The title rules above come from the local owner's, Financier, Money Minder and
 Wordwise manuals in `vb_large_docs/videobrain-manuals.zip`. Other title profiles

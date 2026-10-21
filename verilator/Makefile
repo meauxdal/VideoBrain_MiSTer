@@ -187,6 +187,15 @@ test-cartridges:
 
 EXPANDER1_ROM ?= ../software/0 BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin
 
+test-expander1-serial: test-expander1
+	$(GHDL) -a --std=08 --workdir=out/expander1 tests/tb_expander1_serial.vhd
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
+		"-gfirmware=$(EXPANDER1_ROM)" --assert-level=error --ieee-asserts=disable
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
+		"-gfirmware=$(EXPANDER1_ROM)" -gbaud_rate=110 --assert-level=error --ieee-asserts=disable
+
+.PHONY: test-expander1-serial
+
 test-expander1-record: test-expander1
 	$(GHDL) -a --std=08 --workdir=out/expander1 tests/tb_expander1_record.vhd
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_record \

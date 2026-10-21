@@ -73,7 +73,7 @@ module top(
       .symbols(apl_symbols), .enabled(1'b1), .cancel(|kbd_matrix),
       .input_ready(apl_input_ready), .key_accepted(apl_key_accepted),
       .music_playback(1'b0), .auto_repeat(1'b0),
-      .busy(source_busy), .complete(source_complete), .error(source_error), .keys(source_keys)
+      .busy(source_busy), .started(), .complete(source_complete), .error(source_error), .keys(source_keys)
    );
 
    wire [15:0] pc0 /*verilator public_flat*/;
@@ -110,6 +110,8 @@ module top(
       .expander_record_enable (record_enable),
       .expander_playback_data (playback_data),
       .expander_playback_enable (playback_enable),
+      .expander_modem_rxd (1'b1),
+      .expander_modem_txd (),
       .f8_po_a_n  (po_a_n),
       .f8_po_b_n  (po_b_n),
 

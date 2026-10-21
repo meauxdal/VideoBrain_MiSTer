@@ -3,6 +3,7 @@ module tb_status_messages;
 reg clk = 0;
 always #5 clk = ~clk;
 reg reset = 1, osd = 0, vs = 0;
+reg [127:0] status = 0;
 reg started = 0, complete = 0, source_error = 0;
 reg busy = 0, tape_error = 0, rewound = 0, cart_loaded = 0;
 integer messages = 0, before_count;
@@ -11,7 +12,7 @@ emu dut ();
 
 always @(negedge clk) begin
     if (dut.info_req) begin
-        if (osd) $fatal(1, "Popup while menu open");
+        if (osd || status[22]) $fatal(1, "Popup while menu open or messages disabled");
         messages = messages + 1;
         last_info = dut.info;
     end
@@ -43,6 +44,7 @@ endtask
 initial begin
     force dut.clk_sys = clk;
     force dut.reset = reset;
+    force dut.status = status;
     force dut.OSD_STATUS = osd;
     force dut.vid_vs = vs;
     force dut.source_started = started;
@@ -89,6 +91,19 @@ initial begin
     rewound = 1; tick; rewound = 0;
     reset = 1; tick; reset = 0; osd = 0; frame;
     if (messages != before_count) $fatal(1, "Reset retained a stale popup");
+
+    rewound = 1; tick; rewound = 0;
+    status[22] = 1; tick; frame;
+    started = 0; complete = 0; source_error = 0; tape_error = 0; tick;
+    started = 1; complete = 1; source_error = 1;
+    tape_error = 1; rewound = 1; busy = 1; tick;
+    rewound = 0; repeat (65) frame;
+    busy = 0; tick;
+    if (messages != before_count || dut.pending_info != 0)
+        $fatal(1, "Disabled messages were emitted or queued");
+    status[22] = 0; frame;
+    if (messages != before_count) $fatal(1, "Enabling messages replayed an old event");
+    rewound = 1; tick; rewound = 0; expect_message(4);
     $display("Status popup and tape menu guard tests passed");
     $finish;
 end
