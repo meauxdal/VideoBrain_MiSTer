@@ -6,8 +6,10 @@ SAVE command to record. The first SAVE after mounting, rewinding, playback or
 reset replaces the recording from the beginning. Subsequent SAVE requests append,
 including the separate records in one workspace save. Mounting and playback do
 not write the image. Read-only images reject recording.
-Wait for **Tape busy** and the user LED to clear before unmounting or switching
-cores. **Tape error** reports a controller failure,
+**Tape busy** is a popup refreshed during activity; **Tape idle** reports that
+activity has ended. Notices wait until the OSD closes. Wait for the user LED to
+clear before unmounting or switching cores. Idle does not verify cartridge data.
+**Tape error** reports a controller failure,
 even if the cartridge reports TAPE OK.
 
 Issue the cartridge's LOAD or VERIFY command to replay the mounted recording.

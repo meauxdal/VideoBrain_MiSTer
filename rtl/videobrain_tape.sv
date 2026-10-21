@@ -15,6 +15,7 @@ module videobrain_tape #(
     output wire busy,
     output wire writable,
     output reg error = 0,
+    output reg rewound = 0,
     output reg [31:0] sd_lba = 0,
     output reg sd_rd = 0,
     output reg sd_wr = 0,
@@ -110,6 +111,7 @@ always @(posedge clk) begin
     record_d <= record_remote;
     playback_d <= playback_remote;
     rewind_d <= rewind;
+    rewound <= 0;
 
     if (sd_buff_wr && operation == HEADER && io_state != 0) begin
         case (sd_buff_addr[8:2])
@@ -250,6 +252,7 @@ always @(posedge clk) begin
     end
 
     if (rewind_pending && io_state == 0) begin
+        rewound <= 1;
         rewind_pending <= 0;
         transferred <= 0;
         consumed <= 0;
@@ -265,6 +268,7 @@ always @(posedge clk) begin
 
     // Finish any outstanding SD handshake after a machine reset or media change.
     if (reset || img_mounted) begin
+        rewound <= 0;
         rewind_pending <= 0;
         mode <= IDLE;
         record_session <= 0;

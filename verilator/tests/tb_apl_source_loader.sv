@@ -10,7 +10,7 @@ reg input_ready = 0, key_accepted = 0;
 reg emulate_input = 1;
 integer input_cycles = 0;
 reg music_playback = 0, auto_repeat = 0;
-wire busy, error, complete;
+wire busy, error, complete, started;
 wire [35:0] keys;
 apl_source_loader #(.LINE_FRAMES(3)) dut (.*);
 reg [7:0] packet [0:4103];
