@@ -105,13 +105,16 @@ These bounds describe digital conversion. Analog threshold detection also
 depends on sampling, gain, DC offset, noise and filtering; hysteresis can shift
 edges. They are not the original cassette interface's acceptance limits.
 
-`python -m unittest discover -s verilator/tests -p test_tape_convert.py` checks:
+`python -m unittest discover -s verilator/tests -p test_tape_convert.py` checks
+conversion bounds and synthetic PCM behavior. Reference-recording checks run
+when their input recordings are supplied. Validation results include:
 
-- Sean Riddle's local 12780 Hz, 8-bit WAV reproduces all 57983 intervals in
-  `examples/tape/moneymindersave.vbt`, excluding its added lead-in and tail.
+- Sean Riddle's 12780 Hz, 8-bit Money Minder recording reproduces all 57983
+  intervals in `examples/tape/moneymindersave.vbt`, excluding its added lead-in
+  and tail.
 - Money Minder reference round trips at 22050, 44100, 48000 and 96000 Hz retain
-  all edges within the bound and all seven decoded records and CRCs. Available
-  local APL/S SAVE fixtures receive the same checks.
+  all edges within the bound and all seven decoded records and CRCs.
+  APL/S SAVE recordings received the same checks.
 - Reference durations scaled to 90%, 95%, 105% and 110% survive conversion at
   48000 Hz and the existing timing-index-1 decoder's record/CRC checks.
   This tests the converter and that decoder, not firmware timing tolerance.

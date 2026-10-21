@@ -1,6 +1,6 @@
 # External CPU clock gate
 
-Source: `refs/seanriddle.com/videobrain.xlsx`, parts and all connections sheets.
+Source: Sean Riddle's `videobrain.xlsx`, parts and all connections sheets.
 The following are board pin connections, not a fit to measured halt costs.
 U30 is 74LS73; U31 is 74LS74. Their edge and clear polarities agree with
 [TI LS73A](https://www.ti.com/lit/ds/symlink/sn74ls73a.pdf) and
@@ -73,23 +73,16 @@ These ranges cover 128 reset offsets without DMA. The RAM/cart assertion
 still requires 7..9 half-clocks; it has not been relaxed. The missing WACK
 sample and U41 input stage are demonstrated sequencing defects, but their
 correction does not reconcile the entire sunk cost. Propagation-sensitive
-behavior described in
-`videobrain_unwrapped.txt` is also outside the ideal circuit model.
+behavior described in Kevtris's *VideoBrain Unwrapped* is also outside the
+ideal circuit model.
 
 The completed full-ROM capture reduces period RMS deviation from 20.315 to
 8.875 us and +/-60 Hz sidebands by 9.5..9.7 dB in frames 330..342.
 IRQ-to-ack maximum falls from 94.705 to 62.438 us, with delays over 40 us
-falling from 18 to 7. The audio fault remains unresolved. Capture command,
-from the root in WSL:
+falling from 18 to 7. The audio fault remains unresolved.
 
-```sh
-sh verilator/audio_cpu_gate_capture.sh
-```
-
-It preserves `out/audio_bus_timing` as the baseline and writes to
-`verilator/out/audio_cpu_gate`. It rebuilds the simulator, runs the same
-unmodified ED01 ROM and key sequence through frame 342, then compares
-frames 330..342. `comparison.txt` reports DAC periods, IRQ-to-ack min/median/
+The comparison uses the same unmodified ED01 ROM and key sequence through
+frame 342, then compares frames 330..342. It reports DAC periods, IRQ-to-ack min/median/
 p95/max and counts over 40 us, plus exact held-DAC sidebands at +/-59.94 and
 119.88 Hz in a common 0.005..0.200 s window. There is no synthetic retiming
 or filtering. The comparator's saved-capture self-check reproduces the

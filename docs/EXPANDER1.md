@@ -24,7 +24,8 @@ outputs remain released. Reset restarts both processors and retains the ROM.
 
 ## Hardware evidence
 
-`refs/VideoBrain Transfers/Set 1/Image (33).jpg` gives the host cable wiring:
+The VideoBrain Transfers board photograph (Set 1, Image 33) gives the host
+cable wiring:
 
 | VideoBrain signal | Expander board connector | 3870 pin |
 |---|---|---|
@@ -33,11 +34,11 @@ outputs remain released. Reset restarts both processors and retains the ROM.
 | External interrupt | 5 | P1.1, pin 36 |
 | Reset | 2 | Reset |
 
-`Set 1/Image (31).jpg` identifies the MK3870 and labels its crystal 3.58.
+Image 31 in the same set identifies the MK3870 and labels its crystal 3.58.
 The implementation uses the NTSC colorburst rate (3.579545 MHz) and the
 existing F8 CPU's half-cycle enables.
 
-The board connection table in `refs/seanriddle.com/vbexpander1.xlsx` shows
+Sean Riddle's board connection table in `vbexpander1.xlsx` shows
 U04.4 driving P0.2 from inverted P0.3. P0.2 also drives U04.2/12, whose
 outputs feed R13/R14, C16 and Record Data. `record_data` exposes this digital
 level before the analog network. P0.1 low enables the U07/U08 record remote;
@@ -265,13 +266,15 @@ index 00, record framing, big-endian payload length and CRC-16/CCITT (initial
 The digital image path preserves firmware record pulses and replays them at
 P0.7. It does not model the analog cassette amplifier or accept audio files.
 
-After rebuilding the headless simulator, test the actual firmware:
+After rebuilding the headless simulator, test the actual firmware. Replace
+the ROM placeholders with paths to your Information Manager cartridge and
+Expander 1 firmware images:
 
 ```sh
 cd verilator
 make headless
 ./obj_dir_headless/Vtop \
-  --cart "../software/1 Cartridges/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
-  --expander1 "../software/0 BIOS/VideoBrain Expander I (197x)(VideoBrain Computer Company)(VideoBrain)(ROM)[F3870].bin" \
+  --cart /path/to/infoman.bin \
+  --expander1 /path/to/expander1.bin \
   --frames 300 --shot-last --outdir out/expander1
 ```

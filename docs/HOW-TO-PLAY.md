@@ -331,7 +331,6 @@ use the manuals' printed numbers. The APL/S foldout uses its inside face.
 
 The source scans are the owner's manual, APL/S user's manual and foldout,
 and the individual manuals for the sixteen released cartridges. Timeshare
-uses Sean Riddle's `VB_Time_Share_Manual.pdf`; the other scans are from the
-local `videobrain-manuals` collection. Full reference collections remain
-outside the release tree. See [Sean Riddle's VideoBrain archive](https://www.seanriddle.com/vbinfo.html)
+uses Sean Riddle's `VB_Time_Share_Manual.pdf`.
+See [Sean Riddle's VideoBrain archive](https://www.seanriddle.com/vbinfo.html)
 and [Orphaned Games](https://orphanedgames.com/videobrain/) for further references.

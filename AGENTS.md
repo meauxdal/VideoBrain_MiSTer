@@ -43,5 +43,6 @@ Preserve tokens:
 - Prefer preservation of existing structure unless refactoring
 - Do not invent abstractions without concrete need
 - Keep docs minimal to mitigate maintenance scope
+- Documentation must stand alone: cite sources by name or public URL, never by private paths or ignored files; use explicit placeholders for user-supplied inputs.
 - No narrative implementation history in source
 - In general, match surrounding style unless it strongly conflicts with above (ask; don't guess)

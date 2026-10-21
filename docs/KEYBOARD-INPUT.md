@@ -55,8 +55,8 @@ NEXT unless `--hold-final` suppresses the last one. NEXT receives an additional
 | Timeshare | F5 sends Carriage Return; F4 is CONTROL. Shift is held, not toggled; Shift+H types `/`. Hold F4 + Shift and tap D for full duplex or H for half duplex/local echo. Live UART sessions are verified; automatic text-profile mode handling is not. See [Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). |
 | Other titles, including Information Manager | Physical key scripts are available. Their text/mode transitions have not been established here; do not assume the APL/S mapping. |
 
-The title rules above come from the local owner's, Financier, Money Minder and
-Wordwise manuals in `vb_large_docs/videobrain-manuals.zip`. Other title profiles
+The title rules above come from the VideoBrain owner's manual and the
+Financier, Money Minder and Wordwise manuals. Other title profiles
 remain hardware-unverified; Music Teacher results are below. The core permits
 VBK2 in any program; acceptance depends on its current screen and key handling.
 

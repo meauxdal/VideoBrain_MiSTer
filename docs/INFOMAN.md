@@ -114,26 +114,23 @@ workflow. A keyboard map should distinguish verified keys from inferred ones.
 
 ## Disassembly
 
-Local listing: `refs/infoman/infoman.lst`. Regenerate with:
+Generate an annotated listing with MAME's `unidasm` and an Information Manager
+ROM archive. Replace the input placeholders with your own paths:
 
 ```text
-python tools/disassemble_infoman.py --unidasm C:/Users/Elle/Downloads/mame0289b_x64/unidasm.exe
+python tools/disassemble_infoman.py --unidasm /path/to/unidasm --rom /path/to/infoman.zip --output infoman.lst
 ```
 
 The listing retains addresses and every ROM byte. It uses MAME's F8 syntax,
 labels branch targets, and separates identified tables from instructions.
 It is an annotated static disassembly, not assembler input or a recovered
 manual. The usage checks above cover only part of the runtime behavior.
-The listing stays under ignored `refs/`, consistent with the other local
-cartridge disassemblies.
 
 ## ROM identity
 
-The three chips in `software/3 MAME (vidbrain)/infoman.zip` are identical to
-Sean Riddle's corresponding loose dumps in `refs/seanriddle.com/`.
+The three chips in MAME's `infoman.zip` are identical to
+Sean Riddle's corresponding ROM dumps.
 The assembled cartridge contains the same bytes plus a 2 KB zero-filled gap.
-There is no second Infoman archive in that MAME directory; `complang (older).zip`
-is APL/S.
 
 | CPU addresses | MAME chip | SHA-1 |
 |---|---|---|
