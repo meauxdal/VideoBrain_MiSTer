@@ -1,7 +1,7 @@
 # Audio diagnostic
 
 Audio is accepted for release after hardware listening with the retuned filter.
-The remaining high-note grit is an open accuracy question. The supplied Happy
+The remaining high-note grit is an open accuracy question. The Happy
 Birthday capture predates that retune and has weak upper harmonics.
 Periodic timing modulation is present before
 filtering in the held-note capture; CPU/bus timing and analog response remain
@@ -13,7 +13,7 @@ source ahead of the existing audio filter. It uses no CPU, ROM, keyboard or
 interrupt timing. The computer continues running. Off selects normal audio.
 This is an isolation test, not a sound correction. Filtering rounds its output.
 
-The test tones sound steady on the user's core.
+The test tones sound steady in MiSTer listening tests.
 Low nonharmonic noise alone does not establish faithful sound.
 
 Matched Happy Birthday recordings contain the same 25 notes. On the high C5,
@@ -25,14 +25,15 @@ suggests effective time constants near 4.3 ms in the reference chain and
 11 ms in MiSTer. These are recording-chain observations, not board component
 values. Excess C5 sidebands near +/-60 Hz remain a separate timing concern.
 
-Filter audit: `refs/seanriddle.com/videobrain4.jpg` shows a resistive DAC;
-sheet 1 (`videobrain1.jpg`) shows the RF sound path: series choke, 150 pF
+Filter audit: Sean Riddle's schematic sheet 4 (`videobrain4.jpg`) shows a
+resistive DAC; sheet 1 (`videobrain1.jpg`) shows the RF sound path: series choke, 150 pF
 shunt, 0.01 uF coupling capacitor, 1 Mohm return and varactor-modulated
 LM1889 sound oscillator. The DAC ladder's schematic source resistance is
 `120k || (56k + (120k || 120k))`, about 59 kohms. The 150 pF alone therefore
 suggests a pole near 18 kHz, excluding varactor loading. These are not the
-four independent audio low-pass poles currently in the core. The workbook's
-R51 connection conflicts with this schematic; it is not used for this estimate.
+four independent audio low-pass poles currently in the core. Riddle's
+`videobrain.xlsx` R51 connection conflicts with this schematic; it is not used
+for this estimate.
 Receiver de-emphasis also matters: [TI AN-402](https://www.ti.com/lit/an/snoa678/snoa678.pdf)
 describes the US 75 us response (about 2.1 kHz). The recording path is unknown.
 
@@ -41,8 +42,8 @@ two 8.9 kHz poles add 3.01/8.02 dB loss and its four reconstruction poles add
 1.71/5.58 dB. Without compensation this accounts for most of the observed
 excess suppression. The held FIR output adds another 0.04/0.14 dB loss.
 
-`python3 verilator/tests/audio_response_audit.py` uses NumPy and FFmpeg to
-check the saved OGGs and stage responses. It writes `verilator/out/audio_response_audit/`.
+Analysis of the matched recordings and filter-stage responses used NumPy
+and FFmpeg.
 A two-pole magnitude fit to C5 gives approximately 1.50/6.89 kHz, with
 0.24 dB RMS error across odd harmonics 3..21. Independent C4/D4/E4/G4/A4
 windows give 0.14..0.28 dB RMS; F4 gives 1.41 dB. This is an effective
@@ -93,14 +94,14 @@ The output third harmonic is -15.6 dBc at 1 kHz and -23.5 dBc at 4 kHz,
 versus -9.54 dBc for an ideal square wave. The current filters therefore
 produce substantial rounding even when timing is regular.
 
-The saved post-fix held-note trace in `out/music_audio_b5/events.csv` has
-DAC full periods of 932.241..1106.216 us, around a 1019.264 us median.
+The post-fix held-note trace has DAC full periods of 932.241..1106.216 us,
+around a 1019.264 us median.
 Corresponding IRQ full periods span 1017.448..1020.800 us. IRQ-to-ack delay
 spans 5.029..93.867 us; ack-to-DAC spans 86.813..89.327 us. This localizes
 most reproduced timing variation before acknowledgement, ahead of filtering.
 It does not establish which implementation behavior differs from hardware.
 
-The unmodified ED01 cartridge capture in `out/audio_timing_audit` reproduces
+The unmodified ED01 cartridge capture reproduces
 the variation. All 39 DAC updates covered by its detailed CPU trace match
 the physical clock edge and data; none is missing. A 90.165 us request-to-ack
 delay spans actual interrupt masking and privileged call/return instructions.
@@ -115,7 +116,7 @@ This test uses RES1 without interrupts or buffered-bus waits. It validates
 that path in simulation, not normal ROM interrupt timing or FPGA behavior.
 
 UV202 corrections under evaluation, following the explicit bus-body and setup
-rules in `refs/kevtris/videobrain_unwrapped.txt`:
+rules in Kevtris's *VideoBrain Unwrapped*:
 
 - UV201 register bodies take 4..7 BRCLKs by phase, plus one setup BRCLK.
   The old body was fixed at five. Bus phase is three at HBLANK rising.
@@ -137,10 +138,8 @@ Brief gameplay showed no observed graphics discrepancies.
 The remaining sound is described as pitch-related beating or nonharmonic
 ringing; the fundamental fault remains unfixed.
 
-Run `sh verilator/audio_bus_timing_capture.sh` from the repository root in WSL.
-This longer run rebuilds the simulator, repeats the original ED01 capture,
-preserves `out/audio_timing_audit` and compares frames 330..342. Results go to
-`verilator/out/audio_bus_timing/comparison.txt`.
+The bus-timing comparison repeats the unmodified ED01 capture and compares
+frames 330..342 against the earlier capture.
 
 Measured on 2026-10-19: DAC period spread increased from 171.460 to 174.254 us,
 RMS deviation from 18.985 to 20.315 us and p95 deviation from 60.769 to
@@ -159,14 +158,12 @@ IRQ-to-ack latency with a constant reduces the +/-60 Hz sidebands to roughly
 to acknowledgement latency; it is not a hardware correction or proof that
 the CPU's interrupt acceptance rules are wrong. Pitch dependence is unmeasured.
 
-Run `sh verilator/audio_irq_diagnostic.sh` in WSL for the short follow-up.
-It reuses the saved capture and writes `verilator/out/audio_irq_diagnostic/`:
+Follow-up analysis checks ROM instruction-chain timing and interrupt acceptance
+at 320 request phases, then compares three versions of the captured DAC audio:
 
-- `cpu.txt`: ROM instruction-chain timing and acceptance at 320 request phases.
-- `comparison.txt`: pre-filter sideband levels and listening instructions.
-- `a_recorded.wav`: recorded DAC timing.
-- `b_fixed_ack.wav`: constant IRQ-to-ack latency, recorded ack-to-DAC latency.
-- `c_fixed_irq_to_dac.wav`: constant IRQ-to-DAC latency, recorded IRQ timing.
+- A: recorded DAC timing.
+- B: constant IRQ-to-ack latency, recorded ack-to-DAC latency.
+- C: constant IRQ-to-DAC latency, recorded IRQ timing.
 
 All WAVs use the same reconstruction and gain, excluding core/MiSTer/analog
 filters. Each repeats the short captured burst with silence between repeats.
@@ -175,18 +172,13 @@ variation is sufficient to remove the reported ringing in this capture.
 This identifies a sufficient timing intervention, not an accuracy correction.
 
 The isolated ROM chain passes the Fairchild F3850 Table 3 instruction timings
-and interrupt exclusions (printed pp. 3-22..3-24 in
-`refs/orphanedgames.com/fairchild-3850.pdf`). A request at LM entry takes
-85.25 us to acknowledge at 2 MHz, without bus waits. This checks a controlled
-ROM slice, not full-machine execution or the original hardware's audio.
+and interrupt exclusions (printed pp. 3-22..3-24, `fairchild-3850.pdf`).
+A request at LM entry takes 85.25 us to acknowledge at 2 MHz, without bus waits.
+This checks a controlled ROM slice, not full-machine execution or the original
+hardware's audio.
 
-Full-ROM follow-up on 2026-10-19:
-
-```sh
-cd verilator
-PYTHONDONTWRITEBYTECODE=1 python3 tests/audit_audio_irq.py
-make test-cpu-bus-wait
-```
+Full-ROM follow-up on 2026-10-19 used the offline IRQ audit and
+`make test-cpu-bus-wait`.
 
 The offline audit verifies 4175 opcode fetches against the unmodified RES1
 and ED01 images. The detailed trace covers MCLK 81163982..81450016: 39
@@ -228,7 +220,7 @@ zero lost half clocks. RAM/cart/RES2 reads add 4..5 half clocks (1..1.25 us);
 RAM writes add 5 (1.25 us). UV201 reads add 5..10 and writes 6..10.
 These CPU halt costs are distinct from the arbiter's BRCLK service lengths.
 
-`refs/kevtris/videobrain_unwrapped.txt`, Wait States, lines 739..778, reports
+The "Wait States" section of Kevtris's *VideoBrain Unwrapped* reports
 RAM/cart sunk cost of 4 CPU clocks (about 2 us), with approximately half-clock
 variation, and UV201 costs of 4.5..7 CPU clocks. The test's default assertions
 allow half a clock of tolerance and currently fail the RAM/cart lower bound.
@@ -273,21 +265,14 @@ follow different held idle DAC levels; they do not establish a latch fault.
 Same-pitch notes with the same onset polarity still have different sideband
 strengths. Sustained IRQ/DAC timing remains the investigation target.
 
-Run the repeated-note phase capture from the root in WSL:
-
-```sh
-sh verilator/audio_note_phase_capture.sh
-```
-
-This long run uses unmodified ED01, four K presses with different sub-frame
-key-down delays, and writes `verilator/out/audio_note_phase/`. It preserves
-existing captures. `trace.csv` independently records key changes, physical
+The repeated-note phase capture uses unmodified ED01 and four K presses with
+different sub-frame key-down delays. Its trace independently records key changes, physical
 sound-clock/data checks, IRQ/ack edges and actual onset video phase;
-`events.csv` retains the existing detailed latency fields. Pin inputs are
+the event log retains detailed latency fields. Pin inputs are
 sampled before MCLK rising, latch/IRQ outputs after it. The checker verifies
 physical rising clock edges, including any without a port-write strobe.
 
-`comparison.txt` reports idle/first/final codes, pulse widths, duty cycle,
+The comparison reports idle/first/final codes, pulse widths, duty cycle,
 period variation, IRQ latency and +/-60/120 Hz sidebands. All spectra use
 0.100..0.300 s after each note's first DAC write. The synthetic fixed-ack
 comparison changes IRQ-to-ack latency only; it is not a proposed correction.

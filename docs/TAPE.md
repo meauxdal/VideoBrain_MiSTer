@@ -1,10 +1,10 @@
 # Tape images
 
 Load Expander 1 firmware. Copy `examples/tape/blank.vbt` to the SD card with a
-new name, then choose **Mount Tape** on the main menu. Issue the cartridge's
-SAVE command to record. The first SAVE after mounting, rewinding, playback or
-reset replaces the recording from the beginning. Subsequent SAVE requests append,
-including the separate records in one workspace save. Mounting and playback do
+new name, then choose **Mount Record Tape** on the main menu. Issue the cartridge's
+SAVE command to record. The first SAVE after mounting, rewinding the record tape
+or resetting replaces the recording from the beginning. Subsequent SAVE requests
+append, including the separate records in one workspace save. Mounting and playback do
 not write the image. Read-only images reject recording.
 **Tape busy** is a popup refreshed during activity; **Tape idle** reports that
 activity has ended. Notices wait until the OSD closes. Wait for the user LED to
@@ -12,11 +12,24 @@ clear before unmounting or switching cores. Idle does not verify cartridge data.
 **Tape error** reports a controller failure,
 even if the cartridge reports TAPE OK.
 
-Issue the cartridge's LOAD or VERIFY command to replay the mounted recording.
+Choose **Mount Playback Tape** for LOAD or VERIFY. To load a core recording,
+wait for Tape idle, then mount that saved file in the playback slot.
 Playback resumes from its current position across remote stops. Use
-**Tape > Rewind Tape** before repeating LOAD or VERIFY. Both remotes enabled
-is a setup state and does not start a transfer. Reset rewinds and cancels tape
+**Rewind Playback Tape** before repeating LOAD or VERIFY. **Rewind Record Tape**
+starts the next SAVE from the beginning of its image. Playback does not reset
+the record deck's append position. Use different files in the two slots,
+especially for EDIT, which reads the source while writing a new database.
+Both remotes enabled is a setup state and does not start a transfer.
+Reset rewinds and cancels tape
 activity. An interrupted recording is invalid; a new SAVE can replace it.
+If the record remote switches to playback without a signal transition, the
+image and playback position are preserved. Actual recordings retain the initial
+constant signal interval before the first transition.
+
+The playback slot issues no SD writes. Each deck has its own 4 KiB buffer and
+SD handshake; the shared HPS buffer is gated by the acknowledged slot. Both
+mount entries are disabled while either deck is busy. Notifications combine
+the two decks; wait for both to finish before switching cores.
 
 `python tools/new_tape.py [path.vbt]` creates an 8 MiB blank. Omitting the path
 uses a timestamped name. Existing files are never replaced. Creating and mounting
@@ -92,13 +105,16 @@ These bounds describe digital conversion. Analog threshold detection also
 depends on sampling, gain, DC offset, noise and filtering; hysteresis can shift
 edges. They are not the original cassette interface's acceptance limits.
 
-`python -m unittest discover -s verilator/tests -p test_tape_convert.py` checks:
+`python -m unittest discover -s verilator/tests -p test_tape_convert.py` checks
+conversion bounds and synthetic PCM behavior. Reference-recording checks run
+when their input recordings are supplied. Validation results include:
 
-- Sean Riddle's local 12780 Hz, 8-bit WAV reproduces all 57983 intervals in
-  `examples/tape/moneymindersave.vbt`, excluding its added lead-in and tail.
+- Sean Riddle's 12780 Hz, 8-bit Money Minder recording reproduces all 57983
+  intervals in `examples/tape/moneymindersave.vbt`, excluding its added lead-in
+  and tail.
 - Money Minder reference round trips at 22050, 44100, 48000 and 96000 Hz retain
-  all edges within the bound and all seven decoded records and CRCs. Available
-  local APL/S SAVE fixtures receive the same checks.
+  all edges within the bound and all seven decoded records and CRCs.
+  APL/S SAVE recordings received the same checks.
 - Reference durations scaled to 90%, 95%, 105% and 110% survive conversion at
   48000 Hz and the existing timing-index-1 decoder's record/CRC checks.
   This tests the converter and that decoder, not firmware timing tolerance.

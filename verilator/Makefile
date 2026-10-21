@@ -214,6 +214,25 @@ test-tape:
 		tests/tape_sd_model.sv tests/tb_tape.sv
 	./out/expander1/obj_tape/Vtb_tape
 
+test-dual-tape:
+	@mkdir -p out/expander1
+	$(V) --binary --timing -Wno-fatal --top-module tb_dual_tape \
+		--Mdir out/expander1/obj_dual_tape $(RTL)/videobrain_tape.sv \
+		$(RTL)/videobrain_tapes.sv tests/tape_dual_sd_model.sv tests/tb_dual_tape.sv
+	./out/expander1/obj_dual_tape/Vtb_dual_tape
+
+.PHONY: test-dual-tape
+
+test-expander1-edit: test-expander1 test-dual-tape
+	$(GHDL) synth --std=08 --workdir=out/expander1 --out=verilog expander1 > out/expander1/expander1.v
+	$(V) --binary --timing -Wno-fatal --top-module tb_expander1_edit \
+		--Mdir out/expander1/obj_edit out/expander1/expander1.v \
+		$(RTL)/videobrain_tape.sv $(RTL)/videobrain_tapes.sv \
+		tests/tape_dual_sd_model.sv tests/tb_expander1_edit.sv
+	./out/expander1/obj_edit/Vtb_expander1_edit "+firmware=$(EXPANDER1_ROM)"
+
+.PHONY: test-expander1-edit
+
 test-expander1-playback: test-expander1 test-tape
 	$(GHDL) synth --std=08 --workdir=out/expander1 --out=verilog expander1 > out/expander1/expander1.v
 	$(V) --binary --timing -Wno-fatal --top-module tb_expander1_playback \

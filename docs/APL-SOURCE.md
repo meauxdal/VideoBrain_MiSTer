@@ -21,7 +21,10 @@ alone do not establish coverage.
 
 ## Starting the Price games
 
-Boot APL/S fresh, load a definition from `software/APL_S/price`, and wait for
+The files below were prepared from James Price's *21 APL/S Games and One-Liners
+for Your Umtech VideoBrain* and are not included in this repository.
+
+Boot APL/S fresh, load a definition from the table below, and wait for
 entry to finish. Type its launch name in letter mode, then press NEXT (PC F3).
 The name calls the stored program; no RUN command is needed. SHIFT toggles
 letter/symbol mode. Use symbol mode for numbers and NEXT after each answer.
@@ -117,11 +120,13 @@ Bit 7 marks mode-independent SPACE (93 hex) or NEXT (9B hex).
 The loader stages and validates the complete file before typing. SHIFT is
 generated from the observed interpreter mode; raw SHIFT tokens are rejected.
 
+Replace the cartridge placeholder with the path to your APL/S ROM image:
+
 ```sh
 cd verilator
 make test-apl-source
 make headless
-./obj_dir_headless/Vtop --cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" --source ../examples/apl/arithmetic.vbk@210 --frames 700 --shot-last --outdir out/apl/source
+./obj_dir_headless/Vtop --cart /path/to/apl-s.bin --source ../examples/apl/arithmetic.vbk@210 --frames 700 --shot-last --outdir out/apl/source
 ```
 
 The headless run checks completion, not the displayed arithmetic result.

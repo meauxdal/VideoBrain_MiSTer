@@ -33,18 +33,25 @@ task transfer(input [7:0] value, output [7:0] result);
     $display("Host %x reply %x",value,result);
 endtask
 reg [7:0] reply;
-task initialize_remotes;
+task initialize_remotes(input [7:0] remotes);
+    integer writes_before;
+    reg [31:0] length_before;
+    writes_before = card.writes;
+    length_before = card.word_at(8);
     host_data_n = 1;
     host_clock_n = 0;
     transfer(5,reply);
     transfer(0,reply);
-    transfer(3,reply);
+    transfer(remotes,reply);
     @(negedge interrupt_n);
     #1;
     if (data_n || !clock_n) $fatal(1,"Remote initialization status");
     @(posedge interrupt_n);
-    if (!record_enable || !playback_enable || busy || error)
-        $fatal(1,"Remote initialization started a tape transfer");
+    if (record_enable != remotes[1] || playback_enable != remotes[0] || error)
+        $fatal(1,"Remote initialization failed");
+    if (remotes == 3 && busy) $fatal(1,"Both remotes started a transfer");
+    if (card.writes != writes_before || card.word_at(8) != length_before)
+        $fatal(1,"Remote initialization changed image");
     host_data_n = 1;
 endtask
 string path;
@@ -72,7 +79,7 @@ initial begin
     reset_na = 1;
     #100000;
     wait(writable);
-    initialize_remotes();
+    initialize_remotes(3);
     if (card.writes != 0) $fatal(1,"Remote initialization changed image");
     for (integer record = 0; record < 2; record = record + 1) begin
         host_data_n = 1;
@@ -119,7 +126,7 @@ initial begin
     #100000;
     for (integer record = 0; record < 2; record = record + 1) begin
         wait(!busy);
-        initialize_remotes();
+        initialize_remotes(record == 0 ? 3 : 2);
         host_clock_n = 0;
         transfer(1,reply);
         transfer(1,reply);

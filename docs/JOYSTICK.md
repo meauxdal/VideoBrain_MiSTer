@@ -45,8 +45,8 @@ There is no automatic game-specific routing.
 
 ## Per-game adjustment
 
-[VideoBrain Transfers, Set 1, Image (33)](../refs/VideoBrain%20Transfers/Set%201/Image%20%2833%29.jpg)
-labels added X/Y trim pots for preventing motion with centered sticks. Its
+The VideoBrain Transfers board photograph (Set 1, Image 33) labels added
+X/Y trim pots for preventing motion with centered sticks. Its
 note says each game requires trim readjustment for correct centering, so the
 pots must remain accessible. This documents a hardware adjustment practice;
 it does not establish factory-installed trims or their resistance settings.

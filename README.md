@@ -38,7 +38,8 @@ The OSD provides these file actions:
 | --- | --- |
 | Load Cartridge | Load a `.bin` cartridge from the main menu and restart the machine. |
 | Input > Load Keyboard File | Type a `.vbk` file into the running program. |
-| Mount Tape | Mount a `.vbt` image from the main menu for the program's LOAD, VERIFY or SAVE commands. |
+| Mount Playback Tape | Mount a `.vbt` source for LOAD, VERIFY or database input. |
+| Mount Record Tape | Mount a separate writable `.vbt` for SAVE or database output. |
 
 **Unload Cartridge** returns to the built-in BIOS. **Reset** restarts the machine with its cartridge retained. **System > Master Control (Soft Reset)** and Esc provide the machine's Master Control button.
 
@@ -48,7 +49,7 @@ remains available when Esc is disabled.
 
 For APL/S, wait for its input prompt before loading a keyboard file. Entry starts when the OSD closes. Ready-to-load examples are in `examples/apl`. See [APL/S entry](docs/APL-SOURCE.md) and [other programs and music](docs/KEYBOARD-INPUT.md). **Input** holds **Music Mode** and **Music Repeat** settings.
 
-Tape recording starts when the program issues SAVE; mounting alone does not change the image. **Rewind Tape** is on the main menu. **System > Info Messages** controls keyboard-entry and tape notifications. See [tape setup and recording behavior](docs/TAPE.md).
+Tape recording starts when the program issues SAVE; mounting alone does not change the image. Each tape has its own rewind entry on the main menu. Use different source and output files. **System > Info Messages** controls keyboard-entry and tape notifications. See [tape setup and recording behavior](docs/TAPE.md).
 
 ## Timeshare over UART
 

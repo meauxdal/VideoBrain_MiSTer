@@ -1,11 +1,10 @@
 # APL/S dump audit
 
 Authority: James Price, *21 APL/S Games and One-Liners for Your Umtech
-VideoBrain*, first edition, December 19, 2025. Local copy:
-`tmp/pdfs/21-apls-games.pdf`. Page references below are PDF pages, counting
-the cover as page 1.
+VideoBrain*, first edition, December 19, 2025. Page references below are PDF
+pages, counting the cover as page 1.
 
-Scope: all 26 files in `software/3 MAME (vidbrain)/21 games for apl_s`.
+Scope: all 26 dumps in the *21 games for APL/S* collection for MAME.
 Stored PROGs were decoded from the dumps and compared with the printed listing
 images, not with our VBKs or the collection's separate text listings.
 Whitespace, indentation, four-character keyword/name truncation, compiled
@@ -69,6 +68,3 @@ separately identified named program wrappers for tape versions.
 | --- | --- | --- |
 | `sinebarchart1liner.bin` | PDF 61 | No stored PROG; retained input is the sine bar-height expression. |
 | `pyramid.bin` | PDF 175 | No stored PROG; retained input uses scale 16, matching the printed expression. |
-
-Exact input hashes and decoded PROG listings are in `tmp/apl-audit/` for review.
-No tapes, dumps, VBKs, or core files were changed by this audit.
