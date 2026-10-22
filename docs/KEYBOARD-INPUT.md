@@ -27,7 +27,7 @@ Other profiles produce VBK2 and require the updated core.
 python3 verilator/keyboard_input.py input.txt --profile keyboard --start-mode letters
 python3 verilator/keyboard_input.py message.txt --profile text --start-mode letters --hold-final
 python3 verilator/keyboard_input.py input.keys --profile keys
-python3 verilator/keyboard_input.py song.mml --profile music --start-mode letters --replay
+python3 verilator/keyboard_input.py song.mml --profile music --start-mode letters --timing score
 ```
 
 `--profile apl` is the default and matches `apl_source.py`. Text profiles require
@@ -76,7 +76,8 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 ## Music Teacher 1
 
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
-then load an example from `examples/music`. Each generated song erases the
+then load an example from `examples/music/timing/score-timing` or
+`examples/music/timing/note-timing`. Each generated song erases the
 previous recording, selects Middle, enters the notes, and ends with No-Record.
 **Keyboard > Music Mode** selects **Playback** (default) or **Record**.
 Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
@@ -114,32 +115,31 @@ and High C4..B5. `scale.vbk` enters all 48 chromatic pitches C2..B5 and replays;
 `octaves.vbk` probes C2, C3, C4, C5, B5, then returns to C2 and replays.
 
 The converter keeps the current octave bank while it contains the next pitch.
-Bank changes add control-key time; they can appear as extra rests in recording.
-For experimental live playback, add `--bank-fields 2` when converting MML.
-This uses two held and two released fields per bank control, taking that time
-from preceding rests or release gaps, then shortening the preceding held note
-if needed. It retains at least `--min-hold` held fields and the smaller of
-`--gap` and `--bank-fields` released fields before the control. If insufficient
-time remains, the converter warns and adds only the uncompensated fields.
-A bank change before the first note may still add startup time. Hardware testing
-confirmed successful live playback at 2/2 with the static-staff ROM and Playback
-mode on 2026-10-18. Smooth files are in `examples/music/smooth`, generated with `--min-hold 2 --gap 2
---bank-fields 2`; their MML sources remain in `examples/music`.
-Without this option, bank controls retain their 8/8 timing.
+Choose one of two music timing styles. Both default to `--min-hold 2 --gap 2`:
 
-Experimental `--bank-ready` replaces bank changes with ROM-acknowledged
-controls. Use it instead of `--bank-fields`, with `--min-hold 2 --gap 2`.
-The loader observes idle input and live note polling, holds the octave key
-until the ROM applies the bank, then waits for confirmed release before
-continuing. Note/rest durations are
-unchanged; no fixed bank time is subtracted. Each handshake stage times out
-after 255 fields and stops entry on failure. This requires an updated core
-and either original ED01 (CRC32 C8FEE8CD) or the current static-staff patch
-(CRC32 F4390144). Static-staff simulation completed Low, High and Middle
-changes with DAC transitions for all four test notes. Each bank key to next
-note key took two fields (about 33 ms). Hardware playback remains unverified.
-Trial files are `examples/music-tests/octaves-ready.vbk` and
-`examples/music/ready/bach-cello-suite-1-prelude-full.vbk`.
+- **Score timing** (`--timing score`, default) preserves tempo by fitting each
+  octave switch into preceding rests or release gaps, then shortening the
+  preceding held note if needed. Switches use two held and two released fields.
+  At least two held and two released note fields remain with the defaults.
+  If insufficient time remains, the converter warns and adds the excess delay.
+  A switch before the first note adds startup time.
+- **Note timing** (`--timing note`) preserves note/rest durations and adds the
+  minimum ROM-acknowledged octave-switch time. The loader presses the bank key
+  when the ROM is ready, releases it when accepted, then waits for confirmed
+  readiness before continuing. Each stage times out after 255 fields.
+
+Both styles have passed hardware playback testing. Note timing requires an
+updated core and either original ED01 (CRC32 C8FEE8CD) or the current
+static-staff patch (CRC32 F4390144). Score timing at 2/2 was tested with the
+static-staff ROM in Playback mode. Timing is rounded to video fields; the
+key-off gap is included in each note's duration.
+
+New paired conversions and commands are in
+[music timing examples](../examples/music/timing/README.md). MML sources remain
+in `examples/music`. Files without octave changes are identical in both styles.
+The older `smooth` and `ready` directories correspond to Score and Note timing.
+`--bank-fields` and `--bank-ready` remain accepted for existing scripts, but
+cannot be combined with `--timing`; their original defaults are retained.
 
 The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
@@ -169,6 +169,8 @@ restoring or replacing visual feedback.
 
 ## Music hardware results
 
+Hardware testing reported on 2026-10-21 confirmed Note timing playback passes.
+
 Hardware testing reported on 2026-10-18:
 
 - The static-staff ROM with the smooth VBK files was reported a total success
@@ -193,9 +195,10 @@ Hardware testing reported on 2026-10-15:
 - O5 reportedly failed on hardware; the confirmed pitch range does not explain
   that result. Upper-range hardware testing remains open.
 
-The default minimum hold and gap remain 8 fields each (about 134 ms).
-`--min-hold 2 --gap 2` permits the tested shorter pair. A quarter note at T120
-is 30 fields: 22 held and 8 released at the defaults. Notes too
+Score and Note timing default to two fields each for minimum hold and gap
+(about 33 ms). A quarter note at T120 is 30 fields: 28 held and 2 released
+before any Score timing compensation. Legacy bank options retain eight-field
+defaults unless overridden. Notes too
 short for `--min-hold` plus `--gap` are rejected instead of silently slowed.
 Held notes longer than 255 fields are rejected; long rests are supported.
 

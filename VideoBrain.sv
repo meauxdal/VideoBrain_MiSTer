@@ -70,7 +70,7 @@ localparam CONF_STR = {
 	"h5D5P4O[18],Music Mode,Playback;",
 	"P4O[19],Music Repeat,Off,On;",
 	"P4-;",
-	"P4O[29],Esc Reset,On,Off;",
+	"P4O[29],Esc Soft Reset,On,Off;",
 	"P1,Video;",
 	"P1-;",
 	"P1O[21],240p,Off,On;",

@@ -49,6 +49,8 @@ remains available when Esc is disabled.
 
 For APL/S, wait for its input prompt before loading a keyboard file. Entry starts when the OSD closes. Ready-to-load examples are in `examples/apl`. See [APL/S entry](docs/APL-SOURCE.md) and [other programs and music](docs/KEYBOARD-INPUT.md). **Input** holds **Music Mode** and **Music Repeat** settings.
 
+[Music examples](examples/music/timing/README.md) provide Score timing and Note timing versions for Playback.
+
 Tape recording starts when the program issues SAVE; mounting alone does not change the image. Each tape has its own rewind entry on the main menu. Use different source and output files. **System > Info Messages** controls keyboard-entry and tape notifications. See [tape setup and recording behavior](docs/TAPE.md).
 
 ## Timeshare over UART
