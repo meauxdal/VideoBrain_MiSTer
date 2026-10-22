@@ -1,8 +1,9 @@
 # Keyboard input files
 
-Choose **Load Keyboard File** on the main menu and select a `.vbk`. Entry starts
-when the OSD closes and uses the actual keyboard matrix. Typing, opening the
-OSD, or resetting cancels it.
+Choose **Keyboard > Load Keyboard File** and select a `.vbk`. Entry starts
+when the OSD closes and uses the actual keyboard matrix. Typing or resetting
+cancels it. **VBK in OSD** defaults to **Abort**; **Keep Running** lets active
+entry continue while mounting tapes or changing OSD settings.
 Loading a keyboard file does not reset the machine; confirmed on APL/S in RC7.
 The loader checks the complete file before pressing any key. Start at the
 intended input screen; files do not interpret prompt contents.
@@ -12,8 +13,8 @@ Hardware checks reported on 2026-10-19 found no restarts across four fresh-boot
 CHANGE loads and one CLOCK load. The cause remains unconfirmed; treat this as
 an unresolved issue that may recur, rather than a verified fix.
 
-The Input submenu contains file loading, Music Mode and Music Repeat.
-Keyboard entry start, finish and invalid-file notices appear as popups after
+The Keyboard submenu contains file loading, Music Mode and Music Repeat.
+Keyboard entry start, finish, abort and invalid-file notices appear as popups after
 the OSD closes.
 
 APL/S VBK1 files retain their format and live SHIFT handling. Entry waits for
@@ -26,7 +27,7 @@ Other profiles produce VBK2 and require the updated core.
 python3 verilator/keyboard_input.py input.txt --profile keyboard --start-mode letters
 python3 verilator/keyboard_input.py message.txt --profile text --start-mode letters --hold-final
 python3 verilator/keyboard_input.py input.keys --profile keys
-python3 verilator/keyboard_input.py song.mml --profile music --start-mode letters --replay
+python3 verilator/keyboard_input.py song.mml --profile music --start-mode letters --timing score
 ```
 
 `--profile apl` is the default and matches `apl_source.py`. Text profiles require
@@ -75,16 +76,18 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 ## Music Teacher 1
 
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
-then load an example from `examples/music`. Each generated song erases the
+then load an example from `examples/music/timing/score-timing` or
+`examples/music/timing/note-timing`. Each generated song erases the
 previous recording, selects Middle, enters the notes, and ends with No-Record.
-**Keyboard Entry > Music Mode** selects **Playback** (default) or **Record**.
+**Keyboard > Music Mode** selects **Playback** (default) or **Record**.
 Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
 Playback keeps Record off and ignores that replay request, playing the file live.
 Regenerate older music files to use this setting; their physical Record/Replay
 keys retain their original behavior.
 After recording, press physical T to replay the stored song again.
-**Keyboard Entry > Auto-Repeat** restarts the file from the top until a keyboard key or
-opening the OSD cancels entry. Use Playback for continuous music; the loader
+**Keyboard > Music Repeat** restarts the file from the top until entry is
+canceled. Repeat forces Playback and grays out Music Mode, preserving the
+selected mode for when Repeat is turned off. The loader
 does not wait for the cartridge's Replay routine. Use lower SHIFT and files
 generated with `--start-mode letters` so each music pass starts in the same mode.
 This uses the cartridge's own recorder and
@@ -112,18 +115,32 @@ and High C4..B5. `scale.vbk` enters all 48 chromatic pitches C2..B5 and replays;
 `octaves.vbk` probes C2, C3, C4, C5, B5, then returns to C2 and replays.
 
 The converter keeps the current octave bank while it contains the next pitch.
-Bank changes add control-key time; they can appear as extra rests in recording.
-For experimental live playback, add `--bank-fields 2` when converting MML.
-This uses two held and two released fields per bank control, taking that time
-from preceding rests or release gaps, then shortening the preceding held note
-if needed. It retains at least `--min-hold` held fields and the smaller of
-`--gap` and `--bank-fields` released fields before the control. If insufficient
-time remains, the converter warns and adds only the uncompensated fields.
-A bank change before the first note may still add startup time. Hardware testing
-confirmed successful live playback at 2/2 with the static-staff ROM and Playback
-mode on 2026-10-18. Smooth files are in `examples/music/smooth`, generated with `--min-hold 2 --gap 2
---bank-fields 2`; their MML sources remain in `examples/music`.
-Without this option, bank controls retain their 8/8 timing.
+Choose one of two music timing styles. Both default to `--min-hold 2 --gap 2`:
+
+- **Score timing** (`--timing score`, default) preserves tempo by fitting each
+  octave switch into preceding rests or release gaps, then shortening the
+  preceding held note if needed. Switches use two held and two released fields.
+  At least two held and two released note fields remain with the defaults.
+  If insufficient time remains, the converter warns and adds the excess delay.
+  A switch before the first note adds startup time.
+- **Note timing** (`--timing note`) preserves note/rest durations and adds the
+  minimum ROM-acknowledged octave-switch time. The loader presses the bank key
+  when the ROM is ready, releases it when accepted, then waits for confirmed
+  readiness before continuing. Each stage times out after 255 fields.
+
+Both styles have passed hardware playback testing. Note timing requires an
+updated core and either original ED01 (CRC32 C8FEE8CD) or the current
+static-staff patch (CRC32 F4390144). Score timing at 2/2 was tested with the
+static-staff ROM in Playback mode. Timing is rounded to video fields; the
+key-off gap is included in each note's duration.
+
+New paired conversions and commands are in
+[music timing examples](../examples/music/timing/README.md). MML sources remain
+in `examples/music`. Files without octave changes are identical in both styles.
+The older `smooth` and `ready` directories correspond to Score and Note timing.
+`--bank-fields` and `--bank-ready` remain accepted for existing scripts, but
+cannot be combined with `--timing`; their original defaults are retained.
+
 The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
 Key-off gaps may also consume entries. The loader enters at most 79 note keys in
@@ -145,12 +162,14 @@ setup, recording, and sound routines. Program 2's visual teaching is affected.
 Live playback improvement is hardware-confirmed; recording behavior remains
 unverified.
 
-TODO: Explore further ROM changes to eliminate remaining octave-switch delays.
+TODO: Measure acknowledged octave-switch timing on hardware.
 Improve the mostly static display: accumulated note overdraw produces glitched
 "8b" markers as every possible note pixel fills in. Preserve sound timing when
 restoring or replacing visual feedback.
 
 ## Music hardware results
+
+Hardware testing reported on 2026-10-21 confirmed Note timing playback passes.
 
 Hardware testing reported on 2026-10-18:
 
@@ -176,9 +195,10 @@ Hardware testing reported on 2026-10-15:
 - O5 reportedly failed on hardware; the confirmed pitch range does not explain
   that result. Upper-range hardware testing remains open.
 
-The default minimum hold and gap remain 8 fields each (about 134 ms).
-`--min-hold 2 --gap 2` permits the tested shorter pair. A quarter note at T120
-is 30 fields: 22 held and 8 released at the defaults. Notes too
+Score and Note timing default to two fields each for minimum hold and gap
+(about 33 ms). A quarter note at T120 is 30 fields: 28 held and 2 released
+before any Score timing compensation. Legacy bank options retain eight-field
+defaults unless overridden. Notes too
 short for `--min-hold` plus `--gap` are rejected instead of silently slowed.
 Held notes longer than 255 fields are rejected; long rests are supported.
 
@@ -203,7 +223,11 @@ VBK2 also accepts FE for the music Record/No-Record selector (inside shifted
 mode), and FD for Replay (inside lower mode). The menu setting is latched at
 download: Record maps FE to Z and FD to T; Playback maps FE to COMMA and FD
 to a silent wait with the encoded duration. Older cores reject these events.
+FA/FB/FC select Low/Middle/High with ROM acknowledgment. Their hold/gap bytes
+are placeholders (the converter emits 1/0); handshake state determines timing.
+These controls require lower SHIFT, as do physical octave keys.
 Auto-Repeat applies to both VBK1 and VBK2 and can be disabled during entry.
 
 `make test-apl-source` runs both converters' tests and the loader RTL tests.
+`make test-music-input` checks the ED01 and static-staff readiness hooks.
 Full simulator captures and Quartus builds are separate checks.

@@ -15,6 +15,7 @@ wire [3:0] fire;
 wire [13:0] timer_base;
 wire [6:0] timer_step;
 wire timer_auto;
+wire calibrating;
 int partners[1:2][0:3] = '{'{1, 0, 3, 2}, '{2, 3, 0, 1}};
 
 videobrain_joystick dut (.*);
@@ -144,14 +145,14 @@ initial begin
 		tick();
 		for (int phase = 1; phase <= 5; phase++) begin
 			for (int f = 0; f < 30; f++) begin
-				assert (pots == calibration_position(phase) && fire == 4'hf)
+				assert (calibrating && pots == calibration_position(phase) && fire == 4'hf)
 					else $fatal(1, "Calibration mode %0d phase %0d frame %0d", mode, phase, f);
 				tick();
 				assert (pots == calibration_position(phase)) else $fatal(1, "Hold between frames");
 				frame();
 			end
 		end
-		assert (pots == {8{8'h90}}) else $fatal(1, "Live axes restored");
+		assert (!calibrating && pots == {8{8'h90}}) else $fatal(1, "Live axes restored");
 		frame();
 		assert (pots == {8{8'h90}}) else $fatal(1, "Held trigger must not repeat");
 		calibrate = 0;
@@ -171,7 +172,7 @@ initial begin
 	assert (pots == calibration_position(2)) else $fatal(1, "Restart advances");
 	reset = 1;
 	tick();
-	assert (pots == {8{8'h90}}) else $fatal(1, "Reset cancels calibration");
+	assert (!calibrating && pots == {8{8'h90}}) else $fatal(1, "Reset cancels calibration");
 	reset = 0;
 	tick();
 	assert (pots == {8{8'h90}}) else $fatal(1, "Reset with held trigger");
@@ -181,7 +182,7 @@ initial begin
 	tick();
 	enabled = 0;
 	tick();
-	assert (pots == {8{8'h80}} && fire == 0) else $fatal(1, "Disconnect cancels calibration");
+	assert (!calibrating && pots == {8{8'h80}} && fire == 0) else $fatal(1, "Disconnect cancels calibration");
 	enabled = 1;
 	tick();
 	assert (pots == {8{8'h90}}) else $fatal(1, "Reconnect leaves calibration idle");

@@ -5,6 +5,7 @@ always #5 clk = ~clk;
 reg reset = 1, osd = 0, vs = 0;
 reg [127:0] status = 0;
 reg started = 0, complete = 0, source_error = 0;
+reg aborted = 0, calibrating = 0;
 reg busy = 0, tape_error = 0, rewound = 0, cart_loaded = 0;
 integer messages = 0, before_count;
 reg [7:0] last_info = 0;
@@ -20,6 +21,8 @@ always @(negedge clk) begin
         $fatal(1, "Tape mounting guard does not follow busy");
     if (dut.menu_mask[10] !== !cart_loaded)
         $fatal(1, "Cartridge unloading guard changed");
+    if (dut.menu_mask[5] !== status[19])
+        $fatal(1, "Music mode guard does not follow repeat");
 end
 
 task tick;
@@ -50,18 +53,54 @@ initial begin
     force dut.source_started = started;
     force dut.source_complete = complete;
     force dut.source_error = source_error;
+    force dut.source_aborted = aborted;
+    force dut.joy_calibrating = calibrating;
     force dut.tape_busy = busy;
     force dut.tape_error = tape_error;
     force dut.tape_rewound = rewound;
     force dut.cart_loaded = cart_loaded;
     force dut.joystick_connected = 1'b1;
     tick; reset = 0; tick;
+    osd = 1; tick;
+    if (dut.source_enabled) $fatal(1, "Entry enabled in OSD by default");
+    status[31] = 1; tick;
+    if (dut.source_enabled) $fatal(1, "Keep-alive started entry inside OSD");
+    started = 1; tick;
+    if (!dut.source_enabled) $fatal(1, "Keep-alive disabled active entry");
+    status[31] = 0; tick;
+    if (dut.source_enabled) $fatal(1, "OSD abort option ignored");
+    started = 0; tick;
+    osd = 0; frame;
+    status[18] = 1; tick;
+    if (dut.source_music_playback) $fatal(1, "Record mode ignored");
+    status[19] = 1; tick;
+    if (!dut.source_music_playback) $fatal(1, "Repeat did not select playback");
+    status[19] = 0; tick;
+    if (dut.source_music_playback) $fatal(1, "Record selection lost after repeat");
     started = 1; tick; expect_message(1);
     complete = 1; tick; expect_message(7);
     source_error = 1; tick; expect_message(2);
     before_count = messages;
     repeat (4) frame;
     if (messages != before_count) $fatal(1, "Repeated latched keyboard notice");
+
+    osd = 1;
+    aborted = 1; tick; frame;
+    if (messages != before_count) $fatal(1, "Abort notice bypassed OSD deferral");
+    osd = 0; expect_message(8);
+    calibrating = 1; tick; expect_message(9);
+    before_count = messages;
+    repeat (59) frame;
+    if (messages != before_count) $fatal(1, "Calibration refreshed too soon");
+    expect_message(9);
+    calibrating = 0; tick;
+    before_count = messages;
+    repeat (65) frame;
+    if (messages != before_count) $fatal(1, "Calibration popup refreshed after completion");
+    osd = 1; calibrating = 1; tick;
+    calibrating = 0; tick;
+    osd = 0; frame;
+    if (messages != before_count) $fatal(1, "Stale calibration notice");
 
     busy = 1; tick; expect_message(5);
     before_count = messages;
@@ -94,8 +133,9 @@ initial begin
 
     rewound = 1; tick; rewound = 0;
     status[22] = 1; tick; frame;
-    started = 0; complete = 0; source_error = 0; tape_error = 0; tick;
+    started = 0; complete = 0; source_error = 0; tape_error = 0; aborted = 0; tick;
     started = 1; complete = 1; source_error = 1;
+    aborted = 1; calibrating = 1;
     tape_error = 1; rewound = 1; busy = 1; tick;
     rewound = 0; repeat (65) frame;
     busy = 0; tick;

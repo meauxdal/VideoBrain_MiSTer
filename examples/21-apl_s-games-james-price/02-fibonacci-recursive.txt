@@ -1,0 +1,9 @@
+EDIT FIB
+Z=X+Y
+Z
+X=Y
+Y=Z
+FIB
+ENDP
+ENDE
+X=Y=1

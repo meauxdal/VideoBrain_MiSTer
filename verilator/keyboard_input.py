@@ -23,12 +23,13 @@ BASE_NOTES = [34, 30, 35, 26, 31, 27, 18, 23, 14, 15, 10, 32,
 FIELD_HZ = Fraction(14318181, 228 * 4) / Fraction(525, 2)
 MUSIC_REPLAY = 0xfd
 MUSIC_RECORD = 0xfe
+MUSIC_BANKS = {-12: 0xfa, 0: 0xfb, 12: 0xfc}
 
 
 def packet(events):
     payload = bytearray()
     for key, hold, gap in events:
-        if key not in range(36) and key not in (MUSIC_REPLAY, MUSIC_RECORD, 255):
+        if key not in range(36) and key not in (*MUSIC_BANKS.values(), MUSIC_REPLAY, MUSIC_RECORD, 255):
             raise ValueError("event must be a matrix key, music control or WAIT")
         if not 1 <= hold <= 255 or not 0 <= gap <= 255:
             raise ValueError("hold must be 1..255 fields; gap must be 0..255")
@@ -109,8 +110,17 @@ def keyboard_text(text, start_mode, profile="keyboard", hold_final=False):
     return packet(events)
 
 
-def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, replay=False,
-          bank_fields=None):
+def music(text, start_mode, gap=None, min_hold=None, page_notes=None, page_wait=64, replay=False,
+          bank_fields=None, bank_ready=False, timing=None):
+    if timing is not None:
+        if timing not in ("score", "note"):
+            raise ValueError("music timing must be score or note")
+        if bank_fields is not None or bank_ready:
+            raise ValueError("timing and legacy bank options are mutually exclusive")
+        bank_fields = 2 if timing == "score" else None
+        bank_ready = timing == "note"
+    gap = gap if gap is not None else (2 if timing is not None else 8)
+    min_hold = min_hold if min_hold is not None else (2 if timing is not None else 8)
     if start_mode not in ("letters", "symbols"):
         raise ValueError("music input requires --start-mode letters or symbols")
     if not 1 <= gap <= 255 or not 1 <= min_hold <= 255:
@@ -119,6 +129,8 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
         raise ValueError("--page-notes must be positive")
     if bank_fields is not None and not 1 <= bank_fields <= 255:
         raise ValueError("music bank fields must be 1..255")
+    if bank_ready and bank_fields is not None:
+        raise ValueError("--bank-ready and --bank-fields are mutually exclusive")
     # Start from an empty Play/Record staff. Shifted SPACE erases its song.
     events = []
     if start_mode == "letters":
@@ -201,7 +213,10 @@ def music(text, start_mode, gap=8, min_hold=8, page_notes=None, page_wait=64, re
                               "previous note is too short to compensate fully", file=sys.stderr)
                         remaining = held - min_hold
                     events[-1] = (key, held - remaining, released)
-            events.append(({-12: 33, 0: 19, 12: 22}[bank], control_fields, control_fields))
+            if bank_ready:
+                events.append((MUSIC_BANKS[bank], 1, 0))
+            else:
+                events.append(({-12: 33, 0: 19, 12: 22}[bank], control_fields, control_fields))
         hold = fields - gap
         if not min_hold <= hold <= 255:
             raise ValueError(f"note {count+1}: needs {hold} held fields; choose a slower/faster tempo or length")
@@ -231,18 +246,23 @@ def main():
                         help="input profile (music range: C2..B5)")
     parser.add_argument("--start-mode", choices=("letters", "symbols"))
     parser.add_argument("--hold-final", action="store_true", help="omit the final NEXT; earlier lines still submit")
-    parser.add_argument("--gap", type=int, default=8, help="music key-off fields (hardware minimum unverified)")
-    parser.add_argument("--min-hold", type=int, default=8, help="music minimum held fields (hardware minimum unverified)")
-    parser.add_argument("--bank-fields", type=int,
-                        help="experimental music bank hold/gap fields, fitted into preceding note/rest")
+    parser.add_argument("--gap", type=int, help="music key-off fields (default: 2)")
+    parser.add_argument("--min-hold", type=int, help="music minimum held fields (default: 2)")
+    timing_options = parser.add_mutually_exclusive_group()
+    timing_options.add_argument("--timing", choices=("score", "note"),
+                                help="score: preserve tempo (default); note: preserve note lengths, "
+                                     "adding ROM-acknowledged octave-switch time")
+    timing_options.add_argument("--bank-fields", type=int, help=argparse.SUPPRESS)
+    timing_options.add_argument("--bank-ready", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--page-notes", type=int, help="insert a wait at this measured entry interval")
     parser.add_argument("--page-wait", type=int, default=64, help="additional fields at a configured page boundary")
     parser.add_argument("--replay", action="store_true", help="press Music Teacher REPLAY after entry")
     args = parser.parse_args()
     if args.hold_final and args.profile in ("music", "keys"):
         parser.error("--hold-final applies to text input")
-    if (args.replay or args.page_notes is not None or args.bank_fields is not None) and args.profile != "music":
-        parser.error("--replay, --page-notes and --bank-fields require --profile music")
+    if (args.replay or args.page_notes is not None or args.timing is not None
+            or args.bank_fields is not None or args.bank_ready) and args.profile != "music":
+        parser.error("music timing, bank options, --replay and --page-notes require --profile music")
     try:
         text = args.source.read_text(encoding="utf-8")
         if args.profile == "apl":
@@ -250,8 +270,11 @@ def main():
         elif args.profile == "keys":
             data = physical_keys(text)
         elif args.profile == "music":
+            legacy = args.bank_fields is not None or args.bank_ready
+            timing = args.timing or (None if legacy else "score")
             data = music(text, args.start_mode, args.gap, args.min_hold,
-                         args.page_notes, args.page_wait, args.replay, args.bank_fields)
+                         args.page_notes, args.page_wait, args.replay,
+                         args.bank_fields, args.bank_ready, timing)
         else:
             data = keyboard_text(text, args.start_mode, args.profile, args.hold_final)
         output = args.output or args.source.with_suffix(".vbk")

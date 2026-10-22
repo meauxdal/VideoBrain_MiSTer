@@ -323,6 +323,13 @@ test-apl-input: test-cartridges
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \
 		"-gapl_image=../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
 
+MT1_ROM ?= ../software/1 Cartridges/Music Teacher 1 (1978.03.28)(VideoBrain Computer Company)(VideoBrain)(Cart)[ED01].bin
+MT1_PATCHED_ROM ?= ../software/1 Cartridges/Music Teacher 1 - Audio Focus (experimental).bin
+
+test-music-input: test-cartridges
+	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_ROM)"
+	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_PATCHED_ROM)"
+
 test-apl-source: test-apl-input test-cpu-interrupt
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_source.py
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_next_sweep.py
@@ -332,7 +339,7 @@ test-apl-source: test-apl-input test-cpu-interrupt
 		--Mdir out/source_test $(RTL)/apl_source_loader.sv tests/tb_apl_source_loader.sv
 	./out/source_test/Vtb_apl_source_loader
 
-.PHONY: test-apl-input test-apl-source
+.PHONY: test-apl-input test-apl-source test-music-input
 
 replay-clock-source: headless
 	@mkdir -p out/clock-source

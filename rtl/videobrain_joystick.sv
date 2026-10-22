@@ -9,6 +9,7 @@ module videobrain_joystick (
 	input  [127:0] buttons,
 	input   [63:0] left_sticks,
 	input   [63:0] right_sticks,
+	output         calibrating,
 	output  [63:0] pots,
 	output   [3:0] fire,
 	output  [13:0] timer_base,
@@ -30,6 +31,7 @@ reg calibrate_d = 0;
 reg [2:0] calibration_phase = 0;
 reg [4:0] calibration_frames = 0;
 reg [15:0] calibration_pots;
+assign calibrating = calibration_phase != 0;
 
 always @(posedge clk) begin
 	calibrate_d <= calibrate;
