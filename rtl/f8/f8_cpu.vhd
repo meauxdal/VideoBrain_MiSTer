@@ -123,9 +123,12 @@ BEGIN
         
         -----------------------------------------
         len_v:=mop.len;
-        IF (bcc='1' AND test='1') OR (opcode=x"8F" AND visarl=7) THEN
+        -- BR7 changes only the operand cycle; the following fetch stays short.
+        IF (bcc='1' AND test='1') OR
+           (opcode=x"8F" AND visarl/=7 AND mop.romc=ROMC_03) THEN
           len_v:=L;
-        ELSIF (bcc='1' AND test='0') OR (opcode=x"8F" AND visarl/=7) THEN
+        ELSIF (bcc='1' AND test='0') OR
+              (opcode=x"8F" AND visarl=7 AND mop.romc=ROMC_03) THEN
           len_v:=S;
         ELSE
           len_v:=mop.len;

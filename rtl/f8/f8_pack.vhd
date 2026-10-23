@@ -713,7 +713,7 @@ PACKAGE BODY f8_pack IS
       WHEN "1101" => -- Same as T=9
         RETURN (iozcs(3)='0' AND iozcs(0)='0');
       WHEN "1110" => -- Branch if no overflow no carry and not zero
-        RETURN (iozcs(3)='0' AND iozcs(1)='0' AND iozcs(0)='0');
+        RETURN (iozcs(3)='0' AND iozcs(1)='0' AND iozcs(2)='0');
       WHEN OTHERS => -- Same as T=B
         RETURN (iozcs(3)='0' AND iozcs(1)='0' AND iozcs(0)='0');
     END CASE;
