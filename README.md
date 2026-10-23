@@ -18,9 +18,9 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 ```
 - boot0.rom: MD5 E1E7F6120EB8E23CA5C63B4246F04F18, 4,096 bytes
 
-**System > Load BIOS** loads an alternate combined 4K BIOS `.bin` through the same download path.
+System > Load BIOS manually loads an alternate combined 4K BIOS `.bin` through the same download path.
 
-[Expander 1](docs/EXPANDER1.md) accepts its 2K firmware as boot1.rom or through the OSD. This is required for Information Manager, Timeshare, and tape operation.
+[Expander 1](docs/EXPANDER1.md) needs its 2K firmware as boot1.rom (or loaded manually). This is required for Information Manager, Timeshare, and tape operation.
 
 ## Using the core
 
@@ -28,20 +28,20 @@ The OSD provides these file actions:
 
 | Action | Use |
 | --- | --- |
-| Load Cartridge | Load `.bin` cartridge and restart |
-| Input > Load Keyboard File | Autotype `.vbk` file into the running program |
-| Mount Playback Tape | Mount read-only `.vbt` |
-| Mount Record Tape | Mount writable `.vbt` |
+| Load Cartridge | Load .bin cartridge and restart |
+| Input > Load Keyboard File | Load .vbk automatic keyboard entry file |
+| Mount Playback Tape | Mount read-only .vbt |
+| Mount Record Tape | Mount writable .vbt |
 
-`.vbk` files are custom automatic keyboard input files. You can use them to automatically type in APL/S programs, play back music, enter game modes when using joysticks, among other things. They can be used in any software. [Example](/examples) files and a converter to create new files are provided. 
+.vbk files are custom automatic keyboard input files; basically macros. You can use them to automatically type in APL/S programs, play back music, enter game modes when using joysticks, among other things. They can be used in any software. [Example](/examples) files and a converter to create new files are provided. 
 
-The converter generates unique musical `.vbk` files for automatic playback in the Play and Record freeform keyboard play in Music Teacher 1. Octave switching is handled automatically. 
+The converter generates unique musical .vbk files for automatic playback in the Play and Record freeform keyboard play in Music Teacher 1. Octave switching is handled automatically. 
 
-Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a music `.vbk`. In other software, make sure you're at a text entry prompt.
+Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
 
-**Unload Cartridge** returns to the built-in BIOS. **System > Master Control (Soft Reset)** and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, this will instantly wipe out your program. **Input > Esc Reset > Off** can be set to prevent accidental Master Control activation.
+Unload Cartridge returns to the built-in BIOS. System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, this will instantly wipe out your program. Input > Esc Reset > Off can be set to prevent accidental Master Control activation.
 
-**System > Info Messages** can optionally disable contextual notifications. 
+System > Info Messages can optionally disable contextual notifications. 
 
 See [tape setup and recording behavior](docs/TAPE.md) for more info on loading from/saving to tape.
 
@@ -49,14 +49,16 @@ See [tape setup and recording behavior](docs/TAPE.md) for more info on loading f
 
 ![VideoBrain keyboard manual](/docs/VB_Keyboard.gif)
 
-In the BIOS and most software, VideoBrain's SHIFT key is a toggle (think CapsLock on a modern keyboard). A square in the bottom right of the screen appears in some software to indicate when SHIFT is active. Timeshare uniquely uses SHIFT by holding, not as a toggle.
+In the BIOS and most software, VideoBrain's SHIFT key is a toggle (think CapsLock on a modern keyboard). A square in the bottom right of the screen appears in some software to indicate when SHIFT is active; white is unshifted, black is shifted. Other software will show your cursor as an L for unshifted (lowercase) and a U for shifted (uppercase). Timeshare uniquely uses SHIFT by holding, not as a toggle.
 
-**[How to play and use VideoBrain software](docs/HOW-TO-PLAY.md)** provides
+[How to play and use VideoBrain software](docs/HOW-TO-PLAY.md) provides
 the original manual diagrams, cartridge keyboard layouts, game-selection
 charts, and MiSTer control mappings for games and utilities.
 
+Unique VideoBrain keys are mapped like this:
+
     SPACE       RUN/STOP
-    ESC         MASTER CONTROL (reset)
+    ESC         MASTER CONTROL (soft reset)
     F1          BACK/TEXT
     F2          PREVIOUS/COLOR
     F3          NEXT/CLOCK
@@ -65,17 +67,17 @@ charts, and MiSTer control mappings for games and utilities.
 
 ## Joystick
 
-VideoBrain supports 4 analog joysticks, though only one game (Tennis) supports 4 players, and several of the games don't have any analog input to speak of. The VideoBrain joystick does not self-center, so it's a bit awkward in Tennis with modern joysticks. 
+VideoBrain supports 4 analog joysticks with one fire button each, though only one game (Tennis) supports 4 players. The VideoBrain joystick does not self-center; this can make things bit awkward in Tennis, which relies on that behavior. Modern self-centering sticks will snap your player back to a neutral position when you let go.
 
-Use Calibrate Sticks when joysticks are active in-game to fully calibrate all joysticks for use. Joysticks will drift diagonally until calibrated.
+Use Calibrate Sticks when joysticks are active in-game to fully calibrate all joysticks for use. Joysticks drift diagonally until calibrated.
 
-Tennis and other games do not share centering positions - this is correct to hardware. The core automatically applies the correct centering. You can override this in the OSD.
+Tennis and other games do not share centering positions - this is correct to hardware. Auto applies the correct centering. You can override this in the OSD.
 
-**Input > Paired Sticks** lets a controller's right stick and **Fire (Paired)** operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
+Input > Paired Sticks lets a controller's right stick and Fire (Paired) operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
 
 ## Video
 
-VideoBrain native output is interlaced. **Video > 240p > On** toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary. It seems to work fine, but try to keep this setting off when testing/reporting issues with the core.
+VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary. It seems to work fine, but please try with this setting disabled if you have issues.
 
 ### Split cartridge dumps
 
@@ -88,8 +90,8 @@ Timeshare can connect to a text service through HPS, mimicking the function of t
 Expander 1 ROM (boot1.rom) is required for serial.
 
 1. Load Timeshare cartridge
-2. Set MiSTer's UART connection to **None**
-3. Ensure SSH is enabled on your MiSTer, then run this command over SSH (requires `socat` and `telnet`):
+2. Set MiSTer's UART connection to None
+3. Ensure SSH is enabled on your MiSTer, then run this command over SSH (requires socat and telnet):
 
 ```sh
 stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
@@ -100,15 +102,15 @@ TERM=dumb socat -d -d \
   EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
 ```
 
-In Timeshare, **F5** is Carriage Return; your all-purpose Enter key. Unlike the rest of the software library, SHIFT is held, not a toggle. 
+In Timeshare, F5 is Carriage Return; your all-purpose Enter key. Unlike the rest of the software library, SHIFT is held, not a toggle. 
 
-Telehack spacing will be disorganized as it expects a larger screen by default. Type this commend (`/` is **Shift+H**):
+Telehack spacing will be disorganized as it expects a larger screen by default. Type this commend (/ is Shift+H):
 
 ```text
 STTY /TTY
 ```
 
-(If you don't see what you're typing, you might be in half-duplex mode. To set full duplex in Timeshare use **F4 + Shift + D**. Full-duplex is the default. To set half-duplex, it's **F4 + Shift + H**)
+(If you don't see what you're typing, you might be in half-duplex mode. To set full duplex in Timeshare use F4 + Shift + D. Full-duplex is the default. To set half-duplex, it's F4 + Shift + H)
 
 You'll be prompted for the number of columns and rows your setup allows. Timeshare uses 24 by 15.
 
