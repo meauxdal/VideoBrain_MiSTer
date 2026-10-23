@@ -36,11 +36,11 @@ The OSD provides these file actions:
 | Mount Record Tape | Mount writable .vbt |
 | Input > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
-For tape function in most software, loading a single cassette into Record tape is sufficient. Software can load from either deck, so the Playback function can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to recieve modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation.
+For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to recieve modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning.
 
 .vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses as well. They can be used in any software. [Example](/examples) files and a converter to create new files are provided. 
 
-The converter accepts valid text files and converts them to .vbk files which will replay the input sequence.
+The converter accepts valid text files and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries.
 
 Music Macro Language (.mml) files can also be converted. MML files must use a simplified subset of the QB64 PLAY format. The converter generates unique musical .vbk files (with VBK2 header for differentiation from text entry files) for automatic playback in the free play mode in Music Teacher 1. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
 
