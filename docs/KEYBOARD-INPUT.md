@@ -1,33 +1,14 @@
 # Keyboard input files
 
-Choose **Keyboard > Load Keyboard File** and select a `.vbk`. Entry starts
-when the OSD closes and uses the actual keyboard matrix. Typing or resetting
-cancels it. **VBK in OSD** defaults to **Abort**; **Keep Running** lets active
-entry continue while mounting tapes or changing OSD settings.
-Loading a keyboard file does not reset the machine; confirmed on APL/S in RC7.
-The loader checks the complete file before pressing any key. Start at the
-intended input screen; files do not interpret prompt contents.
+Choose **Keyboard > Load Keyboard File** and select a `.vbk`.
 
-Earlier intermittent first-load restarts are currently unreproducible in RC14.
-Hardware checks reported on 2026-10-19 found no restarts across four fresh-boot
-CHANGE loads and one CLOCK load. The cause remains unconfirmed; treat this as
-an unresolved issue that may recur, rather than a verified fix.
-
-The Keyboard submenu contains file loading, Music Mode and Music Repeat.
-Keyboard entry start, finish, abort and invalid-file notices appear as popups after
-the OSD closes.
-
-APL/S VBK1 files retain their format and live SHIFT handling. Entry waits for
-the interpreter to accept each key and become ready again, including after NEXT.
-VBK2 retains its encoded event timings.
 See [APL/S entry and loading without running](APL-SOURCE.md).
-Other profiles produce VBK2 and require the updated core.
 
 ```sh
-python3 verilator/keyboard_input.py input.txt --profile keyboard --start-mode letters
-python3 verilator/keyboard_input.py message.txt --profile text --start-mode letters --hold-final
-python3 verilator/keyboard_input.py input.keys --profile keys
-python3 verilator/keyboard_input.py song.mml --profile music --start-mode letters --timing score
+python3 tools/keyboard_input.py input.txt --profile keyboard --start-mode letters
+python3 tools/keyboard_input.py message.txt --profile text --start-mode letters --hold-final
+python3 tools/keyboard_input.py input.keys --profile keys
+python3 tools/keyboard_input.py song.mml --profile music --start-mode letters --timing score
 ```
 
 `--profile apl` is the default and matches `apl_source.py`. Text profiles require
@@ -128,18 +109,10 @@ Choose one of two music timing styles. Both default to `--min-hold 2 --gap 2`:
   when the ROM is ready, releases it when accepted, then waits for confirmed
   readiness before continuing. Each stage times out after 255 fields.
 
-Both styles have passed hardware playback testing. Note timing requires an
-updated core and either original ED01 (CRC32 C8FEE8CD) or the current
-static-staff patch (CRC32 F4390144). Score timing at 2/2 was tested with the
-static-staff ROM in Playback mode. Timing is rounded to video fields; the
-key-off gap is included in each note's duration.
+Timing is rounded to video fields; the key-off gap is included in each note's duration.
 
 New paired conversions and commands are in
-[music timing examples](../examples/music/timing/README.md). MML sources remain
-in `examples/music`. Files without octave changes are identical in both styles.
-The older `smooth` and `ready` directories correspond to Score and Note timing.
-`--bank-fields` and `--bank-ready` remain accepted for existing scripts, but
-cannot be combined with `--timing`; their original defaults are retained.
+[music timing examples](../examples/music/README.md) with corresponding MML sources.
 
 The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
@@ -150,68 +123,6 @@ fewer notes in the cartridge's recording.
 Playback bypasses recorder capacity; files still have a 1365-event limit,
 including control keys, octave changes and waits. The converter warns above
 79 notes that Record will truncate the song.
-
-MT1 provides no cassette save/load or Expander 1 commands; its recording is held
-in the machine's RAM. Keep the source or VBK file to enter a song again.
-
-For an experimental static-staff ROM, run
-`python3 verilator/patch_music_teacher.py ORIGINAL.bin OUTPUT.bin` with the
-original ED01 cartridge. Use Program 1 normally, with existing VBK files.
-The patch skips note/rest drawing and recurring page redraws, retaining pitch
-setup, recording, and sound routines. Program 2's visual teaching is affected.
-Live playback improvement is hardware-confirmed; recording behavior remains
-unverified.
-
-TODO: Measure acknowledged octave-switch timing on hardware.
-Improve the mostly static display: accumulated note overdraw produces glitched
-"8b" markers as every possible note pixel fills in. Preserve sound timing when
-restoring or replacing visual feedback.
-
-## Music hardware results
-
-Hardware testing reported on 2026-10-21 confirmed Note timing playback passes.
-
-Hardware testing reported on 2026-10-18:
-
-- The static-staff ROM with the smooth VBK files was reported a total success
-  during live Playback. Cartridge Record was not used.
-- The converter compensates octave-control time within preceding notes/rests.
-  Its full cello prelude still adds two fields at the final switch; eliminating
-  remaining switch delays is a possible ROM follow-up, not yet a measured result.
-- Higher notes still have clearly audible aliasing. Audio filtering is a
-  separate follow-up from ROM timing and display work.
-
-Hardware testing reported on 2026-10-15:
-
-- `timing-1-1.vbk` produced no notes in several tests; 1/1 is too short.
-- `timing-2-2.vbk` was consistently recognized, as were higher tested values.
-  This is the shortest tested reliable pair: about 33 ms held and 33 ms released.
-  Independent minimum hold and gap values have not been measured.
-- `timing-8-64.vbk` displayed rests between notes as expected.
-- Pages flip after six notes during type-in. The cartridge counts stored notes
-  and rests during playback.
-- Recorded durations appear to match targets even across page flips, with a
-  small playback delay. Full onset capture during input redraw is unmeasured.
-- O5 reportedly failed on hardware; the confirmed pitch range does not explain
-  that result. Upper-range hardware testing remains open.
-
-Score and Note timing default to two fields each for minimum hold and gap
-(about 33 ms). A quarter note at T120 is 30 fields: 28 held and 2 released
-before any Score timing compensation. Legacy bank options retain eight-field
-defaults unless overridden. Notes too
-short for `--min-hold` plus `--gap` are rejected instead of silently slowed.
-Held notes longer than 255 fields are rejected; long rests are supported.
-
-Redraw duration and the effect of rests on recording capacity remain unverified.
-No page wait is enabled by default. `--page-notes N --page-wait 64` uses a
-cumulative note/rest count to schedule waits. Its current counter includes
-explicit rests, unlike observed initial type-in pagination; setting N to 6
-matches only input without explicit rests. Correcting that counter is pending.
-Added waits may be recorded as rests; they do not acknowledge redraw completion or preserve
-musical tempo. Measure type-in and playback separately before adding automatic
-page compensation or lowering the defaults.
-
-## Format and checks
 
 VBK2 retains the eight-byte VBK1 header, with magic `VBK2`. Count is payload
 bytes, not event count; CRC is unchanged. Each three-byte event is matrix key

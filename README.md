@@ -31,20 +31,24 @@ The OSD provides these file actions:
 
 | Action | Use |
 | --- | --- |
-| Load Cartridge | Load .bin cartridge and restart |
-| Input > Load Keyboard File | Load .vbk automatic keyboard entry file |
+| Load Cartridge | Load .bin cartridge |
 | Mount Playback Tape | Mount read-only .vbt |
 | Mount Record Tape | Mount writable .vbt |
+| Input > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
-.vbk files are custom automatic keyboard input files; basically macros. You can use them to automatically type in APL/S programs, play back music, enter game modes when using joysticks, among other things. They can be used in any software. [Example](/examples) files and a converter to create new files are provided. 
+For tape function in most software, loading a single cassette into Record tape is sufficient. Software can load from either deck, so the Playback function can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to recieve modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation.
 
-The converter generates unique musical .vbk files for automatic playback in the Play and Record freeform keyboard play in Music Teacher 1. Octave switching is handled automatically. 
+.vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses as well. They can be used in any software. [Example](/examples) files and a converter to create new files are provided. 
 
-Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
+The converter accepts valid text files and converts them to .vbk files which will replay the input sequence.
 
-Unload Cartridge returns to the built-in BIOS. System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, this will instantly wipe out your program. Input > Esc Reset > Off can be set to prevent accidental Master Control activation.
+Music Macro Language (.mml) files can also be converted. MML files must use a simplified subset of the QB64 PLAY format. The converter generates unique musical .vbk files (with VBK2 header for differentiation from text entry files) for automatic playback in the free play mode in Music Teacher 1. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
 
-System > Info Messages can optionally disable contextual notifications. 
+Unload Cartridge returns to the built-in BIOS. 
+
+System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, pressing this key will instantly wipe out any program in RAM. Input > Esc Reset > Off can be set to prevent accidental activation.
+
+System > Info Messages can optionally disable pop-up notifications. 
 
 See [tape setup and recording behavior](docs/TAPE.md) for more info on loading from/saving to tape.
 
@@ -52,7 +56,7 @@ See [tape setup and recording behavior](docs/TAPE.md) for more info on loading f
 
 ![VideoBrain keyboard manual](/docs/VB_Keyboard.gif)
 
-In the BIOS and most software, VideoBrain's SHIFT key is a toggle (think CapsLock on a modern keyboard). A square in the bottom right of the screen appears in some software to indicate when SHIFT is active; white is unshifted, black is shifted. Other software will show your cursor as an L for unshifted (lowercase) and a U for shifted (uppercase). Timeshare uniquely uses SHIFT by holding, not as a toggle.
+In the BIOS and most software, VideoBrain's SHIFT key is a toggle (like CapsLock on a modern keyboard). A square in the bottom right of the screen appears in some software to indicate when SHIFT is active; a light square is unshifted, dark is shifted. Other software will show your cursor as an L for unshifted (lowercase) and a U for shifted (uppercase). Timeshare uniquely uses SHIFT by holding, not as a toggle.
 
 [How to play and use VideoBrain software](docs/HOW-TO-PLAY.md) provides
 the original manual diagrams, cartridge keyboard layouts, game-selection
