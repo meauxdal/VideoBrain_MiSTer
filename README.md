@@ -1,6 +1,6 @@
 # VideoBrain Family Computer for MiSTer
 
-An FPGA implementation of the 1978 Umtech VideoBrain Family Computer, with its Fairchild F8 CPU, Umtech UV201 video chip and UV202 clock/bus chip.
+An FPGA implementation of the 1978 Umtech VideoBrain Family Computer.
 
 ## Installing
 
@@ -11,7 +11,7 @@ The core folder is /media/fat/games/VideoBrain. A BIOS is required. Verified BIO
 - uvres1.bin: MD5 CDF2F70F616AB61D7FBF31A3763BFC21, 2,048 bytes
 - uvres2.bin: MD5 E4B8B681CCCF4E8ECB09C3FDC206B8B2, 2,048 bytes
 
-Place boot0.rom in the VideoBrain games folder. Rename an existing firmware boot.rom to boot0.rom.
+Place boot0.rom in the VideoBrain games folder.
 
 ```text
 tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
@@ -20,7 +20,7 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 
 **System > Load BIOS** loads an alternate combined 4K BIOS `.bin` through the same download path.
 
-[Expander 1](docs/EXPANDER1.md) accepts its 2K firmware as boot1.rom or through the OSD. This is required for Information Manager, Timeshare serial communication, and tape SAVE/LOAD.
+[Expander 1](docs/EXPANDER1.md) accepts its 2K firmware as boot1.rom or through the OSD. This is required for Information Manager, Timeshare, and tape operation.
 
 ## Using the core
 
@@ -33,13 +33,17 @@ The OSD provides these file actions:
 | Mount Playback Tape | Mount read-only `.vbt` |
 | Mount Record Tape | Mount writable `.vbt` |
 
-`.vbk` files are custom automatic keyboard input files. You can use them to auto-type APL/S programs, auto-play music, auto-type in game modes when using joysticks, etc. [Example](/examples) files and a converter to create new files are provided. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before trying to play back music files. In other software, make sure you're at a text entry prompt.
+`.vbk` files are custom automatic keyboard input files. You can use them to automatically type in APL/S programs, play back music, enter game modes when using joysticks, among other things. They can be used in any software. [Example](/examples) files and a converter to create new files are provided. 
 
-**Unload Cartridge** returns to the built-in BIOS. **Reset** restarts the machine with its cartridge retained. **System > Master Control (Soft Reset)** and Esc provide the machine's Master Control button.
+The converter generates unique musical `.vbk` files for automatic playback in the Play and Record freeform keyboard play in Music Teacher 1. Octave switching is handled automatically. 
 
-**Input > Esc Reset > Off** can be set to prevent accidental Master Control activation.
+Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a music `.vbk`. In other software, make sure you're at a text entry prompt.
 
-Tape recording starts when the program issues SAVE. Don't mount the source and output files; bad things will happen probably. **System > Info Messages** can optionally disable contextual notifications. See [tape setup and recording behavior](docs/TAPE.md).
+**Unload Cartridge** returns to the built-in BIOS. **System > Master Control (Soft Reset)** and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, this will instantly wipe out your program. **Input > Esc Reset > Off** can be set to prevent accidental Master Control activation.
+
+**System > Info Messages** can optionally disable contextual notifications. 
+
+See [tape setup and recording behavior](docs/TAPE.md) for more info on loading from/saving to tape.
 
 ## Keyboard
 
