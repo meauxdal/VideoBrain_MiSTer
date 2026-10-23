@@ -12,6 +12,7 @@ mkdir -p "$output"
 PYTHONDONTWRITEBYTECODE=1 python3 - "$output/input.vbk" <<'PY'
 from pathlib import Path
 import sys
+sys.path.insert(0, str(Path("../tools").resolve()))
 from keyboard_input import packet
 
 # Wait for Program 1 input before selecting No-Record.

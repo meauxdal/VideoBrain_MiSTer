@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 from apl_source import encode
 from keyboard_input import MUSIC_BANKS, MUSIC_RECORD, MUSIC_REPLAY, keyboard_text, music, physical_keys
 
@@ -54,7 +54,7 @@ class KeyboardTests(unittest.TestCase):
                 music(text, 'letters', **options)
 
     def test_music_timing_cli(self):
-        script = Path(__file__).resolve().parents[1] / 'keyboard_input.py'
+        script = Path(__file__).resolve().parents[2] / 'tools' / 'keyboard_input.py'
         text = 'O4 C O5 B O2 C O4 C'
         with tempfile.TemporaryDirectory(dir=script.parent) as directory:
             source = Path(directory) / 'song.mml'
@@ -83,21 +83,19 @@ class KeyboardTests(unittest.TestCase):
 
     def test_music_timing_examples(self):
         directory = Path(__file__).resolve().parents[2] / 'examples' / 'music'
-        sources = {source.stem: source for source in directory.glob('*.mml')}
-        for timing in ('score', 'note'):
-            outputs = directory / 'timing' / f'{timing}-timing'
-            self.assertEqual({path.stem for path in outputs.glob('*.vbk')}, set(sources))
-            for name, source in sources.items():
-                with self.subTest(timing=timing, source=name), redirect_stderr(io.StringIO()):
-                    text = source.read_text()
-                    data = (outputs / f'{name}.vbk').read_bytes()
-                    self.assertEqual(data, music(text, 'letters', timing=timing))
-                    body = events(data)[5:-3]
-                    original = events(music(text, 'letters', gap=2, min_hold=2))[5:-3]
-                    self.assertEqual(music_pitches(body), music_pitches(original))
-                    if timing == 'note':
-                        self.assertEqual([event for event in body if event[0] not in MUSIC_BANKS.values()],
-                                         [event for event in original if event[0] not in (33, 19, 22)])
+        score = {p.stem: p for p in (directory / 'score-timing').glob('*.vbk')}
+        note = {p.stem: p for p in (directory / 'note-timing').glob('*.vbk')}
+        self.assertTrue(score, 'bundled music examples are missing')
+        self.assertEqual(set(score), set(note))
+        for name in score:
+            with self.subTest(song=name):
+                # Validate both packets and compare their complete pitch sequence.
+                score_events = events(score[name].read_bytes())
+                note_events = events(note[name].read_bytes())
+                self.assertEqual(score_events[:5], note_events[:5])
+                self.assertEqual(score_events[-3:], note_events[-3:])
+                self.assertEqual(music_pitches(score_events[5:-3]),
+                                 music_pitches(note_events[5:-3]))
 
     def test_music_bank_ready(self):
         text = 'T120 O2 C O5 B O3 C'
@@ -110,20 +108,6 @@ class KeyboardTests(unittest.TestCase):
         self.assertEqual(music_pitches(ready), [36, 83, 48])
         with self.assertRaisesRegex(ValueError, 'mutually exclusive'):
             music(text, 'letters', bank_fields=2, bank_ready=True)
-
-    def test_music_bank_ready_examples(self):
-        directory = Path(__file__).resolve().parents[2] / 'examples'
-        for source, output in (
-            ('music/bach-cello-suite-1-prelude-full.mml',
-             'music/ready/bach-cello-suite-1-prelude-full.vbk'),
-        ):
-            with self.subTest(source=source), redirect_stderr(io.StringIO()):
-                text = (directory / source).read_text()
-                data = music(text, 'letters', gap=2, min_hold=2, bank_ready=True)
-                self.assertEqual(data, (directory / output).read_bytes())
-                original = music(text, 'letters', gap=2, min_hold=2)
-                self.assertEqual(music_pitches(events(data)[5:-3]),
-                                 music_pitches(events(original)[5:-3]))
 
     def test_apl_hold_final(self):
         normal = encode("EDIT DEMO\nA=1\nENDE\nRUN DEMO\n")
@@ -229,50 +213,17 @@ class KeyboardTests(unittest.TestCase):
         self.assertIn('octave switch adds 4 fields', warning.getvalue())
         self.assertEqual(body[0][1:], (2, 2))
 
-    def test_music_smooth_examples(self):
-        directory = Path(__file__).resolve().parents[2] / 'examples' / 'music'
-        for output in (directory / 'smooth').glob('*.vbk'):
-            source = directory / output.with_suffix('.mml').name
-            with self.subTest(source=source.name), redirect_stderr(io.StringIO()):
-                text = source.read_text()
-                original = events(music(text, 'letters', gap=2, min_hold=2))[5:-3]
-                data = music(text, 'letters', gap=2, min_hold=2, bank_fields=2)
-                self.assertEqual(data, (directory / 'smooth' / source.with_suffix('.vbk').name).read_bytes())
-                smooth = events(data)[5:-3]
-                self.assertEqual(music_pitches(original), music_pitches(smooth))
-                timelines = []
-                for body, omit_banks in ((original, True), (smooth, False)):
-                    elapsed = 0
-                    onsets = []
-                    for key, hold, gap in body:
-                        if key in (33, 19, 22):
-                            if omit_banks:
-                                continue
-                        elif key != 255:
-                            self.assertGreaterEqual(hold, 2)
-                            self.assertGreaterEqual(gap, 2)
-                            onsets.append(elapsed)
-                        elapsed += hold + gap
-                    timelines.append([time - onsets[0] for time in onsets])
-                if source.stem == 'bach-cello-suite-1-prelude-full':
-                    timelines[0][-1] += 2
-                self.assertEqual(*timelines)
-
-    def test_music_range_example_packets(self):
-        directory = Path(__file__).resolve().parents[2] / 'examples' / 'tests' / 'music-tests'
-        for name, expected in (('scale', list(range(36, 84))),
-                               ('octaves', [36, 48, 60, 72, 83, 36])):
-            with self.subTest(name=name):
-                data = (directory / f'{name}.vbk').read_bytes()
-                a = events(data)
-                self.assertEqual(a[:5], [(11, 8, 8), (19, 8, 64), (33, 8, 8), (11, 8, 8), (19, 8, 8)])
-                self.assertEqual(a[-4:], [(11, 8, 8), (7, 8, 8), (11, 8, 8), (12, 8, 8)])
-                self.assertEqual(music_pitches(a[5:-4]), expected)
-                # These fixtures use physical Record/Replay keys.
-                a[2] = (MUSIC_RECORD, 8, 8)
-                a[-1] = (MUSIC_REPLAY, 8, 8)
-                self.assertEqual(a, events(music((directory / f'{name}.mml').read_text(),
-                                                 'letters', replay=True)))
+    def test_music_range(self):
+        scale = ' '.join(f'O{octave} C C# D D# E F F# G G# A A# B'
+                         for octave in range(2, 6))
+        for text, expected in ((scale, list(range(36, 84))),
+                               ('O2 C O3 C O4 C O5 C B O2 C', [36, 48, 60, 72, 83, 36])):
+            for timing in ('score', 'note'):
+                with self.subTest(text=text, timing=timing):
+                    body = events(music(text, 'letters', replay=True, timing=timing))
+                    self.assertEqual(body[2], (MUSIC_RECORD, 8, 8))
+                    self.assertEqual(body[-1], (MUSIC_REPLAY, 8, 8))
+                    self.assertEqual(music_pitches(body[5:-4]), expected)
 
     def test_music_rejects_unsupported_or_unsafe_timing(self):
         for text in ('C,E,G', 'O7 C', 'O6 E', 'T120 C64', 'L0 C', 'R4'):

@@ -10,7 +10,7 @@ out=${3:-out/joystick/gladiator_center1}
 mkdir -p "$out"
 
 ./obj_dir_headless/Vtop \
-    --cart "../software/Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin" \
+    --cart "../software/1 Cartridges/Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin" \
     --frames 290 \
     --press SPACE@140:8 \
     --joy UP@155:8 --joy2 UP@155:8 \

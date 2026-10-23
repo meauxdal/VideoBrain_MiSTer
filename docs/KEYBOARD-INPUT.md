@@ -1,15 +1,10 @@
 # Keyboard input files
 
-Choose **Keyboard > Load Keyboard File** and select a `.vbk`.
+Choose **Input > Load Keyboard File** and select a `.vbk`.
 
 See [APL/S entry and loading without running](APL-SOURCE.md).
 
-```sh
-python3 tools/keyboard_input.py input.txt --profile keyboard --start-mode letters
-python3 tools/keyboard_input.py message.txt --profile text --start-mode letters --hold-final
-python3 tools/keyboard_input.py input.keys --profile keys
-python3 tools/keyboard_input.py song.mml --profile music --start-mode letters --timing score
-```
+See [converter commands and options](../tools/README.md#keyboard-files).
 
 `--profile apl` is the default and matches `apl_source.py`. Text profiles require
 the starting SHIFT mode explicitly. `letters` means lower/unshifted; `symbols`
@@ -30,20 +25,15 @@ NEXT unless `--hold-final` suppresses the last one. NEXT receives an additional
 | Program | Entry behavior and profile |
 | --- | --- |
 | Built-in Text | Enter TEXT manually with upper SHIFT, then check its dark/lower indicator. Use `text --start-mode letters`. Seven lines of 16 characters; full lines wrap automatically, so the converter omits their NEXT. NEXT moves down; upper NEXT selects CLOCK. Start with an empty display. |
-| Financier / VB-81 | Use `keyboard`. Its cursor starts L (lower); SHIFT toggles U/L. NEXT submits formulas, commands or answers. Maximum formula: three lines of 15 characters. BACK erases; PREVIOUS and SPECIAL are ignored. `examples/keyboard/financier.vbk` enters `1+1` from the initial menu. |
+| Financier / VB-81 | Use `keyboard`. Its cursor starts L (lower); SHIFT toggles U/L. NEXT submits formulas, commands or answers. Maximum formula: three lines of 15 characters. BACK erases; PREVIOUS and SPECIAL are ignored. |
 | Money Minder / VB-1000 | Use `keys`. It replaces text entry with a cash-register layout. Digits are the printed numeric positions without automatic SHIFT; punctuation and dollar formatting are automatic. Category keys depend on SHIFT. SPACE is ENTER/INITIAL VALUE, not a text space. Follow its account prompts. |
 | Wordwise 1 | Use `keys` for numeric position moves and NEXT; it builds words by moving displayed letters, rather than by typing words. |
 | Wordwise 2 | Its typing exercises accept printed character keys. Use `keyboard` for an appropriate exercise or `keys` for prompts; inspect the expected line before submitting NEXT. |
-| Timeshare | F5 sends Carriage Return; F4 is CONTROL. Shift is held, not toggled; Shift+H types `/`. Hold F4 + Shift and tap D for full duplex or H for half duplex/local echo. Live UART sessions are verified; automatic text-profile mode handling is not. See [Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). |
-| Other titles, including Information Manager | Physical key scripts are available. Their text/mode transitions have not been established here; do not assume the APL/S mapping. |
+| Timeshare | F5 sends Carriage Return; F4 is CONTROL. Shift is held, not toggled; Shift+H types `/`. Hold F4 + Shift and tap D for full duplex or H for half duplex/local echo. Use manual input for its held-key combinations. See [Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). |
+| Other titles, including Information Manager | Use physical key scripts that follow the program's prompts and SHIFT behavior. |
 
-The title rules above come from the VideoBrain owner's manual and the
-Financier, Money Minder and Wordwise manuals. Other title profiles
-remain hardware-unverified; Music Teacher results are below. The core permits
-VBK2 in any program; acceptance depends on its current screen and key handling.
-
-`examples/keyboard/text.vbk` starts inside empty built-in Text in lower mode.
-Expected lines: HELLO VIDEOBRAIN, 0123456789, and A, B; C?.
+VBK2 files can be loaded in any program; use the profile and starting mode
+that match its current screen and key handling.
 
 ## Physical keys
 
@@ -57,16 +47,16 @@ into events. MASTER CONTROL is excluded because it resets/cancels entry.
 ## Music Teacher 1
 
 Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square),
-then load an example from `examples/music/timing/score-timing` or
-`examples/music/timing/note-timing`. Each generated song erases the
+then load an example from `examples/music/score-timing` or
+`examples/music/note-timing`. Each generated song erases the
 previous recording, selects Middle, enters the notes, and ends with No-Record.
-**Keyboard > Music Mode** selects **Playback** (default) or **Record**.
+**Input > Music Mode** selects **Playback** (default) or **Record**.
 Record enables the cartridge recorder; `--replay` presses REPLAY afterward.
 Playback keeps Record off and ignores that replay request, playing the file live.
 Regenerate older music files to use this setting; their physical Record/Replay
 keys retain their original behavior.
 After recording, press physical T to replay the stored song again.
-**Keyboard > Music Repeat** restarts the file from the top until entry is
+**Input > Music Repeat** restarts the file from the top until entry is
 canceled. Repeat forces Playback and grays out Music Mode, preserving the
 selected mode for when Repeat is turned off. The loader
 does not wait for the cartridge's Replay routine. Use lower SHIFT and files
@@ -92,8 +82,7 @@ V High (+1), SPACE Middle. Shifted SPACE erases, shifted Z records, shifted
 COMMA selects No-Record, and unshifted T replays. Octave controls select a
 fixed bank; repeated Low/High does not step indefinitely.
 The cartridge's key table and bank routine confirm Low C2..D4, Middle C3..D5,
-and High C4..B5. `scale.vbk` enters all 48 chromatic pitches C2..B5 and replays;
-`octaves.vbk` probes C2, C3, C4, C5, B5, then returns to C2 and replays.
+and High C4..B5.
 
 The converter keeps the current octave bank while it contains the next pitch.
 Choose one of two music timing styles. Both default to `--min-hold 2 --gap 2`:
@@ -111,8 +100,7 @@ Choose one of two music timing styles. Both default to `--min-hold 2 --gap 2`:
 
 Timing is rounded to video fields; the key-off gap is included in each note's duration.
 
-New paired conversions and commands are in
-[music timing examples](../examples/music/README.md) with corresponding MML sources.
+Ready-to-load songs are in [music examples](../examples/music/README.md).
 
 The manual specifies songs of
 up to 80 notes; this ROM's recorder appears to stop at 79 note/rest records.
@@ -123,22 +111,3 @@ fewer notes in the cartridge's recording.
 Playback bypasses recorder capacity; files still have a 1365-event limit,
 including control keys, octave changes and waits. The converter warns above
 79 notes that Record will truncate the song.
-
-VBK2 retains the eight-byte VBK1 header, with magic `VBK2`. Count is payload
-bytes, not event count; CRC is unchanged. Each three-byte event is matrix key
-0..35 (or FF for WAIT), held fields 1..255, released fields 0..255. Limit:
-4095 bytes / 1365 complete events. Raw SHIFT and function keys are valid in
-VBK2. APL-only VBK1 remains gated to the recognized Computational Language ROM.
-
-VBK2 also accepts FE for the music Record/No-Record selector (inside shifted
-mode), and FD for Replay (inside lower mode). The menu setting is latched at
-download: Record maps FE to Z and FD to T; Playback maps FE to COMMA and FD
-to a silent wait with the encoded duration. Older cores reject these events.
-FA/FB/FC select Low/Middle/High with ROM acknowledgment. Their hold/gap bytes
-are placeholders (the converter emits 1/0); handshake state determines timing.
-These controls require lower SHIFT, as do physical octave keys.
-Auto-Repeat applies to both VBK1 and VBK2 and can be disabled during entry.
-
-`make test-apl-source` runs both converters' tests and the loader RTL tests.
-`make test-music-input` checks the ED01 and static-staff readiness hooks.
-Full simulator captures and Quartus builds are separate checks.

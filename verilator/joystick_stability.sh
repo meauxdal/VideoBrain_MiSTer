@@ -45,10 +45,10 @@ run_case() {
 
 case "$target" in
     vice_versa)
-        run_case vice_versa "../software/Vice Versa (1978.07.27)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN06].bin" 210,211,212 SPACE@140:8 Y@200:8
+        run_case vice_versa "../software/1 Cartridges/Vice Versa (1978.07.27)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN06].bin" 210,211,212 SPACE@140:8 Y@200:8
         ;;
     gladiator)
-        run_case gladiator "../software/Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin" 210,211,212 SPACE@140:8
+        run_case gladiator "../software/1 Cartridges/Gladiator (1978.04.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN01].bin" 210,211,212 SPACE@140:8
         ;;
     *)
         printf 'Usage: %s [gladiator|vice_versa]\n' "$0" >&2

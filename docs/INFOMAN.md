@@ -112,20 +112,6 @@ deck populated produced I/O ERR; ENTER starts by defining a database. REVIEW's
 grammar and write-suppression path do not currently suggest a persistent ADD
 workflow. A keyboard map should distinguish verified keys from inferred ones.
 
-## Disassembly
-
-Generate an annotated listing with MAME's `unidasm` and an Information Manager
-ROM archive. Replace the input placeholders with your own paths:
-
-```text
-python tools/disassemble_infoman.py --unidasm /path/to/unidasm --rom /path/to/infoman.zip --output infoman.lst
-```
-
-The listing retains addresses and every ROM byte. It uses MAME's F8 syntax,
-labels branch targets, and separates identified tables from instructions.
-It is an annotated static disassembly, not assembler input or a recovered
-manual. The usage checks above cover only part of the runtime behavior.
-
 ## ROM identity
 
 The three chips in MAME's `infoman.zip` are identical to

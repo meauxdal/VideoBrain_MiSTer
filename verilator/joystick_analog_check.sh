@@ -31,7 +31,7 @@ done
 shot_list=$(IFS=,; printf '%s' "${shots[*]}")
 
 ./obj_dir_headless/Vtop \
-    --cart "../software/Tennis (1978.11.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" \
+    --cart "../software/1 Cartridges/Tennis (1978.11.07)(VideoBrain Computer Company)(VideoBrain)(Cart)[EN03].bin" \
     --frames "$frame" --press SPACE@140:8 \
     --joy UP@260:24 --joy2 UP@260:24 \
     --joy DOWN@300:24 --joy2 DOWN@300:24 \

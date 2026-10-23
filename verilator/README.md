@@ -13,14 +13,13 @@ Requires ghdl (VHDL-2008), verilator, zlib, and sdl2 for the graphical target.
 Run from this directory; the default ROM paths are relative to it.
 
     ./obj_dir/Vtop --run
-    ./obj_dir_headless/Vtop --cart "../software/Gladiator ....bin" --frames 300 --shot-last
+    ./obj_dir_headless/Vtop --cart /path/to/cartridge.bin --frames 300 --shot-last
     ./obj_dir_headless/Vtop --help
 
 Known cartridge ROMs are identified by CRC-32. `--cart-type` selects the slot
 profile only for unrecognized images.
 
-`--expander1 <file>` loads the separate 2K Expander 1 firmware. This support is
-experimental; see [limits and hardware evidence](../docs/EXPANDER1.md).
+`--expander1 <file>` loads the separate 2K Expander 1 firmware. See [Expander 1](../docs/EXPANDER1.md) for firmware and peripheral details.
 `make test-expander1` tests its ROM loading, host wiring, 3870 timer and
 interrupt execution.
 `make test-expander1-record` exercises original-ROM recording, decodes its
@@ -34,82 +33,47 @@ input, bypassing SD service; remote stops pause playback without rewinding.
 `--expander-trace FILE` logs host signals, interrupt acknowledgements and
 VideoBrain receive-register writes, including counters and interrupt sources.
 
-## Keyboard files
+## Keyboard input
 
-Use [APL/S source entry](../docs/APL-SOURCE.md) or
-[generic text, physical keys and Music Teacher](../docs/KEYBOARD-INPUT.md).
+User converters live in [tools](../tools/README.md#keyboard-files).
 `--source FILE@FRAME` accepts VBK1 and VBK2, including built-in Text without a
-cartridge. `make test-apl-source` checks both converters and the RTL loader.
-RAM dump options and tests are disabled; their code and files are preserved.
-The two clean `apl_check.py` controls remain available. Snapshot cases reject
-entry instead of restoring RAM.
+cartridge. `make test-apl-source` runs the Python converter tests and RTL loader
+checks. `make test-music-input` checks the Music Teacher readiness hooks.
+`apl_next_sweep.py` generates timed probes for input diagnostics;
+see [NEXT timing sweeps](tests/APL-NEXT-SWEEP.md).
 
-<!--
-## APL/S memory dumps
+`make replay-clock-source` uses the bundled Price Clock keyboard file.
+`make capture-apl-save` and `make replay-apl-tape` generate keyboard files with
+`../tools/apl_source.py`.
 
-For clean source entry, use the [source loader](../docs/APL-SOURCE.md).
-The preserved memory dumps below remain an experimental diagnostic path.
+### Keyboard file formats
 
-The `.bin` files in `software/21 games for apl_s` are 16K MAME CPU memory
-dumps, not cartridge ROMs. Load the Computational Language cartridge first.
-`--apl FILE@F` restores system RAM at 0C00-0FFF and cartridge RAM at
-1C00-1FFF at frame F. Load while the interpreter is idle at its input prompt.
-ROM, CPU registers, mapper bank and video registers are not restored.
+VBK1 has an eight-byte header: magic `VBK1`, a little-endian 16-bit token count,
+and CRC-16/CCITT (polynomial 1021, initial FFFF) of the payload. Each byte
+contains a matrix key in bits 5:0 and desired symbol mode in bit 6. Bit 7 marks
+mode-independent SPACE (93 hex) or NEXT (9B hex). Raw SHIFT tokens are rejected.
+VBK1 is gated to the CRC-recognized Computational Language ROM.
 
-```sh
-mkdir -p out/apl
-./obj_dir_headless/Vtop \
-  --cart "../software/converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
-  --apl "../software/21 games for apl_s/guess.bin@300" \
-  --frames 330 --shot-last --outdir out/apl
-```
+The APL/S handshake observes bank D opcode fetches: $3C14 follows the
+all-keys-up loop at $3C0A; $3C20 follows acceptance at $3C14-$3C1E.
+Cursor drawing at $3C04 is not readiness.
 
-The loader checks dump size, system RAM mirrors, cartridge type and fixed ROM
-contents. Use `--press` to enter the program name and NEXT after loading;
-Guess's program name is `GUES`. APL/S uses RUN/STOP as Space and SHIFT as a
-letter/symbol toggle. A completed limit-1 game should show a score of `1 1`.
-Other programs and broader gameplay coverage remain pending.
-`bash apl_guess_check.sh` captures startup, RAM loading and the submitted
-`GUES` command, then enters a limit and guess of 1. Inspect its PNGs in
-`out/apl/guess_check` for the completed score of `1 1`.
+VBK2 retains the eight-byte VBK1 header, with magic `VBK2`. Count is payload
+bytes, not event count; CRC is unchanged. Each three-byte event is matrix key
+0..35 (or FF for WAIT), held fields 1..255, released fields 0..255. Limit:
+4095 bytes / 1365 complete events. Raw SHIFT and function keys are valid in
+VBK2. APL-only VBK1 remains gated to the recognized Computational Language ROM.
 
-`bash apl_guess_check.sh rtl` uses the same keyboard schedule through the RTL loader
-using core download index 4 (MiSTer OSD index 3). Captures go to
-`out/apl/guess_check_rtl`. `--apl-rtl FILE@F` exercises staging, validation,
-CPU pause, dump replay and resume without resetting the interpreter. The RTL
-replays all 16384 bytes through normal memory writes, including UV201 object
-RAM. Cartridge banking and write-only video controls retain their live values;
-their dump bytes are FF readback, not saved state. ROM remains read-only. The
-harness checks write order, RAM, video state, bank preservation and CPU pause/resume.
-`--apl` remains a RAM-only diagnostic baseline.
+VBK2 also accepts FE for the music Record/No-Record selector (inside shifted
+mode), and FD for Replay (inside lower mode). The menu setting is latched at
+download: Record maps FE to Z and FD to T; Playback maps FE to COMMA and FD
+to a silent wait with the encoded duration. Older cores reject these events.
+FA/FB/FC select Low/Middle/High with ROM acknowledgment. Their hold/gap bytes
+are placeholders (the converter emits 1/0); handshake state determines timing.
+These controls require lower SHIFT, as do physical octave keys.
+Auto-Repeat applies to both VBK1 and VBK2 and can be disabled during entry.
 
-`bash apl_load_check.sh [name] [direct|rtl] [frames]` follows the collection author's MAME procedure:
-load the dump, then press NEXT without retyping the saved command. It defaults
-to `clocknye2026` and `rtl`; captures go to `out/apl/load_check/name_mode_trace`.
-Both modes use the same input schedule and record 4096 CPU memory cycles starting
-10 frames before the end in `run.log`. Frames defaults to 360 (minimum 360).
-Longer runs add intermediate and final captures and append the frame count to
-the output directory. This is a long run.
-Dump loading writes `$FF` into write-only UV201 registers, as MAME does; the
-display can look distorted. Continued program execution needs visual verification.
-
-Start with clean execution controls: `python3 apl_check.py --case 00-arithmetic`
-and `python3 apl_check.py --case 00-bars`. Each boots the cartridge without a
-dump. Check echoed input, results and keyboard response after NEXT. Arithmetic
-must show 2 then 5; bars must show heights 10, 20, 30 and then evaluate 1+1 to 2.
-These runs require visual verification, including hardware comparison.
-
-`python3 apl_check.py --all` captures the clean controls, 23 numbered reference entries and
-four variants. This is a long run. Use `--case 04-guess` for one case or
-`--all --dry-run` to list the schedule without simulation. Captures, logs and
-`summary.tsv` go to `out/apl/suite`. A completed capture is not a verified pass.
-Cases without stored programs are entered from the reference listings.
-For diagnostic retries, `--normalize` clears pending snapshot input. Add
-`--leave-edit` only for snapshots in edit mode. `--settle N` extends the wait
-after each line; `--trace-final N` traces N CPU memory cycles in the final
-frame. Use `--outdir out/apl/retry` to keep the original captures.
-
--->
+## Joystick diagnostics
 
 Joystick pulse timing is runtime-configurable without rebuilding. Headless
 defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; use
@@ -146,3 +110,39 @@ Check equivalence by frame hash, before and after:
 
 `CONVERTED` is currently empty. The F8 CPU and packages derive from the
 Channel F core; preserve attribution when changing them.
+
+## Development utilities
+
+Run these from `verilator/`. ROM-based captures need local BIOS and cartridge
+files under `software/0 BIOS` and `software/1 Cartridges`; ROMs are not bundled.
+
+| Utilities | Purpose |
+| --- | --- |
+| `joystick_*_check.sh`, `joystick_calibration_check.py`, `joystick_gain_check.py` | Capture routing, calibration and BIOS scaling behavior. |
+| `joystick_trace.sh`, `joystick_stability.sh`, `joystick_sweep.sh` | Capture joystick timing, stability and parameter sweeps. |
+| `joystick_*_summary.py`, `joystick_scaling_model.py` | Summarize captures and model scaling. |
+| `audio_*_capture.sh`, `audio_irq_diagnostic.sh` | Capture Music Teacher audio timing and interrupt behavior. |
+| `music_audio_check.sh`, `music_bank_check.sh` | Check music playback and octave switching. |
+| `patch_music_teacher.py` | Generate the experimental static-staff ED01 ROM for audio diagnostics. |
+| `tests/*.py`, `tests/tb_*` | Analyze captures and run Python, VHDL, Verilog and C++ regressions. |
+| `strip_modules.py` | Replace selected synthesized modules during Verilog conversion. |
+
+`joystick_diag_check.sh` additionally requires `../../VideoBrain-Tests/JoystickDiag.bin`.
+The static-staff ROM is optional for normal core use. Create it for diagnostics with:
+
+```sh
+python3 patch_music_teacher.py /path/to/original-ed01.bin /path/to/static-staff.bin
+```
+
+Run converter checks without building the simulator:
+
+```sh
+python3 -B -m unittest discover -s tests -p test_apl_source.py
+python3 -B -m unittest discover -s tests -p test_keyboard_input.py
+python3 -B -m unittest discover -s tests -p test_apl_next_sweep.py
+python3 -B -m unittest discover -s tests -p test_tape_convert.py
+python3 -B -m unittest discover -s tests -p test_trim_tape.py
+```
+
+Optional tape-reference checks use recordings under `refs/tape-observations`;
+unavailable fixtures are skipped.

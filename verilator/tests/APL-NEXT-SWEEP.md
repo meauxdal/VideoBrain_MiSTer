@@ -60,7 +60,7 @@ The same passive interception is available for an ordinary source replay:
 
 ```sh
 ./obj_dir_headless/Vtop --cart '../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin' \
-  --source '../software/2 VideoBrain Keyboard Input Files (vbk)/21-apl_s-games-james-price/21-clock.vbk@210' \
+  --source '../examples/21-apl_s-games-james-price/21-clock.vbk@210' \
   --source-trace --source-snoop out/clock-snoop.csv --source-snoop-from 200 \
   --frames 14000 --max-cycles 6000000000
 ```

@@ -7,13 +7,15 @@ import json
 from pathlib import Path
 import struct
 import subprocess
+import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from apl_source import encode
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CART = ROOT / "software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
-CLOCK = ROOT / "software/2 VideoBrain Keyboard Input Files (vbk)/21-apl_s-games-james-price/21-clock.txt"
+CLOCK = ROOT / "examples/21-apl_s-games-james-price/21-clock.txt"
 CONDITION = "IF (D EQ 29) AND (O EQ 2) AND ((Y MOD 4) NE 0)"
 
 

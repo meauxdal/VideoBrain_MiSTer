@@ -11,7 +11,7 @@ The core folder is /media/fat/games/VideoBrain. A BIOS is required. Verified BIO
 - **uvres1.bin** (a.k.a. **uvres_1n.d67**): MD5 CDF2F70F616AB61D7FBF31A3763BFC21, 2,048 bytes
 - **uvres2.bin** (a.k.a. **resn2.e5**): MD5 E4B8B681CCCF4E8ECB09C3FDC206B8B2, 2,048 bytes
 
-A tool is provided to combine the files.
+Use the [BIOS tool](tools/README.md#bios) to combine the files.
 
 ```text
 tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
@@ -38,17 +38,17 @@ The OSD provides these file actions:
 
 For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to recieve modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning.
 
-.vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses as well. They can be used in any software. [Example](/examples) files and a converter to create new files are provided. 
+.vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses as well. They can be used in any software. [Example](/examples) files and a [converter](tools/README.md#keyboard-files) to create new files are provided.
 
 The converter accepts valid text files and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries.
 
 Music Macro Language (.mml) files can also be converted. MML files must use a simplified subset of the QB64 PLAY format. The converter generates unique musical .vbk files (with VBK2 header for differentiation from text entry files) for automatic playback in the free play mode in Music Teacher 1. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
 
-Unload Cartridge returns to the built-in BIOS. 
+Unload Cartridge returns to the built-in BIOS.
 
 System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, pressing this key will instantly wipe out any program in RAM. Input > Esc Reset > Off can be set to prevent accidental activation.
 
-System > Info Messages can optionally disable pop-up notifications. 
+System > Info Messages can optionally disable pop-up notifications.
 
 See [tape setup and recording behavior](docs/TAPE.md) for more info on loading from/saving to tape.
 
@@ -109,7 +109,7 @@ TERM=dumb socat -d -d \
   EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
 ```
 
-In Timeshare, F5 is Carriage Return; your all-purpose Enter key. Unlike the rest of the software library, SHIFT is held, not a toggle. 
+In Timeshare, F5 is Carriage Return; your all-purpose Enter key. Unlike the rest of the software library, SHIFT is held, not a toggle.
 
 Telehack spacing will be disorganized as it expects a larger screen by default. Type this command (/ is Shift+H):
 
@@ -133,6 +133,11 @@ You should get a confirmation.
 ```
 
 See [Timeshare setup, keys, and diagnostics](docs/EXPANDER1.md#timeshare-over-uart).
+
+## Tools
+
+See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard
+file conversion, and tape utilities.
 
 ## Building
 

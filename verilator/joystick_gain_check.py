@@ -10,7 +10,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parent
 THRESHOLDS = (1333, 1599, 1867, 2399)
-BIOS = ROOT.parent / "software"
+BIOS = ROOT.parent / "software/0 BIOS"
 
 
 def gain(span):

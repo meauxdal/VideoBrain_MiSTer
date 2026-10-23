@@ -244,7 +244,7 @@ test-expander1-playback: test-expander1 test-tape
 
 capture-apl-save: headless
 	@mkdir -p out/expander1/apl-save
-	PYTHONDONTWRITEBYTECODE=1 python3 apl_source.py tests/apl_save.txt out/expander1/apl-save/save.vbk
+	PYTHONDONTWRITEBYTECODE=1 python3 ../tools/apl_source.py tests/apl_save.txt out/expander1/apl-save/save.vbk
 	$(HL_EXE) \
 		--cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
 		--expander1 "$(EXPANDER1_ROM)" \
@@ -259,7 +259,7 @@ APL_TAPE ?= ../refs/tape-observations/apls-test.vbt
 
 replay-apl-tape: headless
 	@mkdir -p out/expander1/apl-load
-	PYTHONDONTWRITEBYTECODE=1 python3 apl_source.py tests/apl_load.txt out/expander1/apl-load/load.vbk
+	PYTHONDONTWRITEBYTECODE=1 python3 ../tools/apl_source.py tests/apl_load.txt out/expander1/apl-load/load.vbk
 	$(HL_EXE) \
 		--cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
 		--expander1 "$(EXPANDER1_ROM)" --playback "$(APL_TAPE)" \
@@ -309,16 +309,6 @@ clean:
 
 .PHONY: all headless netlist lint test-cpu-clock test-yint test-render test-audio test-expander1 test-cartridges clean
 
-# test-apl-ram: test-cartridges
-# 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \
-# 		"-gapl_image=../software/converted/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
-# 		"-gapl_dump=../software/21 games for apl_s/guess.bin"
-# 	@mkdir -p $(WORK)
-# 	$(GHDL) -a --std=08 --workdir=$(WORK) -Wno-hide $(VHD_SRC) tests/tb_apl_loader.vhd
-# 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_apl_loader --assert-level=error
-
-# .PHONY: test-apl-ram
-
 test-apl-input: test-cartridges
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error \
 		"-gapl_image=../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
@@ -345,7 +335,7 @@ replay-clock-source: headless
 	@mkdir -p out/clock-source
 	$(HL_EXE) \
 		--cart "../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" \
-		--source "../software/2 VideoBrain Keyboard Input Files (vbk)/21-apl_s-games-james-price/21-clock.vbk@210" \
+		--source "../examples/21-apl_s-games-james-price/21-clock.vbk@210" \
 		--source-trace --frames 14000 --max-cycles 6000000000 \
 		--shot-every 500 --shot-last --prefix clock --outdir out/clock-source \
 		> out/clock-source/run.log 2>&1

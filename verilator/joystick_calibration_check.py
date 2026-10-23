@@ -92,7 +92,7 @@ def main():
         return
     args.out.mkdir(parents=True, exist_ok=True)
     cart, startup, frame, return_pc = GAMES[args.game]
-    command = ["./obj_dir_headless/Vtop", "--cart", f"../software/{cart}", "--press", "SPACE@140:8",
+    command = ["./obj_dir_headless/Vtop", "--cart", f"../software/1 Cartridges/{cart}", "--press", "SPACE@140:8",
                "--joy-results", str(startup), "--joy-return-pc", f"{return_pc:X}",
                "--dump-every", "1", "--ram", "--dump-file", str(args.out / "state.txt"),
                "--outdir", str(args.out), "--prefix", args.game, "--quiet"]

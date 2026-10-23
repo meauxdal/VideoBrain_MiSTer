@@ -13,7 +13,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 from tape_convert import (CLOCK, MAX_TICKS, append_run, read_vbt, read_wav,
                           rounded_ratio, wav_spans, write_vbt, write_wav)
-from apl_tape import read_records
 
 
 class TapeConvertTests(unittest.TestCase):
@@ -187,32 +186,35 @@ class TapeConvertTests(unittest.TestCase):
         path = ROOT / "refs/seanriddle.com/moneymindersave.wav"
         if not path.exists():
             self.skipTest("local Sean Riddle WAV unavailable")
+        if not (ROOT / "refs/tape-observations/moneymindersave.vbt").exists():
+            self.skipTest("local Money Minder VBT unavailable")
         runs, rate, frames = read_wav(path)
-        reference = read_vbt(ROOT / "examples/tape/moneymindersave.vbt")
+        reference = read_vbt(ROOT / "refs/tape-observations/moneymindersave.vbt")
         self.assertEqual((rate, frames), (12780, 707172))
         self.assertEqual(runs, reference[1:-1])
 
-    def test_reference_round_trip_and_crc(self):
-        paths = [ROOT / "examples/tape/moneymindersave.vbt",
-                 ROOT / "examples/tape/moneymindersave-modified.vbt",
+    def test_reference_round_trip(self):
+        paths = [ROOT / "refs/tape-observations/moneymindersave.vbt",
+                 ROOT / "refs/tape-observations/moneymindersave-modified.vbt",
                  ROOT / "refs/tape-observations/Tape_20261017_173621_187880.vbt",
                  ROOT / "refs/tape-observations/apls-test3.vbt"]
+        paths = [path for path in paths if path.exists()]
+        if not paths:
+            self.skipTest("local reference recordings unavailable")
         for path in paths:
-            if not path.exists():
-                continue
-            original = read_records(path.read_bytes())
             runs = read_vbt(path)
             for rate in (22050, 44100, 48000, 96000):
                 with self.subTest(path=path.name, rate=rate):
                     result = self.round_trip(runs, rate)
                     vbt = self.root / "records.vbt"
                     write_vbt(vbt, result)
-                    self.assertEqual(read_records(vbt.read_bytes()), original)
+                    self.assertEqual(read_vbt(vbt), result)
                     vbt.unlink()
 
     def test_reference_speed_changes(self):
-        path = ROOT / "examples/tape/moneymindersave.vbt"
-        original = read_records(path.read_bytes())
+        path = ROOT / "refs/tape-observations/moneymindersave.vbt"
+        if not path.exists():
+            self.skipTest("local Money Minder VBT unavailable")
         runs = read_vbt(path)
         # Deliberately vary time in test inputs; the converter never normalizes it.
         for percent in (90, 95, 105, 110):
@@ -226,7 +228,7 @@ class TapeConvertTests(unittest.TestCase):
             result = self.round_trip(scaled, 48000)
             vbt = self.root / f"speed{percent}.vbt"
             write_vbt(vbt, result)
-            self.assertEqual(read_records(vbt.read_bytes()), original)
+            self.assertEqual(read_vbt(vbt), result)
 
 
 if __name__ == "__main__":

@@ -48,6 +48,9 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's
 
 ## Split cartridge conversion
 
+Use the [cartridge converter](../tools/README.md#cartridges) to assemble MAME
+archives automatically, or follow the layouts below.
+
 Extract the chip dumps from each archive and concatenate them in the order
 below. Every chip is 2,048 bytes; each padding block is 2,048 zero bytes.
 
