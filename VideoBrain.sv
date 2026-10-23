@@ -59,7 +59,7 @@ localparam CONF_STR = {
 	"P4,Keyboard;",
 	"P4-;",
 	"P4F4,VBK,Load Keyboard File;",
-	"P4O[31],OSD aborts VBK,On,Off;",
+	"P4O[31],Menu Aborts VBK,On,Off;",
 	"H5P4O[18],Music Mode,Playback,Record;",
 	"h5D5P4O[18],Music Mode,Playback;",
 	"P4O[19],Music Repeat,Off,On;",
