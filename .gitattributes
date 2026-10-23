@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell scripts must stay executable by POSIX shells on Windows checkouts too.
+*.sh text eol=lf
+Makefile text eol=lf
+*.bat text eol=crlf

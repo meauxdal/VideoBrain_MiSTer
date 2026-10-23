@@ -83,15 +83,18 @@ class KeyboardTests(unittest.TestCase):
 
     def test_music_timing_examples(self):
         directory = Path(__file__).resolve().parents[2] / 'examples' / 'music'
-        score = {p.stem: p for p in (directory / 'score-timing').glob('*.vbk')}
-        note = {p.stem: p for p in (directory / 'note-timing').glob('*.vbk')}
+        score = {p.stem: p for p in directory.glob('*.vbk')}
+        sources = {p.stem: p for p in directory.glob('*.mml')}
         self.assertTrue(score, 'bundled music examples are missing')
-        self.assertEqual(set(score), set(note))
+        self.assertEqual(set(score), set(sources))
         for name in score:
             with self.subTest(song=name):
-                # Validate both packets and compare their complete pitch sequence.
+                text = sources[name].read_text(encoding='utf-8')
+                self.assertEqual(score[name].read_bytes(),
+                                 music(text, 'letters', timing='score'))
+                # Both timing modes must retain the complete pitch sequence.
                 score_events = events(score[name].read_bytes())
-                note_events = events(note[name].read_bytes())
+                note_events = events(music(text, 'letters', timing='note'))
                 self.assertEqual(score_events[:5], note_events[:5])
                 self.assertEqual(score_events[-3:], note_events[-3:])
                 self.assertEqual(music_pitches(score_events[5:-3]),

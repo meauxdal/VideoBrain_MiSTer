@@ -2,6 +2,8 @@
 
 Run these commands from the repository root. The Python tools require Python 3.9 or newer and use only the standard library. Use `python` instead of `python3` if that is how Python is installed on your system. The BIOS tool requires a POSIX shell, available on Linux, macOS, WSL or Git Bash.
 
+Run the converter regression checks with `python3 -B verilator/tests/run_tools.py`. No ROMs or HDL tools are required; checks against local reference recordings are skipped when those files are unavailable.
+
 | Tool | Purpose |
 | --- | --- |
 | `make_boot_rom.sh` | Combine the two BIOS chips into `boot0.rom`. |

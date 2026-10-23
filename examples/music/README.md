@@ -1,12 +1,21 @@
 # Music examples
 
-Use Music Teacher 1, Program 1 / Play-Record, lower SHIFT (no light square), and **Keyboard > Music Mode > Playback**. Load a `.vbk` from either folder. Loading erases the previous recording. Playback avoids the cartridge recorder's capacity limit.
+Five pieces for Music Teacher 1, with MML sources and ready-to-load VBK files:
 
-| Folder | Behavior |
-| --- | --- |
-| `score-timing` | Keeps score tempo by fitting octave switches into preceding rests or shortening preceding notes. |
-| `note-timing` | Keeps note/rest lengths and adds the acknowledged octave-switch delay. |
+- Bach: Cello Suite No. 1, Prelude (`bach-cello-suite-1-prelude`)
+- Bach: The Well-Tempered Clavier, Book I, Prelude No. 1 (`bach-wtc-1-prelude-1`)
+- Chopin: Minute Waltz (`chopin-minute-waltz`)
+- Joplin: The Entertainer (`joplin-the-entertainer`)
+- Strauss: The Blue Danube (`strauss-blue-danube`)
 
-Both use two-field minimum holds and key-off gaps. Timing is rounded to video fields; each note includes its key-off gap. Without octave changes, the two versions are identical. Score timing can add delay if the preceding note or rest is too short to absorb an octave switch.
+Use Music Teacher 1, Program 1 / Play-Record, lower SHIFT (no light square), and **Keyboard > Music Mode > Playback**. Load a `.vbk` from this folder. Loading erases the previous recording. Playback avoids the cartridge recorder's capacity limit.
 
-To convert your own MML, see the [keyboard converter](../../tools/README.md#keyboard-files). See [music input](../../docs/KEYBOARD-INPUT.md#music-teacher-1) for notation, recording, replay and repeat settings.
+These examples use score timing, with two-field minimum holds and key-off gaps. Octave switches fit into preceding rests or shorten preceding notes to preserve the score tempo. Timing is rounded to video fields; each note includes its key-off gap. An octave switch can add delay if the preceding note or rest is too short to absorb it.
+
+To regenerate a file from the repository root:
+
+```sh
+python3 tools/keyboard_input.py examples/music/chopin-minute-waltz.mml --profile music --start-mode letters --timing score
+```
+
+The converter also supports `--timing note`, which preserves note/rest lengths and adds octave-switch time. See the [keyboard converter](../../tools/README.md#keyboard-files) and [music input](../../docs/KEYBOARD-INPUT.md#music-teacher-1) for conversion options, notation, recording, replay and repeat settings.

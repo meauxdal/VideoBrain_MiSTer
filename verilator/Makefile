@@ -327,10 +327,11 @@ test-music-input: test-cartridges
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_ROM)"
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_PATCHED_ROM)"
 
-test-apl-source: test-apl-input test-cpu-interrupt
-	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_source.py
-	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apl_next_sweep.py
-	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_keyboard_input.py
+.PHONY: test-tools
+test-tools:
+	python3 -B tests/run_tools.py
+
+test-apl-source: test-apl-input test-cpu-interrupt test-tools
 	@mkdir -p out/source_test
 	$(V) --binary --timing -Wno-fatal --top-module tb_apl_source_loader \
 		--Mdir out/source_test $(RTL)/apl_source_loader.sv tests/tb_apl_source_loader.sv

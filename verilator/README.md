@@ -79,14 +79,10 @@ Run these from `verilator/`. ROM-based captures need local BIOS and cartridge fi
 python3 patch_music_teacher.py /path/to/original-ed01.bin /path/to/static-staff.bin
 ```
 
-Run converter checks without building the simulator:
+Run all converter checks without building the simulator (Python 3.9 or newer, standard library only):
 
 ```sh
-python3 -B -m unittest discover -s tests -p test_apl_source.py
-python3 -B -m unittest discover -s tests -p test_keyboard_input.py
-python3 -B -m unittest discover -s tests -p test_apl_next_sweep.py
-python3 -B -m unittest discover -s tests -p test_tape_convert.py
-python3 -B -m unittest discover -s tests -p test_trim_tape.py
+python3 -B tests/run_tools.py
 ```
 
-Optional tape-reference checks use recordings under `refs/tape-observations`; unavailable fixtures are skipped.
+The same checks are available as `make test-tools`, and are included in `make test-apl-source`. From the repository root, use `python3 -B verilator/tests/run_tools.py`. Use `python` if that is how Python is installed on your system. Optional tape-reference checks use local recordings under `refs/`; unavailable fixtures are skipped.
