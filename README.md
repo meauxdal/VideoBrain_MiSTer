@@ -2,10 +2,6 @@
 
 An FPGA implementation of the 1978 Umtech VideoBrain Family Computer, with its Fairchild F8 CPU, Umtech UV201 video chip and UV202 clock/bus chip.
 
-## Status
-
-All eighteen cartridges reach their expected first screen. Joystick timing and analog audio response remain approximations. Expander 1 supports tape SAVE/LOAD through SD images and Timeshare internet sessions through MiSTer's UART. Expander 2 acoustic modem behavior is unsupported. See [cartridge coverage](docs/CARTRIDGES.md).
-
 ## Installing
 
 Place the latest .rbf from releases in /media/fat/_Computers.
@@ -24,11 +20,7 @@ tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 
 **System > Load BIOS** loads an alternate combined 4K BIOS `.bin` through the same download path.
 
-[Expander 1 support](docs/EXPANDER1.md) accepts its separate 2K firmware as boot1.rom or through the OSD. This is required for Information Manager, Timeshare serial communication, and tape SAVE/LOAD.
-
-### Split cartridge dumps
-
-Information Manager and APL/S: The Computational Language need assembled ROM images. See [cartridge assembly](docs/CARTRIDGES.md#split-cartridge-conversion) for chip order and padding. Copy the assembled `.bin` files to the VideoBrain games folder and load them through the OSD. The core selects their mappers automatically.
+[Expander 1](docs/EXPANDER1.md) accepts its 2K firmware as boot1.rom or through the OSD. This is required for Information Manager, Timeshare serial communication, and tape SAVE/LOAD.
 
 ## Using the core
 
@@ -36,74 +28,24 @@ The OSD provides these file actions:
 
 | Action | Use |
 | --- | --- |
-| Load Cartridge | Load a `.bin` cartridge from the main menu and restart the machine. |
-| Input > Load Keyboard File | Type a `.vbk` file into the running program. |
-| Mount Playback Tape | Mount a `.vbt` source for LOAD, VERIFY or database input. |
-| Mount Record Tape | Mount a separate writable `.vbt` for SAVE or database output. |
+| Load Cartridge | Load `.bin` cartridge and restart |
+| Input > Load Keyboard File | Autotype `.vbk` file into the running program |
+| Mount Playback Tape | Mount read-only `.vbt` |
+| Mount Record Tape | Mount writable `.vbt` |
+
+`.vbk` files are custom automatic keyboard input files. You can use them to auto-type APL/S programs, auto-play music, auto-type in game modes when using joysticks, etc. [Example](/examples) files and a converter to create new files are provided. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before trying to play back music files. In other software, make sure you're at a text entry prompt.
 
 **Unload Cartridge** returns to the built-in BIOS. **Reset** restarts the machine with its cartridge retained. **System > Master Control (Soft Reset)** and Esc provide the machine's Master Control button.
 
-Set **Input > Esc Reset > Off** to prevent accidental Master Control presses
-while using F1 for backspace. It defaults to On; the OSD Master Control action
-remains available when Esc is disabled.
+**Input > Esc Reset > Off** can be set to prevent accidental Master Control activation.
 
-For APL/S, wait for its input prompt before loading a keyboard file. Entry starts when the OSD closes. Ready-to-load examples are in `examples/apl`. See [APL/S entry](docs/APL-SOURCE.md) and [other programs and music](docs/KEYBOARD-INPUT.md). **Input** holds **Music Mode** and **Music Repeat** settings.
-
-[Music examples](examples/music/timing/README.md) provide Score timing and Note timing versions for Playback.
-
-Tape recording starts when the program issues SAVE; mounting alone does not change the image. Each tape has its own rewind entry on the main menu. Use different source and output files. **System > Info Messages** controls keyboard-entry and tape notifications. See [tape setup and recording behavior](docs/TAPE.md).
-
-## Timeshare over UART
-
-Timeshare can connect to an internet text service through MiSTer's Linux side.
-The original cartridge and Expander 1 firmware handle serial communication;
-Linux bridges the UART to the network without an Expander 2 modem.
-
-1. Load the Expander 1 firmware and Timeshare cartridge. Timeshare defaults to 300 baud.
-2. Set MiSTer's UART connection to **None**, leaving `/dev/ttyS1` available for direct access.
-3. Select Timeshare full duplex: hold **F4 + Shift**, tap **D**, then release.
-4. Over SSH to MiSTer, run the following with `socat` and `telnet` installed:
-
-```sh
-stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
-  cs8 -parenb -cstopb clocal istrip
-
-TERM=dumb socat -d -d \
-  FILE:/dev/ttyS1 \
-  EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
-```
-
-Watch the VideoBrain for the banner. Press **F5** for Carriage Return after
-each command or answer. In Timeshare, **hold Shift** for shifted characters;
-it does not lock. Type `/` with **Shift+H**. Configure Telehack as follows:
-
-```text
-STTY /TTY
-NUMBER OF COLS? 24
-NUMBER OF ROWS? 15
-%SIZE SET: 24X15
-```
-
-Space advances its `--MORE--` prompt.
-Stop the bridge with Ctrl+C in SSH.
-
-Telehack sessions have displayed Zork, weather, date, and paginated command
-lists on MiSTer at 300 baud. See [Timeshare setup, keys, and diagnostics](docs/EXPANDER1.md#timeshare-over-uart)
-for echo settings, limitations, and a local command service.
-
-## Joystick
-
-Joysticks default to Connected. **Input > Stick Preset > Auto** selects the cartridge's linear timing; Tennis and Gladiator can also be selected manually. Use **Input > Calibrate Sticks** while the game is reading the joystick. **Input > Paired Sticks** lets a controller's right stick and **Fire (Paired)** operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
-
-## Video
-
-Native output is interlaced, with integer scaling and scandoubler options. **Video > 240p** provides experimental progressive output at about 59.695 Hz. It changes vertical rollover and can affect joystick reads across that boundary. See [240p verification](verilator/joystick_verification.md#experimental-240p).
+Tape recording starts when the program issues SAVE. Don't mount the source and output files; bad things will happen probably. **System > Info Messages** can optionally disable contextual notifications. See [tape setup and recording behavior](docs/TAPE.md).
 
 ## Keyboard
 
 ![VideoBrain keyboard manual](/docs/VB_Keyboard.gif)
 
-In the BIOS, VideoBrain SHIFT is a toggle (think CapsLock on a modern keyboard). The square in the bottom right of the screen changes color to indicate when SHIFT is active. Programs can use SHIFT differently: in Timeshare, hold it while pressing the desired key.
+In the BIOS and most software, VideoBrain's SHIFT key is a toggle (think CapsLock on a modern keyboard). A square in the bottom right of the screen appears in some software to indicate when SHIFT is active. Timeshare uniquely uses SHIFT by holding, not as a toggle.
 
 **[How to play and use VideoBrain software](docs/HOW-TO-PLAY.md)** provides
 the original manual diagrams, cartridge keyboard layouts, game-selection
@@ -116,6 +58,68 @@ charts, and MiSTer control mappings for games and utilities.
     F3          NEXT/CLOCK
     F4          SPECIAL/ALARM
     F5          ERASE/RESTART
+
+## Joystick
+
+VideoBrain supports 4 analog joysticks, though only one game (Tennis) supports 4 players, and several of the games don't have any analog input to speak of. The VideoBrain joystick does not self-center, so it's a bit awkward in Tennis with modern joysticks. 
+
+Use Calibrate Sticks when joysticks are active in-game to fully calibrate all joysticks for use. Joysticks will drift diagonally until calibrated.
+
+Tennis and other games do not share centering positions - this is correct to hardware. The core automatically applies the correct centering. You can override this in the OSD.
+
+**Input > Paired Sticks** lets a controller's right stick and **Fire (Paired)** operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
+
+## Video
+
+VideoBrain native output is interlaced. **Video > 240p > On** toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary. It seems to work fine, but try to keep this setting off when testing/reporting issues with the core.
+
+### Split cartridge dumps
+
+Information Manager and APL/S: The Computational Language need assembled ROM images. See [cartridge assembly](docs/CARTRIDGES.md#split-cartridge-conversion).
+
+## Timeshare over UART - Telehack Example
+
+Timeshare can connect to a text service through HPS, mimicking the function of the Expander 2 acoustic modem (aoustic emulation is not implemented). Notably, Timeshare can't send or display lowercase characters. This limits what you can realistically interface with. Telehack works well, though.
+
+Expander 1 ROM (boot1.rom) is required for serial.
+
+1. Load Timeshare cartridge
+2. Set MiSTer's UART connection to **None**
+3. Ensure SSH is enabled on your MiSTer, then run this command over SSH (requires `socat` and `telnet`):
+
+```sh
+stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
+  cs8 -parenb -cstopb clocal istrip
+
+TERM=dumb socat -d -d \
+  FILE:/dev/ttyS1 \
+  EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
+```
+
+In Timeshare, **F5** is Carriage Return; your all-purpose Enter key. Unlike the rest of the software library, SHIFT is held, not a toggle. 
+
+Telehack spacing will be disorganized as it expects a larger screen by default. Type this commend (`/` is **Shift+H**):
+
+```text
+STTY /TTY
+```
+
+(If you don't see what you're typing, you might be in half-duplex mode. To set full duplex in Timeshare use **F4 + Shift + D**. Full-duplex is the default. To set half-duplex, it's **F4 + Shift + H**)
+
+You'll be prompted for the number of columns and rows your setup allows. Timeshare uses 24 by 15.
+
+```text
+NUMBER OF COLS? 24
+NUMBER OF ROWS? 15
+```
+
+You should get a confirmation.
+
+```text
+%SIZE SET: 24X15
+```
+
+See [Timeshare setup, keys, and diagnostics](docs/EXPANDER1.md#timeshare-over-uart).
 
 ## Building
 
@@ -131,7 +135,6 @@ Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/REA
 - [orphanedgames.com](https://orphanedgames.com/videobrain/)
 - [channel_f_and_videobrain Yahoo/groups.io group](https://groups.io/g/Channel-F-and-VideoBrain)
 - [James Price - 21 APL/S Games and One-Liners for Your Umtech VideoBrain (GitHub)](https://github.com/jamescprice/21-APL-Games-and-One-Liners-For-Your-Umtech-Videobrain)
-- [James Price - 21 APL/S Games and One-Liners for Your Umtech VideoBrain (PDF)](https://orphanedgames.com/videobrain/Books/21_APL-S_Games/21_APLS_Games_and_One-Liners_for_Your_Umtech_VideoBrain_(2025)(James_Price).pdf)
 - [Home Computer & Video Game Museum - VideoBrain](http://hcvgm.org/VideoBrain.html)
 - [oldcomputers.net/videobrain.html](https://www.oldcomputers.net/videobrain.html)
 - [forums.atariage.com](https://forums.atariage.com/topic/71151-videobrain-anyone-have-info/)
