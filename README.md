@@ -104,7 +104,7 @@ TERM=dumb socat -d -d \
 
 In Timeshare, F5 is Carriage Return; your all-purpose Enter key. Unlike the rest of the software library, SHIFT is held, not a toggle. 
 
-Telehack spacing will be disorganized as it expects a larger screen by default. Type this commend (/ is Shift+H):
+Telehack spacing will be disorganized as it expects a larger screen by default. Type this command (/ is Shift+H):
 
 ```text
 STTY /TTY
