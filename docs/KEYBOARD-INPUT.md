@@ -1,6 +1,6 @@
 # Keyboard input files
 
-Choose **Input > Load Keyboard File** and select a `.vbk`.
+Choose **Keyboard > Load Keyboard File** and select a `.vbk`. A keyboard key cancels entry. **Keyboard > Menu Aborts VBK > Off** lets entry continue while the OSD is open.
 
 See [APL/S entry and loading without running](APL-SOURCE.md).
 
@@ -30,7 +30,7 @@ One event per line: `KEY`, `KEY hold gap`, or `WAIT fields`. Times are video fie
 
 ## Music Teacher 1
 
-Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square), then load an example from `examples/music/score-timing` or `examples/music/note-timing`. Each generated song erases the previous recording, selects Middle, enters the notes, and ends with No-Record. **Input > Music Mode** selects **Playback** (default) or **Record**. Record enables the cartridge recorder; `--replay` presses REPLAY afterward. Playback keeps Record off and ignores that replay request, playing the file live. Regenerate older music files to use this setting; their physical Record/Replay keys retain their original behavior. After recording, press physical T to replay the stored song again. **Input > Music Repeat** restarts the file from the top until entry is canceled. Repeat forces Playback and grays out Music Mode, preserving the selected mode for when Repeat is turned off. The loader does not wait for the cartridge's Replay routine. Use lower SHIFT and files generated with `--start-mode letters` so each music pass starts in the same mode. This uses the cartridge's own recorder and sound routines; the loader supplies no replacement audio engine.
+Select Program 1 / Play-Record manually. Ensure lower SHIFT (no light square), then load an example from `examples/music/score-timing` or `examples/music/note-timing`. Each generated song erases the previous recording, selects Middle, enters the notes, and ends with No-Record. **Keyboard > Music Mode** selects **Playback** (default) or **Record**. Record enables the cartridge recorder; `--replay` presses REPLAY afterward. Playback keeps Record off and ignores that replay request, playing the file live. Regenerate older music files to use this setting; their physical Record/Replay keys retain their original behavior. After recording, press physical T to replay the stored song again. **Keyboard > Music Repeat** restarts the file from the top until entry is canceled. Repeat forces Playback and grays out Music Mode, preserving the selected mode for when Repeat is turned off. The loader does not wait for the cartridge's Replay routine. Use lower SHIFT and files generated with `--start-mode letters` so each music pass starts in the same mode. This uses the cartridge's own recorder and sound routines; the loader supplies no replacement audio engine.
 
 The monophonic MML subset accepts A-G, `#`/`+` sharp, `-` flat, O2-O6, `<`/`>`, T32-T255, L1-L64, per-note lengths, one dot, and R/P rests. Default: O4, T120, L4. C4 means middle C. Range: C2 through B5, checked after accidentals; O6 permits only C- (B5). Chords, ties, loops, voices and other MML commands are rejected. MML conventions follow the [QB64 PLAY notation](https://qb64phoenix.com/qb64wiki/index.php/PLAY).
 

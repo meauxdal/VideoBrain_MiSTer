@@ -1,6 +1,6 @@
 # Music examples
 
-Use Music Teacher 1, Program 1 / Play-Record, lower SHIFT (no light square), and **Input > Music Mode > Playback**. Load a `.vbk` from either folder. Loading erases the previous recording. Playback avoids the cartridge recorder's capacity limit.
+Use Music Teacher 1, Program 1 / Play-Record, lower SHIFT (no light square), and **Keyboard > Music Mode > Playback**. Load a `.vbk` from either folder. Loading erases the previous recording. Playback avoids the cartridge recorder's capacity limit.
 
 | Folder | Behavior |
 | --- | --- |

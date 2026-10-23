@@ -40,7 +40,7 @@ python3 tools/keyboard_input.py input.keys --profile keys
 python3 tools/keyboard_input.py song.mml --profile music --start-mode letters --timing score
 ```
 
-Both converters accept an optional output path after the source; otherwise they write beside the source with a `.vbk` extension. Existing outputs are replaced, but the source cannot be overwritten. Input is UTF-8. Copy the `.vbk` to MiSTer and choose **Input > Load Keyboard File** at the program's input prompt.
+Both converters accept an optional output path after the source; otherwise they write beside the source with a `.vbk` extension. Existing outputs are replaced, but the source cannot be overwritten. Input is UTF-8. Copy the `.vbk` to MiSTer and choose **Keyboard > Load Keyboard File** at the program's input prompt.
 
 | Profile | Input |
 | --- | --- |

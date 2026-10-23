@@ -30,9 +30,9 @@ The core maps physical VideoBrain key positions. A cartridge can give those keys
 
 Letters, comma, and semicolon use their matching PC keys. Numbers and symbols use the VideoBrain layout, not the PC key legends. SHIFT toggles in the BIOS, APL/S, and Financier; Timeshare uses held Shift. Follow each title's controls.
 
-**Input > Esc Reset > Off** disables keyboard Master Control to protect against accidental presses beside F1. **System > Master Control (Soft Reset)** remains available. Master Control can discard entered work; it is not a backspace.
+**Keyboard > Esc Soft Reset > Off** disables keyboard Master Control to protect against accidental presses beside F1. **System > Master Control (Soft Reset)** remains available. Master Control can discard entered work; it is not a backspace.
 
-The manuals' HIT or trigger button is MiSTer's **Fire**. Joystick numbers refer to the four VideoBrain sockets. Use **Input > Calibrate Sticks** while a game is reading its joysticks. **Input > Paired Sticks** can assign a controller's right stick and **Fire (Paired)** to a second socket. See [joystick setup](JOYSTICK.md).
+The manuals' HIT or trigger button is MiSTer's **Fire**. Joystick numbers refer to the four VideoBrain sockets. Use **Joysticks > Calibrate Sticks** while a game is reading its joysticks. **Joysticks > Paired Sticks** can assign a controller's right stick and **Fire (Paired)** to a second socket. See [joystick setup](JOYSTICK.md).
 
 ## Built-in programs
 
@@ -196,7 +196,7 @@ Enter the level and number of stands at the opening prompts. For each day's deci
 
 ### Pinball
 
-Enter a game number, then Space (RUN/STOP); games 1-4 are the basic game for one to four players. **Joystick 1's HIT button is the left flipper; joystick 2's is the right flipper.** Joystick 1's button also starts a ball. Select **Input > Paired Sticks > 1+2 / 3+4** to use controller 1's Fire and Fire (Paired) for the two flippers (manual p. 5).
+Enter a game number, then Space (RUN/STOP); games 1-4 are the basic game for one to four players. **Joystick 1's HIT button is the left flipper; joystick 2's is the right flipper.** Joystick 1's button also starts a ball. Select **Joysticks > Paired Sticks > 1+2 / 3+4** to use controller 1's Fire and Fire (Paired) for the two flippers (manual p. 5).
 
 ![Pinball flipper controls](controls/pinball-controls.jpg)
 
@@ -209,7 +209,7 @@ Enter a game number, then Space (RUN/STOP); games 1-4 are the basic game for one
 
 ### Tennis
 
-Enter a game number, then Space (RUN/STOP); game 0 is basic two-player Tennis. Move the joystick to position the racket and use HIT to serve; returns do not require the button. Joysticks 1/2 are the left/right backcourt players; 3/4 are the left/right forecourt players. **Input > Paired Sticks > 1+3 / 2+4 (Doubles)** pairs each team's backcourt and forecourt controls. Space repeats a completed game; F3 (NEXT) selects another (manual p. 5).
+Enter a game number, then Space (RUN/STOP); game 0 is basic two-player Tennis. Move the joystick to position the racket and use HIT to serve; returns do not require the button. Joysticks 1/2 are the left/right backcourt players; 3/4 are the left/right forecourt players. **Joysticks > Paired Sticks > 1+3 / 2+4 (Doubles)** pairs each team's backcourt and forecourt controls. Space repeats a completed game; F3 (NEXT) selects another (manual p. 5).
 
 ![Tennis movement and serving controls](controls/tennis-controls.jpg)
 

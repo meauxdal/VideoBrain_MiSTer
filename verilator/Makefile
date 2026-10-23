@@ -4,6 +4,8 @@ GHDL  = ghdl
 RTL   = ../rtl
 GEN   = gen
 WORK  = ghdl_work
+TEST_INCLUDE = out/include
+TEST_BUILD_ID = $(TEST_INCLUDE)/build_id.v
 
 TOP      = --top-module top
 GEN_V    = $(GEN)/videobrain.v
@@ -277,14 +279,19 @@ test-joystick:
 
 .PHONY: test-joystick
 
-test-video:
+# Wrapper tests use a fixed build date without generating Quartus files.
+$(TEST_BUILD_ID):
+	@mkdir -p $(@D)
+	@printf '%s\n' '`define BUILD_DATE "simulation"' > $@
+
+test-video: $(TEST_BUILD_ID)
 	@mkdir -p out/video
 	$(GHDL) -a --std=08 --workdir=out/video $(RTL)/f8/base_pack.vhd \
 		$(RTL)/uv201/uv201_pack.vhd $(RTL)/uv202/uv202_pack.vhd \
 		$(RTL)/uv202/uv202_clkgen.vhd $(RTL)/uv202/uv202_timing.vhd \
 		$(RTL)/uv201/uv201_render.vhd tests/video_test_source.vhd
 	$(GHDL) synth --std=08 --workdir=out/video --out=verilog video_test_source > out/video/source.v
-	iverilog -g2012 -i -I.. -s tb_video -o out/video/test \
+	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_video -o out/video/test \
 		tests/tb_video.sv out/video/source.v ../VideoBrain.sv \
 		../sys/video_freak.sv
 	vvp out/video/test
@@ -377,17 +384,17 @@ test-cpu-audio:
 
 .PHONY: test-cpu-audio
 
-test-download-reset:
+test-download-reset: $(TEST_BUILD_ID)
 	@mkdir -p out/download_reset
-	iverilog -g2012 -i -I.. -s tb_download_reset -o out/download_reset/test \
+	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_download_reset -o out/download_reset/test \
 		tests/tb_download_reset.sv ../VideoBrain.sv
 	vvp out/download_reset/test
 
 .PHONY: test-download-reset
 
-test-status-messages:
+test-status-messages: $(TEST_BUILD_ID)
 	@mkdir -p out/status_messages
-	iverilog -g2012 -i -I.. -s tb_status_messages -o out/status_messages/test \
+	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_status_messages -o out/status_messages/test \
 		tests/tb_status_messages.sv ../VideoBrain.sv
 	vvp out/status_messages/test
 

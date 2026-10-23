@@ -1,6 +1,6 @@
 # APL/S source entry
 
-Boot the Computational Language cartridge and wait for its input prompt. Choose **Input > Load Keyboard File** and select a `.vbk`. Once the OSD closes, the core types the listing. A keyboard key or reopening the OSD cancels entry and releases the generated key. Partial input remains; reset or reload the cartridge before retrying a partial listing.
+Boot the Computational Language cartridge and wait for its input prompt. Choose **Keyboard > Load Keyboard File** and select a `.vbk`. Once the OSD closes, the core types the listing. A keyboard key cancels entry and releases the generated key. Reopening the OSD also cancels entry unless **Keyboard > Menu Aborts VBK** is Off. Partial input remains; reset or reload the cartridge before retrying a partial listing.
 
 The bundled [Price games and listings](../examples/21-apl_s-games-james-price) come with `.txt` sources and ready-to-load `.vbk` files.
 

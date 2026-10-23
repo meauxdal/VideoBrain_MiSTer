@@ -34,6 +34,8 @@ clean_safe.bat
 jtag.cdf
 VideoBrain.qws
 __pycache__/
+*.pyc
+*.srf
 /dse
 *.log
 VideoBrain.dse

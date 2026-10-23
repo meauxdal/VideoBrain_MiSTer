@@ -34,7 +34,7 @@ The OSD provides these file actions:
 | Load Cartridge | Load .bin cartridge |
 | Mount Playback Tape | Mount read-only .vbt |
 | Mount Record Tape | Mount writable .vbt |
-| Input > Load Keyboard File | Load .vbk automatic keyboard entry file |
+| Keyboard > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
 For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to recieve modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning.
 
@@ -46,7 +46,7 @@ Music Macro Language (.mml) files can also be converted. MML files must use a si
 
 Unload Cartridge returns to the built-in BIOS.
 
-System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, pressing this key will instantly wipe out any program in RAM. Input > Esc Reset > Off can be set to prevent accidental activation.
+System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, pressing this key will instantly wipe out any program in RAM. Keyboard > Esc Soft Reset > Off can be set to prevent accidental activation.
 
 System > Info Messages can optionally disable pop-up notifications.
 
@@ -78,7 +78,7 @@ Use Calibrate Sticks when joysticks are active in-game to fully calibrate all jo
 
 Tennis and other games do not share centering positions - this is correct to hardware. Auto applies the correct centering. You can override this in the OSD.
 
-Input > Paired Sticks lets a controller's right stick and Fire (Paired) operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
+Joysticks > Paired Sticks lets a controller's right stick and Fire (Paired) operate another joystick. See [calibration and controller pairing](docs/JOYSTICK.md).
 
 ## Video
 

@@ -130,7 +130,7 @@ endtask
 
 task check_clock;
     integer file_handle, count, expected, mode;
-    file_handle = $fopen("../software/2 Keyboard Entry (VBK)/21-apl_s-games-james-price/21-clock.vbk", "rb");
+    file_handle = $fopen("../examples/21-apl_s-games-james-price/21-clock.vbk", "rb");
     if (!file_handle) $fatal(1, "Cannot open Clock VBK");
     count = $fread(packet, file_handle);
     $fclose(file_handle);
