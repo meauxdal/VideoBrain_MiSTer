@@ -58,9 +58,7 @@ See [tape setup and recording behavior](docs/TAPE.md) for more info on loading f
 
 In the BIOS and most software, VideoBrain's SHIFT key is a toggle (like CapsLock on a modern keyboard). A square in the bottom right of the screen appears in some software to indicate when SHIFT is active; a light square is unshifted, dark is shifted. Other software will show your cursor as an L for unshifted (lowercase) and a U for shifted (uppercase). Timeshare uniquely uses SHIFT by holding, not as a toggle.
 
-[How to play and use VideoBrain software](docs/HOW-TO-PLAY.md) provides
-the original manual diagrams, cartridge keyboard layouts, game-selection
-charts, and MiSTer control mappings for games and utilities.
+[How to play and use VideoBrain software](docs/HOW-TO-PLAY.md) provides the original manual diagrams, cartridge keyboard layouts, game-selection charts, and MiSTer control mappings for games and utilities.
 
 Unique VideoBrain keys are mapped like this:
 
@@ -136,8 +134,7 @@ See [Timeshare setup, keys, and diagnostics](docs/EXPANDER1.md#timeshare-over-ua
 
 ## Tools
 
-See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard
-file conversion, and tape utilities.
+See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard file conversion, and tape utilities.
 
 ## Building
 

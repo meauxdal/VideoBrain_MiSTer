@@ -1,19 +1,12 @@
 # APL/S source entry
 
-Boot the Computational Language cartridge and wait for its input prompt.
-Choose **Input > Load Keyboard File** and select a `.vbk`. Once the OSD closes,
-the core types the listing. A keyboard key or reopening the OSD cancels entry
-and releases the generated key. Partial input remains; reset or reload the
-cartridge before retrying a partial listing.
+Boot the Computational Language cartridge and wait for its input prompt. Choose **Input > Load Keyboard File** and select a `.vbk`. Once the OSD closes, the core types the listing. A keyboard key or reopening the OSD cancels entry and releases the generated key. Partial input remains; reset or reload the cartridge before retrying a partial listing.
 
-The bundled [Price games and listings](../examples/21-apl_s-games-james-price)
-come with `.txt` sources and ready-to-load `.vbk` files.
+The bundled [Price games and listings](../examples/21-apl_s-games-james-price) come with `.txt` sources and ready-to-load `.vbk` files.
 
 ## Starting a program
 
-Load a definition and wait for entry to finish. Type its launch name in letter
-mode, then press NEXT (PC F3). No RUN command is needed. SHIFT toggles
-letter/symbol mode; use symbol mode for numbers and NEXT after each answer.
+Load a definition and wait for entry to finish. Type its launch name in letter mode, then press NEXT (PC F3). No RUN command is needed. SHIFT toggles letter/symbol mode; use symbol mode for numbers and NEXT after each answer.
 
 | File | Launch | Use |
 | --- | --- | --- |
@@ -23,31 +16,14 @@ letter/symbol mode; use symbol mode for numbers and NEXT after each answer.
 | `22-roulette.vbk` | `RO` | Follow the betting prompts; `3` then `99` at the next round exits. |
 | `23-change.vbk` | `C` | Starts with X=89 and calculates coin change. |
 
-Immediate expressions, such as `01-sine.vbk`, execute as they are entered.
-For other programs, see the launch name and prompts in their `.txt` source.
-Roulette preserves the printed listing's omission of 23 from both betting lists.
+Immediate expressions, such as `01-sine.vbk`, execute as they are entered. For other programs, see the launch name and prompts in their `.txt` source. Roulette preserves the printed listing's omission of 23 from both betting lists.
 
 ## Preparing a listing
 
-See [keyboard converters](../tools/README.md#keyboard-files) for commands.
-Supply UTF-8 text containing exactly the lines to enter at the APL/S prompt.
-Program definitions must include EDIT and ENDE; remove printed headings,
-line numbers and OCR errors. Each nonblank line ends with NEXT.
+See [keyboard converters](../tools/README.md#keyboard-files) for commands. Supply UTF-8 text containing exactly the lines to enter at the APL/S prompt. Program definitions must include EDIT and ENDE; remove printed headings, line numbers and OCR errors. Each nonblank line ends with NEXT.
 
-To load a definition without running it, end the source with ENDE and omit
-its launch command. ENDE must receive NEXT to finish the definition.
-`--hold-final` leaves the final line unsubmitted; earlier lines still submit
-and may execute. Do not use it on a final ENDE for a completed definition.
+To load a definition without running it, end the source with ENDE and omit its launch command. ENDE must receive NEXT to finish the definition. `--hold-final` leaves the final line unsubmitted; earlier lines still submit and may execute. Do not use it on a final ENDE for a completed definition.
 
-Letters become uppercase. Blank lines and surrounding indentation are ignored;
-CRLF and LF are accepted. Tabs and nonbreaking spaces become spaces, smart
-double quotes become plain quotes, and Unicode minus becomes hyphen.
-Multiplication, division, pi and high minus accept ×, ÷, π and ¯ or
-`{MUL}`, `{DIV}`, `{PI}` and `{NEG}`. ASCII `*` means exponentiation.
-Unsupported characters are rejected with their line and column.
-The limit is 4096 key tokens, including spaces and NEXT.
+Letters become uppercase. Blank lines and surrounding indentation are ignored; CRLF and LF are accepted. Tabs and nonbreaking spaces become spaces, smart double quotes become plain quotes, and Unicode minus becomes hyphen. Multiplication, division, pi and high minus accept ×, ÷, π and ¯ or `{MUL}`, `{DIV}`, `{PI}` and `{NEG}`. ASCII `*` means exponentiation. Unsupported characters are rejected with their line and column. The limit is 4096 key tokens, including spaces and NEXT.
 
-APL/S entry waits for the interpreter to accept each key and its release.
-After NEXT, it waits for parsing, execution and screen updates before typing
-the next line. There is no entry-speed setting. Timed VBK2 files, including
-music, use their encoded timings; see [keyboard input](KEYBOARD-INPUT.md).
+APL/S entry waits for the interpreter to accept each key and its release. After NEXT, it waits for parsing, execution and screen updates before typing the next line. There is no entry-speed setting. Timed VBK2 files, including music, use their encoded timings; see [keyboard input](KEYBOARD-INPUT.md).

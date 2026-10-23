@@ -1,27 +1,16 @@
 # Cartridge status
 
-All eighteen cartridges reach their correct first screen. The sixteen
-single-image cartridges also have headless simulator screen coverage.
-First-screen results do not establish full gameplay or peripheral coverage.
+All eighteen cartridges reach their correct first screen. The sixteen single-image cartridges also have headless simulator screen coverage. First-screen results do not establish full gameplay or peripheral coverage.
 
     verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
-Known raw dumps are identified by CRC-32 and use the matching slot behavior.
-`--cart-type` and the OSD's System > Mapper Fallback setting apply only to unrecognized
-images: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman.
-Assembled APL/S and Information Manager images are also identified automatically.
+Known raw dumps are identified by CRC-32 and use the matching slot behavior. `--cart-type` and the OSD's System > Mapper Fallback setting apply only to unrecognized images: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman. Assembled APL/S and Information Manager images are also identified automatically.
 
-**Unload Cartridge** on the main menu removes the cartridge and resets to the
-built-in BIOS. Reset and Master Control retain the cartridge and its RAM.
+**Unload Cartridge** on the main menu removes the cartridge and resets to the built-in BIOS. Reset and Master Control retain the cartridge and its RAM.
 
-**System > Hot Cartridge Insert** defaults to Off, preserving reset-on-load
-behavior. When On, loading a cartridge does not reset the running machine;
-press Master Control afterward to refresh the game layout from the new
-cartridge. Other reset sources and other ROM downloads continue to reset the
-machine.
+**System > Hot Cartridge Insert** defaults to Off, preserving reset-on-load behavior. When On, loading a cartridge does not reset the running machine; press Master Control afterward to refresh the game layout from the new cartridge. Other reset sources and other ROM downloads continue to reset the machine.
 
-Fingerprints for all sixteen released single-image cartridges come from MAME's
-[VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
+Fingerprints for all sixteen released single-image cartridges come from MAME's [VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
 
 ## Summary
 
@@ -48,11 +37,9 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's
 
 ## Split cartridge conversion
 
-Use the [cartridge converter](../tools/README.md#cartridges) to assemble MAME
-archives automatically, or follow the layouts below.
+Use the [cartridge converter](../tools/README.md#cartridges) to assemble MAME archives automatically, or follow the layouts below.
 
-Extract the chip dumps from each archive and concatenate them in the order
-below. Every chip is 2,048 bytes; each padding block is 2,048 zero bytes.
+Extract the chip dumps from each archive and concatenate them in the order below. Every chip is 2,048 bytes; each padding block is 2,048 zero bytes.
 
 ### APL/S: The Computational Language (`complang.zip`)
 
@@ -82,39 +69,25 @@ vb1200c_3000-37ff_9_25_78_51
 vb-1200_3800-3fff_9_26_78
 ```
 
-Save as a `.bin` file: 8,192 bytes. Information Manager also requires
-[Expander 1 firmware](EXPANDER1.md).
-See [disassembly notes](INFOMAN.md) for ROM identity and interpreter details.
+Save as a `.bin` file: 8,192 bytes. Information Manager also requires [Expander 1 firmware](EXPANDER1.md). See [disassembly notes](INFOMAN.md) for ROM identity and interpreter details.
 
 ## Mapper tests
 
-`make -C verilator test-cartridges` checks bank selection, RAM, DMA,
-reset behavior, and the existing cartridge mappings without ROM files.
+`make -C verilator test-cartridges` checks bank selection, RAM, DMA, reset behavior, and the existing cartridge mappings without ROM files.
 
 ## Capture method
 
-Use `--frame-log` to locate screen changes. Timeshare's title disappears
-before frame 150; Lemonade Stand needs about 280 frames to reach its menu.
-Use the input each cartridge requests. Holding SPACE in Financier or Music
-Teacher 1 does not establish a rendering fault.
+Use `--frame-log` to locate screen changes. Timeshare's title disappears before frame 150; Lemonade Stand needs about 280 frames to reach its menu. Use the input each cartridge requests. Holding SPACE in Financier or Music Teacher 1 does not establish a rendering fault.
 
 ## Timeshare serial communication
 
-With Expander 1 firmware loaded, Timeshare supports interactive Telehack
-sessions through MiSTer's HPS UART and a Linux Telnet bridge at 300 baud.
-Command pagination, Zork's opening screen, weather, and date output have been
-verified on MiSTer with the server set to 24 columns and 15 lines. See
-[Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). Earlier captures
-without a working peripheral path blanked after the title. Expander 2 acoustic
-modem behavior and live 110-baud operation remain unverified.
+With Expander 1 firmware loaded, Timeshare supports interactive Telehack sessions through MiSTer's HPS UART and a Linux Telnet bridge at 300 baud. Command pagination, Zork's opening screen, weather, and date output have been verified on MiSTer with the server set to 24 columns and 15 lines. See [Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). Earlier captures without a working peripheral path blanked after the title. Expander 2 acoustic modem behavior and live 110-baud operation remain unverified.
 
 ## Open questions
 
 ### Financier after an invalid key
 
-Holding SPACE leaves Financier drawing striped colour bands. This appears to
-most likely be accurate behavior based on available references. Additional
-investigation is warranted.
+Holding SPACE leaves Financier drawing striped colour bands. This appears to most likely be accurate behavior based on available references. Additional investigation is warranted.
 
 ## Slot device reference
 

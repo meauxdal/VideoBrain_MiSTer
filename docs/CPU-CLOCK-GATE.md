@@ -1,10 +1,6 @@
 # External CPU clock gate
 
-Source: Sean Riddle's `videobrain.xlsx`, parts and all connections sheets.
-The following are board pin connections, not a fit to measured halt costs.
-U30 is 74LS73; U31 is 74LS74. Their edge and clear polarities agree with
-[TI LS73A](https://www.ti.com/lit/ds/symlink/sn74ls73a.pdf) and
-[TI LS74A](https://www.ti.com/lit/ds/symlink/sn74ls74a.pdf).
+Source: Sean Riddle's `videobrain.xlsx`, parts and all connections sheets. The following are board pin connections, not a fit to measured halt costs. U30 is 74LS73; U31 is 74LS74. Their edge and clear polarities agree with [TI LS73A](https://www.ti.com/lit/ds/symlink/sn74ls73a.pdf) and [TI LS74A](https://www.ti.com/lit/ds/symlink/sn74ls74a.pdf).
 
 | Element | Connected pins | Operation |
 | --- | --- | --- |
@@ -16,14 +12,11 @@ U30 is 74LS73; U31 is 74LS74. Their edge and clear polarities agree with
 | U30B | U30.5 (CLK2)=4 MHz, .6 (/CLR2)=1, .9 (Q2) -> F3850.38 (XTLY) | Toggle CPU clock on oscillator falling, if enabled |
 | U41 | U41.9 (CLK)=BRCLK; .3 (D1)/.4 (D2)=requests; .2 (Q1)/.5 (Q2) -> UV202.CPUREQ0/1 | Synchronize requests separately from the immediate stop latch |
 
-The CPU clock divider holds its existing level; it is not cleared on a wait.
-The two oscillator polarities are distinct. A raw CPU half-clock enable
-represents an oscillator falling edge, not both oscillator edges.
+The CPU clock divider holds its existing level; it is not cleared on a wait. The two oscillator polarities are distinct. A raw CPU half-clock enable represents an oscillator falling edge, not both oscillator edges.
 
 ![Late WACK release](CPU-CLOCK-GATE.svg)
 
-The diagram is an ideal 4 MHz example, excluding gate propagation. The FPGA
-quantizes both oscillator polarities to MCLK while preserving their order.
+The diagram is an ideal 4 MHz example, excluding gate propagation. The FPGA quantizes both oscillator polarities to MCLK while preserving their order.
 
 | Edge | External circuit | Previous RTL |
 | --- | --- | --- |
@@ -38,25 +31,14 @@ quantizes both oscillator polarities to MCLK while preserving their order.
 | Next oscillator rising | U31.Q becomes 1 | No corresponding state transition |
 | Following oscillator falling | First permitted CPU toggle | CPU has already advanced one half-clock in this release phase |
 
-`uv202_cpu_gate.vhd` implements the U30A/U31A state. `uv202_clkgen.vhd`
-adds the opposite oscillator edge without changing the raw 4 MHz enable
-sequence, BRCLK or bus service lengths. `uv202_top.vhd` adds the U41 request
-sample before arbiter admission. The CPU and bus interface consume the
-same gated enable. RES1 requests no buffered access and retains zero waits.
-No empirical restart delay is added.
+`uv202_cpu_gate.vhd` implements the U30A/U31A state. `uv202_clkgen.vhd` adds the opposite oscillator edge without changing the raw 4 MHz enable sequence, BRCLK or bus service lengths. `uv202_top.vhd` adds the U41 request sample before arbiter admission. The CPU and bus interface consume the same gated enable. RES1 requests no buffered access and retains zero waits. No empirical restart delay is added.
 
-Run `make test-cpu-gate` from `verilator`. Its event-driven reference uses
-the board's separate D-flop, JK-flop, clear and enable nets. It checks every
-MCLK against the implementation over 64 request offsets and 12 service
-lengths, request withdrawal before WACK, reset during a wait, and another
-halt after reset. The previous gate is checked with the same stimuli and
-the grant held until the request drops. Results on 2026-10-19:
+Run `make test-cpu-gate` from `verilator`. Its event-driven reference uses the board's separate D-flop, JK-flop, clear and enable nets. It checks every MCLK against the implementation over 64 request offsets and 12 service lengths, request withdrawal before WACK, reset during a wait, and another halt after reset. The previous gate is checked with the same stimuli and the grant held until the request drops. Results on 2026-10-19:
 
 - Corrected gate: 76,742 edge decisions, zero mismatches.
 - Previous gate: 391 mismatches, including 385 premature WACK restarts.
 - U41 sampling/admission edges pass at 16 request offsets.
-- CPU interrupt phases, 320-phase ROM IRQ chain, F3853, arbiter, fetcher/DMA
-  and four fixed-program CPU-to-DAC tests pass.
+- CPU interrupt phases, 320-phase ROM IRQ chain, F3853, arbiter, fetcher/DMA and four fixed-program CPU-to-DAC tests pass.
 - Full-core VHDL analysis/elaboration and the raw CPU clock check pass.
 
 The existing production CPU/bus test still rejects the documented halt cost:
@@ -69,22 +51,8 @@ The existing production CPU/bus test still rejects the documented halt cost:
 | UV201 read | 5..10 | 7..11 |
 | UV201 write | 6..10 | 8..9 |
 
-These ranges cover 128 reset offsets without DMA. The RAM/cart assertion
-still requires 7..9 half-clocks; it has not been relaxed. The missing WACK
-sample and U41 input stage are demonstrated sequencing defects, but their
-correction does not reconcile the entire sunk cost. Propagation-sensitive
-behavior described in Kevtris's *VideoBrain Unwrapped* is also outside the
-ideal circuit model.
+These ranges cover 128 reset offsets without DMA. The RAM/cart assertion still requires 7..9 half-clocks; it has not been relaxed. The missing WACK sample and U41 input stage are demonstrated sequencing defects, but their correction does not reconcile the entire sunk cost. Propagation-sensitive behavior described in Kevtris's *VideoBrain Unwrapped* is also outside the ideal circuit model.
 
-The completed full-ROM capture reduces period RMS deviation from 20.315 to
-8.875 us and +/-60 Hz sidebands by 9.5..9.7 dB in frames 330..342.
-IRQ-to-ack maximum falls from 94.705 to 62.438 us, with delays over 40 us
-falling from 18 to 7. The audio fault remains unresolved.
+The completed full-ROM capture reduces period RMS deviation from 20.315 to 8.875 us and +/-60 Hz sidebands by 9.5..9.7 dB in frames 330..342. IRQ-to-ack maximum falls from 94.705 to 62.438 us, with delays over 40 us falling from 18 to 7. The audio fault remains unresolved.
 
-The comparison uses the same unmodified ED01 ROM and key sequence through
-frame 342, then compares frames 330..342. It reports DAC periods, IRQ-to-ack min/median/
-p95/max and counts over 40 us, plus exact held-DAC sidebands at +/-59.94 and
-119.88 Hz in a common 0.005..0.200 s window. There is no synthetic retiming
-or filtering. The comparator's saved-capture self-check reproduces the
-94.705 us maximum and approximately -35 dBc sidebands with zero self-delta;
-that check is not a measurement of the correction's audio effect.
+The comparison uses the same unmodified ED01 ROM and key sequence through frame 342, then compares frames 330..342. It reports DAC periods, IRQ-to-ack min/median/ p95/max and counts over 40 us, plus exact held-DAC sidebands at +/-59.94 and 119.88 Hz in a common 0.005..0.200 s window. There is no synthetic retiming or filtering. The comparator's saved-capture self-check reproduces the 94.705 us maximum and approximately -35 dBc sidebands with zero self-delta; that check is not a measurement of the correction's audio effect.

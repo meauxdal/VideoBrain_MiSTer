@@ -1,20 +1,12 @@
 # APL/S dump audit
 
-Authority: James Price, *21 APL/S Games and One-Liners for Your Umtech
-VideoBrain*, first edition, December 19, 2025. Page references below are PDF
-pages, counting the cover as page 1.
+Authority: James Price, *21 APL/S Games and One-Liners for Your Umtech VideoBrain*, first edition, December 19, 2025. Page references below are PDF pages, counting the cover as page 1.
 
-Scope: all 26 dumps in the *21 games for APL/S* collection for MAME.
-Stored PROGs were decoded from the dumps and compared with the printed listing
-images, not with our VBKs or the collection's separate text listings.
-Whitespace, indentation, four-character keyword/name truncation, compiled
-branch offsets, and native floating-point rounding are not differences.
-Live variable values are not treated as program edits.
+Scope: all 26 dumps in the *21 games for APL/S* collection for MAME. Stored PROGs were decoded from the dumps and compared with the printed listing images, not with our VBKs or the collection's separate text listings. Whitespace, indentation, four-character keyword/name truncation, compiled branch offsets, and native floating-point rounding are not differences. Live variable values are not treated as program edits.
 
 ## PROGs differing from print
 
-These 16 dumps contain a confirmed difference. The examples identify why each
-file fails the comparison; they are not exhaustive patches.
+These 16 dumps contain a confirmed difference. The examples identify why each file fails the comparison; they are not exhaustive patches.
 
 | Dump | Printed PROG | PDF page | Confirmed difference |
 | --- | --- | --- | --- |
@@ -35,12 +27,9 @@ file fails the comparison; they are not exhaustive patches.
 | `stagorharegraph.bin` | `STAG` | 277 | Stored as `S`; omits printed `BARH 0 0 0` at the start of each loop. |
 | `taylorseries.bin` | `TAYLOR` (`TAYL`) | 273 | Stored as `T`; uses `X=6, N=20` instead of printed `X=5, N=22`. |
 
-Gunner is a printing discrepancy, apparently a correction of the book's `BAR`
-typo, rather than evidence of a different algorithm. Do not blindly reproduce
-those two printed lines or silently count the dump as a literal match.
+Gunner is a printing discrepancy, apparently a correction of the book's `BAR` typo, rather than evidence of a different algorithm. Do not blindly reproduce those two printed lines or silently count the dump as a literal match.
 
-`fib1liner.bin` should not be remade as a PROG if the collection is restricted
-to PROGs actually printed in the book. Keep that topic as immediate-input VBKs.
+`fib1liner.bin` should not be remade as a PROG if the collection is restricted to PROGs actually printed in the book. Keep that topic as immediate-input VBKs.
 
 ## PROGs with no decoded listing difference found
 
@@ -55,14 +44,11 @@ to PROGs actually printed in the book. Keep that topic as immediate-input VBKs.
 | `recursivefib.bin` | `FIB` | 167 |
 | `unicircle.bin` | `UNI` | 205 |
 
-This comparison concerns the stored PROG bodies and names. These snapshots
-contain live execution state and data; they are not pristine book-initialized
-workspaces, nor does matching source establish hardware execution correctness.
+This comparison concerns the stored PROG bodies and names. These snapshots contain live execution state and data; they are not pristine book-initialized workspaces, nor does matching source establish hardware execution correctness.
 
 ## Immediate-expression dumps
 
-Neither file contains a stored PROG. Preserve direct-expression VBKs and use
-separately identified named program wrappers for tape versions.
+Neither file contains a stored PROG. Preserve direct-expression VBKs and use separately identified named program wrappers for tape versions.
 
 | Dump | Printed reference | Finding |
 | --- | --- | --- |
