@@ -2,7 +2,7 @@
 
 The VideoBrain core sources (`VideoBrain.sv` and `rtl/`, except vendor PLL
 files) are licensed under GNU GPL version 2 or, at your option, any later
-version (`GPL-2.0-or-later`). See [LICENSE](LICENSE).
+version (`GPL-2.0-or-later`). See [LICENSE](../LICENSE).
 
 The combined MiSTer build is distributed under GNU GPL version 3 or later
 because it includes GPL-3.0-or-later framework modules, including

@@ -8,7 +8,7 @@
 --------------------------------------------------------------------------------
 -- SPDX-License-Identifier: GPL-2.0-or-later
 -- From Grabulosaure's ChannelF_MiSTer, rtl/base/base_pack.vhd.
--- Licensing notice added 2026-10-20; see LICENSE and LICENSING.md.
+-- See LICENSE and licenses/LICENSING.md in the repository.
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

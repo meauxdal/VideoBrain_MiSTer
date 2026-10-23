@@ -144,4 +144,4 @@ The F8 CPU and packages derive from [Grabulosaure's Channel F core](https://gith
 
 ## License
 
-VideoBrain core sources: GPL-2.0 or later. Combined MiSTer build: GPL-3.0 or later. See [LICENSING.md](LICENSING.md) for attribution, license texts, and third-party terms.
+VideoBrain core sources are licensed under [GPL-2.0-or-later](LICENSE). Bundled components retain their respective licenses. See [licenses/LICENSING.md](licenses/LICENSING.md) for attribution and third-party terms.
