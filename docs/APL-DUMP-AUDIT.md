@@ -27,9 +27,9 @@ These 16 dumps contain a confirmed difference. The examples identify why each fi
 | `stagorharegraph.bin` | `STAG` | 277 | Stored as `S`; omits printed `BARH 0 0 0` at the start of each loop. |
 | `taylorseries.bin` | `TAYLOR` (`TAYL`) | 273 | Stored as `T`; uses `X=6, N=20` instead of printed `X=5, N=22`. |
 
-Gunner is a printing discrepancy, apparently a correction of the book's `BAR` typo, rather than evidence of a different algorithm. Do not blindly reproduce those two printed lines or silently count the dump as a literal match.
+Gunner's `BARH` appears to correct the book's `BAR` typo. The algorithm is unchanged, but the dump is not a literal match to the printed listing.
 
-`fib1liner.bin` should not be remade as a PROG if the collection is restricted to PROGs actually printed in the book. Keep that topic as immediate-input VBKs.
+`fib1liner.bin` wraps an immediate expression in a PROG that is not printed in the book.
 
 ## PROGs with no decoded listing difference found
 
@@ -48,7 +48,7 @@ This comparison concerns the stored PROG bodies and names. These snapshots conta
 
 ## Immediate-expression dumps
 
-Neither file contains a stored PROG. Preserve direct-expression VBKs and use separately identified named program wrappers for tape versions.
+Neither file contains a stored PROG.
 
 | Dump | Printed reference | Finding |
 | --- | --- | --- |

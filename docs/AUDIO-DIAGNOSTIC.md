@@ -48,7 +48,7 @@ UV202 corrections under evaluation, following the explicit bus-body and setup ru
 
 `make test-arbiter test-fetcher-bus` passes phase, contention, priority, dual-DMA, byte ordering, address wrap, copy mode and FIFO backpressure checks. The old arbiter fails the UV201 duration and DMA burst-spacing checks. Full-core VHDL analysis and elaboration, CPU interrupt, F3853 and fixed CPU audio checks pass.
 
-Hardware listening after these corrections on 2026-10-19 suggests a modest improvement: smoother, more periodic sound, with the remaining ringing sounding more like an overtone than distortion. The fundamental audio fault persists. Brief gameplay showed no observed graphics discrepancies. The remaining sound is described as pitch-related beating or nonharmonic ringing; the fundamental fault remains unfixed.
+Hardware listening after these corrections on 2026-10-19 suggested smoother, more periodic sound, but pitch-related beating or nonharmonic ringing remained. Brief gameplay showed no graphics discrepancies.
 
 The bus-timing comparison repeats the unmodified ED01 capture and compares frames 330..342 against the earlier capture.
 

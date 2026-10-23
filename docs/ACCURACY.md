@@ -6,17 +6,11 @@ Working draft, October 19, 2026. Describes source revision `a3510278f226c33dc22b
 
 The aim is to recreate the VideoBrain's hardware behavior as faithfully as the available evidence allows. The implementation includes the Fairchild F8 processor, UV201 video system, UV202 clock and bus control, memory and cartridge interfaces, keyboard, joystick timing, sound output, and preliminary Expander 1 support.
 
-These parts operate together. The processor executes the original firmware; video fetches compete for bus access; clock stops affect instruction progress; interrupt handling affects sound and input. Reaching a working application requires a substantial part of that environment to behave coherently. Successful software execution is meaningful evidence of the reconstruction, although it cannot establish that every cycle matches an original machine.
-
 We have never had access to an original VideoBrain. Our evidence consists of preserved documentation, reverse engineering, board connection records, original software and cassette data, photographs, screenshots, and videos, together with MAME and our own implementation tests. Tests on MiSTer establish behavior of this core. They are not direct measurements of an original VideoBrain.
-
-One of the strongest results is a complete Money Minder cassette round trip using an original VideoBrain save shared by Sean Riddle. After conversion to a tape image, the core loaded the data, accepted changes, saved it again, and recovered the original values with our changes after a core restart.
 
 The core is a working hardware reconstruction with specific unresolved accuracy questions. We do not currently claim complete cycle accuracy or electrical equivalence to the original machine.
 
 ## Evidence and confidence
-
-Different checks answer different questions:
 
 - Circuit records, component documentation, patents, and reverse-engineering notes explain how the machine is believed to work. Some records conflict or leave details unspecified.
 - Original-machine images and recordings provide visible or audible comparison points. Their capture paths limit conclusions about exact timing, color, and analog response.
@@ -39,9 +33,7 @@ The main references are Kevtris's *VideoBrain Unwrapped*, Sean Riddle's preserve
 
 The [cartridge status](CARTRIDGES.md), [joystick notes](JOYSTICK.md), [audio investigation](AUDIO-DIAGNOSTIC.md), and [Expander 1 notes](EXPANDER1.md) describe the boundaries in more detail.
 
-## What using the machine has taught us
-
-Working software has repeatedly exposed behavior that a startup screen or isolated component test would miss. Each correction gives us access to more of the machine, which creates further opportunities to test the model.
+## Software validation
 
 ### Money Minder: original cassette data through a complete round trip
 
@@ -49,15 +41,13 @@ Sean Riddle shared a Money Minder cassette save made on an actual VideoBrain. We
 
 Once loaded, we changed values and saved the data back to tape. We then restarted the core and loaded the new recording. Sean's original values, including our changes, survived the complete journey.
 
-This is one of the core's most significant validation results. It exercises Money Minder, its cartridge memory, the Expander interface, and cassette loading and saving together, beginning with data from an original machine. Recovery after restarting establishes persistence through the saved tape image, beyond retaining values in a running session. It also demonstrates how preserved user data can expose gaps that other software has not reached.
-
 The original-machine recording supplies an independent starting point. The edited recording was reloaded on MiSTer; playback of that new recording on an original VideoBrain remains untested.
 
 ### Pinball and the final color modifier
 
 Pinball initially showed colored object rectangles against a black background where original-machine screenshots showed the whole background changing. The renderer was applying the final modifier only along the object path. The patent's final-output selection logic supported applying it to background pixels too. MAME's renderer did not provide the correct reference for this case.
 
-The correction applies the modifier after object/background selection. Regression comparisons preserved CPU and video-register state and object pixels while correcting the affected background pixels. This is a concrete example of evidence supporting a reconstruction beyond agreement with MAME.
+The correction applies the modifier after object/background selection. Regression comparisons preserved CPU and video-register state and object pixels while correcting the affected background pixels.
 
 ### Sound led back to the bus and CPU clock
 
@@ -65,7 +55,7 @@ Music Teacher exposed timing variation that filtering alone could not explain. C
 
 Board connection records revealed missing request-latch, WACK sampling, and request-synchronization behavior in the external clock gate. The corrected model passed a circuit-derived edge test. In the recorded full-ROM comparison, DAC period RMS deviation fell from 20.315 to 8.875 us, and the approximately 60 Hz sidebands fell by about 9.5 dB. Those are improvements within the simulation, not measurements of agreement with an original VideoBrain.
 
-An important discrepancy remains: RAM/cartridge reads currently lose 6..7 CPU half-clocks in the tested conditions, below the documented expectation of 7..9 used by the regression. That assertion still fails. The evidence supports the sequencing correction without establishing that the entire wait model is correct. See [CPU clock gate](CPU-CLOCK-GATE.md).
+RAM/cartridge reads still lose 6..7 CPU half-clocks in the tested conditions, below the documented expectation of 7..9 used by the regression. That assertion still fails. See [CPU clock gate](CPU-CLOCK-GATE.md).
 
 ### APL/S and Expander 1 extended the test surface
 
@@ -78,8 +68,6 @@ Expander 1 work added actual execution of its firmware and digital tape transact
 MAME is an important preserved implementation and a practical reference where hardware measurements are missing. The core uses MAME-derived information for cartridge identification and slot layouts, parts of address decoding, and device behavior. The F8 implementation credits assistance from MAME's CPU model; the F3853 implementation explicitly references MAME.
 
 This creates shared assumptions that software compatibility cannot resolve. In particular, the current F3853 timer is an eight-bit down-counter with a prescale driven by BRCLK enables. Its sequence, clock source, and equivalence to the original device remain unverified. The implemented single-device subset also omits memory addressing and priority daisy chaining.
-
-Agreement with MAME is useful corroboration, especially for software and memory layouts. Where stronger hardware evidence disagrees, that evidence guides the core. Pinball demonstrates why the distinction matters.
 
 ## Approximations and conveniences
 
@@ -101,5 +89,3 @@ Original-machine measurements would be especially valuable for:
 - Joystick pot ranges and pulse widths at known positions, together with UV201 freeze-counter phase and the effect of trim adjustments.
 - Matched audio captures at the DAC and receiver output, with the cartridge, key sequence, and recording path identified.
 - Expander cassette and serial signal captures, plus broader application and gameplay comparisons against original machines.
-
-Access may remain limited. Continued software testing, source comparison, and targeted regressions can still improve the reconstruction. Keeping each claim tied to its evidence makes new observations useful, whether they confirm the model or reveal its next correction.

@@ -64,9 +64,7 @@ The following capabilities are inferred from the ROM, not hardware-verified oper
 | Tape merging | MERGE processes remaining input, prompts for rewind/NEXT, then reads another definition and record. Establish schema compatibility and tape-change procedure. |
 | Printer reports | PTR, printer character conversion and output routines indicate a hard-copy path. Establish syntax, routing and peripheral requirements. |
 
-Next, create three records with a text identifier, a repeated category and a numeric value. After establishing numeric entry, values 2, 3 and 7 in categories A, A and B give expected count 3, grand total 12 and category totals 5 and 7. Use this fixture to test selection, field display, ADD/DELETE/REPLACE, grouping and totals. Preserve each input and inspect/reload each output separately.
-
-Single-deck append or editing remains unestablished. EDIT with only the record deck populated produced I/O ERR; ENTER starts by defining a database. REVIEW's grammar and write-suppression path do not currently suggest a persistent ADD workflow. A keyboard map should distinguish verified keys from inferred ones.
+Single-deck append or editing remains unverified. EDIT with only the record deck populated produced I/O ERR; ENTER starts by defining a database. REVIEW's grammar and write-suppression path do not suggest a persistent ADD workflow.
 
 ## ROM identity
 

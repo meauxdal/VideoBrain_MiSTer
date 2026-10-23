@@ -38,4 +38,4 @@ The same passive interception is available for an ordinary source replay:
   --frames 14000 --max-cycles 6000000000
 ```
 
-Create `out` first. No production RTL or loader timing is changed.
+Create `out` before running the command.

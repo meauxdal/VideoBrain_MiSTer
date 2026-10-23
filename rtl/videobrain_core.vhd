@@ -180,11 +180,6 @@ ARCHITECTURE rtl OF videobrain_core IS
 
 BEGIN
 
---   -- Stop between ROMC cycles after the arbiter has drained CPU writes.
---   apl_paused <= apl_hold WHEN phase = 0 AND ext_req = '0' AND
---                              ext_wr = '0' AND io_wr = '0' ELSE '0';
---   cpu_ce <= cpu_ce_raw AND NOT apl_paused;
-
   apl_paused <= '0';
   cpu_ce <= cpu_ce_raw;
 
