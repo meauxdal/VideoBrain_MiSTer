@@ -45,6 +45,33 @@ task rom_download(input [15:0] file_index);
     if (dut.reset !== 0) $fatal(1, "Download reset did not release");
 endtask
 
+task hot_cartridge_download;
+    status[24] = 1;
+    index = 16'd1;
+    check_no_reset = 1;
+    download = 1;
+    #1;
+    if (dut.reset !== 0 || dut.system_reset !== 0)
+        $fatal(1, "Hot cartridge download asserted reset");
+    if (dut.dl_wr !== 1 || dut.dl_index !== 8'd2)
+        $fatal(1, "Hot cartridge download did not reach cartridge ROM");
+    download = 0;
+    #1;
+    if (dut.reset !== 0) $fatal(1, "Hot cartridge download left reset asserted");
+    check_no_reset = 0;
+
+    status[27] = 1;
+    #1;
+    if (dut.reset !== 1 || dut.system_reset !== 0)
+        $fatal(1, "Master Control did not refresh hot-loaded cartridge");
+    status[27] = 0;
+
+    rom_download(16'd2);
+    status[24] = 0;
+    #1;
+    if (dut.reset !== 0) $fatal(1, "Master Control reset did not release");
+endtask
+
 initial begin
     force dut.clk_sys = clk;
     force dut.pll_locked = pll_locked;
@@ -62,6 +89,7 @@ initial begin
     rom_download(16'd1);
     rom_download(16'd2);
     rom_download(16'd64);
+    hot_cartridge_download();
     index = 4;
     download = 1;
     status[0] = 1;

@@ -8,19 +8,22 @@ Place the latest .rbf from releases in /media/fat/_Computers.
 
 The core folder is /media/fat/games/VideoBrain. A BIOS is required. Verified BIOS ROMs are circulated split:
 
-- uvres1.bin: MD5 CDF2F70F616AB61D7FBF31A3763BFC21, 2,048 bytes
-- uvres2.bin: MD5 E4B8B681CCCF4E8ECB09C3FDC206B8B2, 2,048 bytes
+- **uvres1.bin** (a.k.a. **uvres_1n.d67**): MD5 CDF2F70F616AB61D7FBF31A3763BFC21, 2,048 bytes
+- **uvres2.bin** (a.k.a. **resn2.e5**): MD5 E4B8B681CCCF4E8ECB09C3FDC206B8B2, 2,048 bytes
 
-Place boot0.rom in the VideoBrain games folder.
+A tool is provided to combine the files.
 
 ```text
 tools/make_boot_rom.sh uvres1.bin uvres2.bin boot0.rom
 ```
+
+Place boot0.rom in the VideoBrain games folder.
+
 - boot0.rom: MD5 E1E7F6120EB8E23CA5C63B4246F04F18, 4,096 bytes
 
-System > Load BIOS manually loads an alternate combined 4K BIOS `.bin` through the same download path.
+[Expander 1](docs/EXPANDER1.md) needs its firmware as boot1.rom (or loaded manually). This is required for Information Manager, Timeshare, and tape operation.
 
-[Expander 1](docs/EXPANDER1.md) needs its 2K firmware as boot1.rom (or loaded manually). This is required for Information Manager, Timeshare, and tape operation.
+- boot1.rom: MD5 41DE2BCEFFB8257930A16E03FC431550, 2048 bytes
 
 ## Using the core
 
@@ -79,7 +82,7 @@ Input > Paired Sticks lets a controller's right stick and Fire (Paired) operate 
 
 VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary. It seems to work fine, but please try with this setting disabled if you have issues.
 
-### Split cartridge dumps
+## Split cartridge dumps
 
 Information Manager and APL/S: The Computational Language need assembled ROM images. See [cartridge assembly](docs/CARTRIDGES.md#split-cartridge-conversion).
 

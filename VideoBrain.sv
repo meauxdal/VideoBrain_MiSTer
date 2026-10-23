@@ -56,21 +56,21 @@ localparam CONF_STR = {
 	"T[23],Rewind Playback Tape;",
 	"T[30],Rewind Record Tape;",
 	"-;",
+	"P4,Keyboard;",
+	"P4-;",
+	"P4F4,VBK,Load Keyboard File;",
+	"P4O[31],OSD aborts VBK,On,Off;",
+	"H5P4O[18],Music Mode,Playback,Record;",
+	"h5D5P4O[18],Music Mode,Playback;",
+	"P4O[19],Music Repeat,Off,On;",
+	"P4-;",
+	"P4O[29],Esc Soft Reset,On,Off;",
 	"P3,Joysticks;",
 	"P3-;",
 	"P3O[5],Joysticks,Connected,Disconnected;",
 	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3R[20],Calibrate Sticks;",
-	"P4,Keyboard;",
-	"P4-;",
-	"P4F4,VBK,Load Keyboard File;",
-	"P4O[31],VBK in OSD,Abort,Keep Running;",
-	"H5P4O[18],Music Mode,Playback,Record;",
-	"h5D5P4O[18],Music Mode,Playback;",
-	"P4O[19],Music Repeat,Off,On;",
-	"P4-;",
-	"P4O[29],Esc Soft Reset,On,Off;",
 	"P1,Video;",
 	"P1-;",
 	"P1O[21],240p,Off,On;",
@@ -81,9 +81,10 @@ localparam CONF_STR = {
 	"P2-;",
 	"P2F0,BIN,Load BIOS;",
 	"P2F2,BIN,Load Expander 1 ROM;",
+	"P2-;",
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
+	"P2O[24],Reset on Cartridge Load,On,Off;",
 	"P2O[22],Info Messages,On,Off;",
-	//"P2O[26:24],Audio Test,Off,500 Hz,1 kHz,2 kHz,4 kHz;",
 	"P2-;",
 	"P2T[27],Master Control (Soft Reset);",
 	"-;",
@@ -91,7 +92,7 @@ localparam CONF_STR = {
 	"R[0],Reset;",
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
-	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard file aborted,Calibrating sticks;",
+	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks;",
 	"v,1;",
 	"V,v",`BUILD_DATE
 };
@@ -196,14 +197,15 @@ pll pll
 );
 
 reg master_control = 0;
-// Keep download out of the index decode to avoid a reset pulse on VBK start.
+wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
+// Keep download out of the index decode to avoid a reset pulse on VBK start
 wire system_reset = RESET | status[0] | status[28] | buttons[1] |
-                    (ioctl_download && (ioctl_index[7:0] != 8'd4)) | ~pll_locked;
+                    (ioctl_download && (ioctl_index[7:0] != 8'd4) &&
+                     !(status[24] && cart_dl)) | ~pll_locked;
 wire reset = system_reset | master_control | status[27];
 
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
 wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
-wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
 wire source_dl = ioctl_download && (ioctl_index[7:0] == 8'd4);
 wire apl_available, apl_load_error;
 wire apl_symbols, source_busy, source_error, source_started, source_complete, source_aborted;
@@ -222,9 +224,7 @@ wire [15:0] dl_addr = (cart_dl | expander_dl) ? ioctl_addr[15:0] : {4'd0, ioctl_
 wire        dl_wr   = (boot_dl | cart_dl | expander_dl) & ioctl_wr;
 
 
-// 9 columns by 4 rows, bit = col * 4 + row, active high. Columns 0-7 are
-// selected by the CPU's port 0 latch, column 8 by UV201 CMD_KBD.
-// Layout from the board netlist and MAME vidbrain.cpp.
+// 9 columns by 4 rows, bit = col * 4 + row, active high
 reg [35:0] kbd_matrix = 0;
 
 wire       key_pressed = ps2_key[9];
@@ -343,7 +343,7 @@ always @(posedge clk_sys) begin
 		pending_info <= 0;
 		tape_info_frames <= 0;
 	end else begin
-		// Defer until the menu closes; newer events replace stale notices.
+		// Defer until menu close
 		if (!OSD_STATUS && vid_vs && !source_vs_d) begin
 			if (pending_info != 0) begin
 				if (pending_info != 9 || joy_calibrating) begin
@@ -353,7 +353,7 @@ always @(posedge clk_sys) begin
 				pending_info <= 0;
 				tape_info_frames <= 0;
 			end else if (joy_calibrating || (tape_busy && !tape_error)) begin
-				// Refresh the transient popup once per second while busy.
+				// Refresh the transient popup once per second while busy
 				if (tape_info_frames == 59) begin
 					info <= joy_calibrating ? 9 : 5;
 					info_req <= 1;
@@ -373,7 +373,7 @@ always @(posedge clk_sys) begin
 	end
 end
 
-// Switch before VSYNC; keep software-visible field parity toggling.
+// keep software-visible field parity toggling (switch before vsync)
 reg progressive = 0;
 reg field_d = 0;
 always @(posedge clk_sys) begin

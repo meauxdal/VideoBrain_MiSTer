@@ -14,6 +14,12 @@ Assembled APL/S and Information Manager images are also identified automatically
 **Unload Cartridge** on the main menu removes the cartridge and resets to the
 built-in BIOS. Reset and Master Control retain the cartridge and its RAM.
 
+**System > Hot Cartridge Insert** defaults to Off, preserving reset-on-load
+behavior. When On, loading a cartridge does not reset the running machine;
+press Master Control afterward to refresh the game layout from the new
+cartridge. Other reset sources and other ROM downloads continue to reset the
+machine.
+
 Fingerprints for all sixteen released single-image cartridges come from MAME's
 [VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
 
