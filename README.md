@@ -68,7 +68,7 @@ Unique VideoBrain keys are mapped like this:
     F4          SPECIAL/ALARM
     F5          ERASE/RESTART
 
-## Joystick
+## Joysticks
 
 VideoBrain supports 4 analog joysticks with one fire button each, though only one game (Tennis) supports 4 players. The VideoBrain joystick does not self-center; this can make things bit awkward in Tennis, which relies on that behavior. Modern self-centering sticks will snap your player back to a neutral position when you let go.
 
@@ -150,10 +150,10 @@ Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/REA
 
 ## Credits
 
-Core by [Elle Ball (meauxdal)](https://github.com/meauxdal) with assistance from [alanswx](http://github.com/alanswx). LLM assistance was used in the creation of this core.
+Core by [Elle Ball (meauxdal)](https://github.com/meauxdal) with assistance from Alan Steremberg [alanswx](http://github.com/alanswx). LLM assistance was used in the creation of this core.
 
 The F8 CPU and packages derive from [Grabulosaure's Channel F core](https://github.com/MiSTer-devel/ChannelF_MiSTer).
 
 ## License
 
-VideoBrain core sources are licensed under [GPL-2.0-or-later](LICENSE). Bundled components retain their respective licenses. See [licenses/LICENSING.md](licenses/LICENSING.md) for attribution and third-party terms.
+[GPL-2.0-or-later](LICENSE). Bundled components retain their respective licenses.
