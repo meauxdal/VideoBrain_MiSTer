@@ -226,7 +226,12 @@ wire        dl_wr   = (boot_dl | cart_dl | expander_dl) & ioctl_wr;
 
 
 // 9 columns by 4 rows, bit = col * 4 + row, active high
-reg [35:0] kbd_matrix = 0;
+reg [35:0] kbd_keys = 0;
+reg [35:0] kbd_number_row = 0, kbd_number_pad = 0;
+reg enter_key = 0, keypad_enter_key = 0, backspace_key = 0;
+// BACK/TEXT is bit 35; NEXT/CLOCK is bit 27.
+wire [35:0] kbd_edit_keys = {backspace_key, 7'd0, (enter_key | keypad_enter_key), 27'd0};
+wire [35:0] kbd_matrix = kbd_keys | kbd_number_row | kbd_number_pad | kbd_edit_keys;
 
 wire       key_pressed = ps2_key[9];
 wire [8:0] key_code    = ps2_key[8:0];
@@ -237,54 +242,85 @@ always @(posedge clk_sys) begin
 	if (system_reset || status[29]) master_control <= 0;
 	else if (key_toggle != ps2_key[10] && key_code == 'h076)
 		master_control <= key_pressed;  // ESC = MASTER CONTROL
-	if (reset) kbd_matrix <= 0;
+	if (reset) begin
+		kbd_keys <= 0;
+		kbd_number_row <= 0;
+		kbd_number_pad <= 0;
+		enter_key <= 0;
+		keypad_enter_key <= 0;
+		backspace_key <= 0;
+	end
 	else if (key_toggle != ps2_key[10]) begin
 		case (key_code)
-			'h043: kbd_matrix[0]  <= key_pressed;  // I
-			'h044: kbd_matrix[1]  <= key_pressed;  // O
-			'h04D: kbd_matrix[2]  <= key_pressed;  // P
-			'h04C: kbd_matrix[3]  <= key_pressed;  // ;
+			'h043: kbd_keys[0]  <= key_pressed;  // I
+			'h044: kbd_keys[1]  <= key_pressed;  // O
+			'h04D: kbd_keys[2]  <= key_pressed;  // P
+			'h04C: kbd_keys[3]  <= key_pressed;  // ;
 
-			'h03C: kbd_matrix[4]  <= key_pressed;  // U
-			'h042: kbd_matrix[5]  <= key_pressed;  // K
-			'h04B: kbd_matrix[6]  <= key_pressed;  // L
-			'h041: kbd_matrix[7]  <= key_pressed;  // ,
+			'h03C: kbd_keys[4]  <= key_pressed;  // U
+			'h042: kbd_keys[5]  <= key_pressed;  // K
+			'h04B: kbd_keys[6]  <= key_pressed;  // L
+			'h041: kbd_keys[7]  <= key_pressed;  // ,
 
-			'h035: kbd_matrix[8]  <= key_pressed;  // Y
-			'h03B: kbd_matrix[9]  <= key_pressed;  // J
-			'h03A: kbd_matrix[10] <= key_pressed;  // M
-			'h012: kbd_matrix[11] <= key_pressed;  // left shift
-			'h059: kbd_matrix[11] <= key_pressed;  // right shift
+			'h035: kbd_keys[8]  <= key_pressed;  // Y
+			'h03B: kbd_keys[9]  <= key_pressed;  // J
+			'h03A: kbd_keys[10] <= key_pressed;  // M
+			'h012: kbd_keys[11] <= key_pressed;  // left shift
+			'h059: kbd_keys[11] <= key_pressed;  // right shift
 
-			'h02C: kbd_matrix[12] <= key_pressed;  // T
-			'h033: kbd_matrix[13] <= key_pressed;  // H
-			'h031: kbd_matrix[14] <= key_pressed;  // N
-			'h003: kbd_matrix[15] <= key_pressed;  // F5 = ERASE/RESTART
+			'h02C: kbd_keys[12] <= key_pressed;  // T
+			'h033: kbd_keys[13] <= key_pressed;  // H
+			'h031: kbd_keys[14] <= key_pressed;  // N
+			'h003: kbd_keys[15] <= key_pressed;  // F5 = ERASE/RESTART
 
-			'h02D: kbd_matrix[16] <= key_pressed;  // R
-			'h034: kbd_matrix[17] <= key_pressed;  // G
-			'h032: kbd_matrix[18] <= key_pressed;  // B
-			'h029: kbd_matrix[19] <= key_pressed;  // space = RUN/STOP
+			'h02D: kbd_keys[16] <= key_pressed;  // R
+			'h034: kbd_keys[17] <= key_pressed;  // G
+			'h032: kbd_keys[18] <= key_pressed;  // B
+			'h029: kbd_keys[19] <= key_pressed;  // space = RUN/STOP
 
-			'h024: kbd_matrix[20] <= key_pressed;  // E
-			'h02B: kbd_matrix[21] <= key_pressed;  // F
-			'h02A: kbd_matrix[22] <= key_pressed;  // V
-			'h00C: kbd_matrix[23] <= key_pressed;  // F4 = SPECIAL/ALARM
+			'h024: kbd_keys[20] <= key_pressed;  // E
+			'h02B: kbd_keys[21] <= key_pressed;  // F
+			'h02A: kbd_keys[22] <= key_pressed;  // V
+			'h00C: kbd_keys[23] <= key_pressed;  // F4 = SPECIAL/ALARM
 
-			'h01D: kbd_matrix[24] <= key_pressed;  // W
-			'h023: kbd_matrix[25] <= key_pressed;  // D
-			'h021: kbd_matrix[26] <= key_pressed;  // C
-			'h004: kbd_matrix[27] <= key_pressed;  // F3 = NEXT/CLOCK
+			'h01D: kbd_keys[24] <= key_pressed;  // W
+			'h023: kbd_keys[25] <= key_pressed;  // D
+			'h021: kbd_keys[26] <= key_pressed;  // C
+			'h004: kbd_keys[27] <= key_pressed;  // F3 = NEXT/CLOCK
 
-			'h015: kbd_matrix[28] <= key_pressed;  // Q
-			'h01B: kbd_matrix[29] <= key_pressed;  // S
-			'h022: kbd_matrix[30] <= key_pressed;  // X
-			'h006: kbd_matrix[31] <= key_pressed;  // F2 = PREVIOUS/COLOR
+			'h015: kbd_keys[28] <= key_pressed;  // Q
+			'h01B: kbd_keys[29] <= key_pressed;  // S
+			'h022: kbd_keys[30] <= key_pressed;  // X
+			'h006: kbd_keys[31] <= key_pressed;  // F2 = PREVIOUS/COLOR
 
-			'h01C: kbd_matrix[32] <= key_pressed;  // A
-			'h01A: kbd_matrix[33] <= key_pressed;  // Z
-			'h04A: kbd_matrix[34] <= key_pressed;  // / = ?
-			'h005: kbd_matrix[35] <= key_pressed;  // F1 = BACK/TEXT
+			'h01C: kbd_keys[32] <= key_pressed;  // A
+			'h01A: kbd_keys[33] <= key_pressed;  // Z
+			'h04A: kbd_keys[34] <= key_pressed;  // / = ?
+			'h005: kbd_keys[35] <= key_pressed;  // F1 = BACK/TEXT
+			// Physical aliases only: software still controls SHIFT and key meaning.
+			'h05A: enter_key <= key_pressed;         // Enter = F3 = NEXT/CLOCK
+			'h15A: keypad_enter_key <= key_pressed;  // keypad Enter = NEXT/CLOCK
+			'h066: backspace_key <= key_pressed;     // Backspace = F1 = BACK/TEXT
+			'h045: kbd_number_row[34] <= key_pressed;  // 0 = /
+			'h070: kbd_number_pad[34] <= key_pressed;  // keypad 0 = /
+			'h016: kbd_number_row[33] <= key_pressed;  // 1 = Z
+			'h069: kbd_number_pad[33] <= key_pressed;  // keypad 1 = Z
+			'h01E: kbd_number_row[30] <= key_pressed;  // 2 = X
+			'h072: kbd_number_pad[30] <= key_pressed;  // keypad 2 = X
+			'h026: kbd_number_row[26] <= key_pressed;  // 3 = C
+			'h07A: kbd_number_pad[26] <= key_pressed;  // keypad 3 = C
+			'h025: kbd_number_row[29] <= key_pressed;  // 4 = S
+			'h06B: kbd_number_pad[29] <= key_pressed;  // keypad 4 = S
+			'h02E: kbd_number_row[25] <= key_pressed;  // 5 = D
+			'h073: kbd_number_pad[25] <= key_pressed;  // keypad 5 = D
+			'h036: kbd_number_row[21] <= key_pressed;  // 6 = F
+			'h074: kbd_number_pad[21] <= key_pressed;  // keypad 6 = F
+			'h03D: kbd_number_row[24] <= key_pressed;  // 7 = W
+			'h06C: kbd_number_pad[24] <= key_pressed;  // keypad 7 = W
+			'h03E: kbd_number_row[20] <= key_pressed;  // 8 = E
+			'h075: kbd_number_pad[20] <= key_pressed;  // keypad 8 = E
+			'h046: kbd_number_row[16] <= key_pressed;  // 9 = R
+			'h07D: kbd_number_pad[16] <= key_pressed;  // keypad 9 = R
 			default: ;
 		endcase
 	end

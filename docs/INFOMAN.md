@@ -1,8 +1,10 @@
 # Information Manager
 
+For step-by-step operation, see the [practical user manual](INFOMAN-MANUAL.md), including creating, reading and editing a database and troubleshooting command errors. These notes retain the ROM analysis and hardware evidence.
+
 ## Using the cartridge
 
-Load the cartridge and [Expander 1 firmware](EXPANDER1.md). The initial menu shows PROGRAM / ENTER / REVIEW / EDIT. NEXT is F3; SPECIAL is F4.
+Load the cartridge and [Expander 1 firmware](EXPANDER1.md). The initial menu shows PROGRAM / ENTER / REVIEW / EDIT. NEXT is F3 or Enter; SPECIAL is F4.
 
 ### Create a small database
 

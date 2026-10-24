@@ -8,6 +8,7 @@ can still finish too early if buffered accesses pause the clock too briefly.
 | Source | Establishes | Limits |
 | --- | --- | --- |
 | Fairchild F3850 Table 3, printed pp. 3-21 through 3-25 (`refs/orphanedgames.com/fairchild-3850.pdf`, PDF pages 15-19) | Instruction ROMC order, short/long cycles, data-bus timing classes, interrupt restrictions | Does not specify VideoBrain arbitration or external clock stopping |
+| Fairchild F8/F3870 User Reference Card, `2033-249-A-75-020` (`refs/datasheets-databooks-fairchild-mostek-manuals/2033-249-A-75-020_F8_User_Reference_Card.pdf`) | Manufacturer summary corroborates PK=4, DI/EI=2, BR7=2/2.5, register mappings and arithmetic flag effects | Internal BR7/DC-update errors and F387X scope conflicts; no ROMC phases; see the [card comparison](F8-REFERENCE-CARD-AUDIT.md) |
 | Fairchild 1975 F8 brochure (`refs/Fairchild_Semiconductor_-_F8_Microprocessor_brochure_-_1975.pdf`), printed pp. 9-11 (PDF pages 11-13) | Manufacturer summary corroborating BR7 totals, branch masks, IN timing and CPU-port timing exceptions | Summary totals do not specify bus phases or VideoBrain waits |
 | Osborne, *An Introduction to Microcomputers*, Vol. 2, September 1978 (`refs/Osborne_An_Introduction_to_Microcomputers_Volume_2_Sep78.pdf`), Chapter 2 | Detailed explanation of cycle overlap, WRITE/ROMC boundaries, F8 I/O and timer behavior | Covers both 3870 and F8 devices; some tables disagree internally; device manuals take precedence |
 | Terry Dollhoff, 1979 F8 chapter, [Sean Riddle's scan](https://www.seanriddle.com/f8_info.pdf) (`refs/orphanedgames.com/f8_info.pdf`), printed pp. 70-79 | Separately authored explanation and instruction byte lengths/totals; explicitly defines a short cycle as four clock periods | PK and DI/EI totals conflict with detailed MK3850 sequences; excerpt does not establish table derivation or independent timing measurements |
@@ -20,11 +21,25 @@ can still finish too early if buffered accesses pause the clock too briefly.
 | Kevtris, *VideoBrain Unwrapped*, Wait States section | UV202 service timing and full-speed CPU halt measurements | Separates a slowed, clock-modified machine from full-speed operation; interval endpoints differ |
 | Turner's [overview](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html), [instruction details](https://www.nyx.net/~lturner/public_html/F8_ins.html) and [opcode summary](https://www.nyx.net/~lturner/public_html/F8_opcodes.html) | Instruction index and timing cross-check | Contains discrepancies; resolve them with the device manuals |
 | Tobias V. Langhoff's [F8 Optable](https://tobiasvl.github.io/optable/f8/) and [opcode data](https://github.com/tobiasvl/optable/blob/master/_data/f8/opcodes.json), checked 2026-10-24 | Searchable opcode index and instruction-total cross-check; the page credits Pastraiser | Six documented opcode totals disagree with Fairchild Table 3; no ROMC phases or VideoBrain waits; its linked errata page returns 404 |
+| E5frog's [Veswiki Opcode page, revision 786](https://channelf.se/veswiki/index.php?title=Opcode&oldid=786), edited 2026-08-07 | Detailed S/L and ROMC columns corroborate the manufacturer sequences, including BR7 | Credits Dollhoff, Turner and the 1976 guide; five totals contradict its own S/L sequences; see the [revision audit](VESWIKI-OPCODE-AUDIT.md) |
 | MAME and our regressions | Executable models and checks of explicit expectations | Agreement between models is not a hardware timing measurement |
 
 Use manufacturer tables for instruction expectations and board measurements for
 VideoBrain waits. Preserve conflicting observations and their endpoints rather
 than adjusting constants to average them together.
+
+## Excluded namesake: Krause's 2024 `f8 Manual`
+
+`refs/datasheets-databooks-fairchild-mostek-manuals/f8 Manual.pdf` is a 23-page
+draft by Philipp Klaus Krause dated July 29, 2024. Reviewed on 2026-10-24;
+its `f8` describes a different instruction-set architecture. Pages 3-4 specify
+reset PC=4000, a memory stack with SP, register pairs X/Y/Z, an H/C/N/Z/O flag
+layout and prefix bytes. Page 21 assigns opcode 00 to a trap. These are not
+the Fairchild F8's accumulator/scratchpad/ISAR architecture, IOZCS register or
+opcode 00 (`LR A,KU`). The draft's incomplete opcode-map chapter on page 23
+does not supply historical F8 timing evidence. Retain this exclusion to avoid
+importing namesake instruction, flag, reset or stack semantics into the core.
+No RTL or test expectation changes follow from this document.
 
 ## Opcode audit
 

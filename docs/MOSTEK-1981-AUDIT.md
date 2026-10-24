@@ -28,6 +28,13 @@ main-board opcode sequences; the same volume contains both the 3870/F3850
 DI/EI discrepancy and the differing POP descriptions. It also records changed
 decimal-flag annotations and a reversed LISL/LISU entry in the 3870 summary.
 
+The [Fairchild F8/F3870 reference card comparison](F8-REFERENCE-CARD-AUDIT.md)
+adds manufacturer evidence listing two-cycle DI/EI and POP as a copy under a
+shared F8/F3870 title, while excluding XDC for F387X. These disagree with the
+Mostek 3870 descriptions in different ways; vendor/device identity remains
+part of the unresolved audit rather than treating all 3870-labelled sources
+as interchangeable.
+
 The substantial technical manual in section III describes the single-chip
 **3870 family**. This is relevant to Expander 1, but its internal binary timer
 and internal interrupt diagrams must not be applied to the main-board 3853.

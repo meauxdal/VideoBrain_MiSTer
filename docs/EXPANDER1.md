@@ -47,7 +47,7 @@ The working path is Timeshare -> Expander 1 serial port -> MiSTer HPS UART -> Li
 
 ### Setup and keys
 
-Load Expander 1 firmware and the Timeshare cartridge. Set MiSTer's UART connection to **None** so Linux can access `/dev/ttyS1` directly. Timeshare defaults to 300 baud and full duplex. Its display is 24 columns by 15 lines. The Timeshare owner's handbook, printed pages 8-16, describes its terminal behavior and keyboard overlay. These PC key mappings use the core's keyboard matrix; PC Enter and Ctrl do not replace the cartridge's keys. In Timeshare, Shift is held while pressing a key, not toggled as in the BIOS.
+Load Expander 1 firmware and the Timeshare cartridge. Set MiSTer's UART connection to **None** so Linux can access `/dev/ttyS1` directly. Timeshare defaults to 300 baud and full duplex. Its display is 24 columns by 15 lines. The Timeshare owner's handbook, printed pages 8-16, describes its terminal behavior and keyboard overlay. These PC key mappings use the core's keyboard matrix. PC Enter (including keypad Enter) aliases F3 (NEXT), not Carriage Return; Ctrl does not replace CONTROL. In Timeshare, Shift is held while pressing a key, not toggled as in the BIOS.
 
 | Function | PC keyboard action |
 | --- | --- |

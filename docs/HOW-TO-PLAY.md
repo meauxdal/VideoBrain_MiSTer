@@ -12,15 +12,15 @@ Control references for the built-in programs and all eighteen cartridges. The il
 
 ## Keyboard and controllers
 
-The core maps physical VideoBrain key positions. A cartridge can give those keys different meanings, as shown in its manual overlay. PC Enter, Backspace, and number keys do not substitute for the corresponding VideoBrain functions.
+The core maps physical VideoBrain key positions. A cartridge can give those keys different meanings, as shown in its manual overlay. PC Enter (including keypad Enter) aliases F3, and Backspace aliases F1. These aliases follow the same SHIFT mode and cartridge functions; Timeshare still uses F5 for carriage return.
 
 ![Original VideoBrain keyboard](VB_Keyboard.gif)
 
 | PC key | VideoBrain key position |
 | --- | --- |
-| F1 | BACK / TEXT |
+| F1 / Backspace | BACK / TEXT |
 | F2 | PREVIOUS / COLOR |
-| F3 | NEXT / CLOCK |
+| F3 / Enter / keypad Enter | NEXT / CLOCK |
 | F4 | SPECIAL / ALARM |
 | F5 | ERASE / RESTART |
 | Space | SPACE / RUN/STOP |
@@ -28,7 +28,7 @@ The core maps physical VideoBrain key positions. A cartridge can give those keys
 | `/` key | `?` / `0` |
 | Esc | MASTER CONTROL |
 
-Letters, comma, and semicolon use their matching PC keys. Numbers and symbols use the VideoBrain layout, not the PC key legends. SHIFT toggles in the BIOS, APL/S, and Financier; Timeshare uses held Shift. Follow each title's controls.
+Letters, comma, and semicolon use their matching PC keys. The PC number row and numeric keypad map `1234567890` to VideoBrain positions `ZXCSDFWER/`. These aliases do not change SHIFT: use numeric mode when the software requires it; in letter mode they produce the corresponding letters (or `?` for `0`). Cartridge overlays can give these positions other meanings. Other symbols use the VideoBrain layout. SHIFT toggles in the BIOS, APL/S, and Financier; Timeshare uses held Shift. Follow each title's controls.
 
 **Keyboard > Esc Soft Reset > Off** disables keyboard Master Control to protect against accidental presses beside F1. **System > Master Control (Soft Reset)** remains available. Master Control can discard entered work; it is not a backspace.
 
@@ -91,7 +91,7 @@ Original-machine Money Minder recordings and SD SAVE/LOAD are covered in [tape s
 
 ### Information Manager
 
-This prototype needs Expander 1 firmware. Its confirmed opening menu is PROGRAM / ENTER / REVIEW / EDIT. No complete manual is available here, and the application-specific keyboard controls remain unverified. Do not assume Money Minder or APL/S key meanings apply.
+This prototype needs Expander 1 firmware. See the [practical user manual](INFOMAN-MANUAL.md) for tested database creation, REVIEW and EDIT workflows. NEXT is F3 or Enter; SPECIAL is F4. To display saved records, enter `REVIEW` at `:`, then `PRINT ALL` at `/`. `LIST` is not a recognized command. The manual separates tested operation from features still being investigated.
 
 ### Timeshare
 

@@ -6,7 +6,7 @@ The bundled [Price games and listings](../examples/21-apl_s-games-james-price) c
 
 ## Starting a program
 
-Load a definition and wait for entry to finish. Type its launch name in letter mode, then press NEXT (PC F3). No RUN command is needed. SHIFT toggles letter/symbol mode; use symbol mode for numbers and NEXT after each answer.
+Load a definition and wait for entry to finish. Type its launch name in letter mode, then press NEXT (PC F3 or Enter). No RUN command is needed. SHIFT toggles letter/symbol mode; use symbol mode for numbers and NEXT after each answer.
 
 | File | Launch | Use |
 | --- | --- | --- |

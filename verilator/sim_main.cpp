@@ -214,13 +214,20 @@ int main(int argc, char** argv, char** env) {
                 {SDL_SCANCODE_U,4},{SDL_SCANCODE_K,5},{SDL_SCANCODE_L,6},{SDL_SCANCODE_COMMA,7},
                 {SDL_SCANCODE_Y,8},{SDL_SCANCODE_J,9},{SDL_SCANCODE_M,10},{SDL_SCANCODE_RSHIFT,11},
                 {SDL_SCANCODE_LSHIFT,11},
-                {SDL_SCANCODE_T,12},{SDL_SCANCODE_H,13},{SDL_SCANCODE_N,14},{SDL_SCANCODE_BACKSPACE,15},
+                {SDL_SCANCODE_T,12},{SDL_SCANCODE_H,13},{SDL_SCANCODE_N,14},
                 {SDL_SCANCODE_F5,15},
                 {SDL_SCANCODE_R,16},{SDL_SCANCODE_G,17},{SDL_SCANCODE_B,18},{SDL_SCANCODE_SPACE,19},
                 {SDL_SCANCODE_E,20},{SDL_SCANCODE_F,21},{SDL_SCANCODE_V,22},{SDL_SCANCODE_F4,23},
                 {SDL_SCANCODE_W,24},{SDL_SCANCODE_D,25},{SDL_SCANCODE_C,26},{SDL_SCANCODE_F3,27},
                 {SDL_SCANCODE_Q,28},{SDL_SCANCODE_S,29},{SDL_SCANCODE_X,30},{SDL_SCANCODE_F2,31},
                 {SDL_SCANCODE_A,32},{SDL_SCANCODE_Z,33},{SDL_SCANCODE_SLASH,34},{SDL_SCANCODE_F1,35},
+                {SDL_SCANCODE_RETURN,27},{SDL_SCANCODE_KP_ENTER,27},{SDL_SCANCODE_BACKSPACE,35},
+                {SDL_SCANCODE_1,33},{SDL_SCANCODE_2,30},{SDL_SCANCODE_3,26},{SDL_SCANCODE_4,29},
+                {SDL_SCANCODE_5,25},{SDL_SCANCODE_6,21},{SDL_SCANCODE_7,24},{SDL_SCANCODE_8,20},
+                {SDL_SCANCODE_9,16},{SDL_SCANCODE_0,34},
+                {SDL_SCANCODE_KP_1,33},{SDL_SCANCODE_KP_2,30},{SDL_SCANCODE_KP_3,26},{SDL_SCANCODE_KP_4,29},
+                {SDL_SCANCODE_KP_5,25},{SDL_SCANCODE_KP_6,21},{SDL_SCANCODE_KP_7,24},{SDL_SCANCODE_KP_8,20},
+                {SDL_SCANCODE_KP_9,16},{SDL_SCANCODE_KP_0,34},
             };
             uint64_t m = 0;
             if (!ImGui::GetIO().WantCaptureKeyboard) {
@@ -335,11 +342,13 @@ int main(int argc, char** argv, char** env) {
         ImGui::Begin("Keyboard");
         ImGui::TextUnformatted(
             "Letters A-Z and , ; / type themselves.\n"
-            "Digits are SHIFTED letters, and SHIFT is a lock: tap it, do not hold.\n"
+            "Number row and keypad alias these VB positions (mode depends on software):\n"
             "  1=Z 2=X 3=C 4=S 5=D 6=F 7=W 8=E 9=R 0=/\n"
-            "SPACE = RUN/STOP      F1 = BACK/TEXT\n"
-            "F2 = PREVIOUS/COLOR   F3 = NEXT/CLOCK\n"
+            "SHIFT usually toggles; Timeshare uses held SHIFT.\n"
+            "SPACE = RUN/STOP      F1 / Backspace = BACK/TEXT\n"
+            "F2 = PREVIOUS/COLOR   F3 / Enter / keypad Enter = NEXT/CLOCK\n"
             "F4 = SPECIAL/ALARM    F5 = ERASE/RESTART\n"
+            "Timeshare carriage return = F5.\n"
             "Arrows = joystick 1   LCTRL = fire 1");
         ImGui::Separator();
         ImGui::Text("matrix %09llX  latch %02X",
