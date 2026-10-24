@@ -62,6 +62,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capture", nargs="?", type=Path,
                         default=ROOT / "verilator/out/audio_bus_timing")
+    parser.add_argument("--legacy-early-ack", action="store_true",
+                        help="audit old captures acknowledging at ROMC 0F phase 1")
     args = parser.parse_args()
     trace = read_trace(args.capture / "cpu.txt")
     with (args.capture / "events.csv").open(newline="") as source:
@@ -86,6 +88,8 @@ def main():
     print(f"Verified {len(starts)} opcode fetches against unmodified RES1/ED01 ROMs.")
     print(f"Trace coverage: MCLK {trace[0]['cycle']}..{trace[-1]['cycle']}.")
     print("PC labels below are opcode addresses; CSV irq_pc is a live counter.")
+    print("Ack endpoint: " + ("legacy ROMC 0F phase 1" if args.legacy_early_ack else
+                              "ROMC 13 completion (event G)"))
     covered = [r for r in events if trace[0]["cycle"] < int(r["irq_cycle"]) <
                int(r["ack_cycle"]) <= trace[-1]["cycle"]]
     delayed = [r for r in covered if int(r["ack_cycle"]) - int(r["irq_cycle"]) > 40 * MCLK / 1e6]
@@ -143,11 +147,19 @@ def main():
                 raise ValueError("DI did not mask its final fetch")
             if row["op"] == 0x1D and row["flags"] != (row["j"] & 0x1F):
                 raise ValueError("LR W,J did not restore the saved flags")
-        ack_rows = [r for r in trace if accept["cycle"] < r["cycle"] < ack and r["romc"] == 0x0F and r["ph"] == 1]
-        if len(ack_rows) != 1 or ack - ack_rows[0]["cycle"] != 1:
-            raise ValueError("CSV acknowledgement does not match ROMC 0F")
-        if ack_rows[0]["n"] - accept["n"] != 20:
-            raise ValueError("Entry-to-ack differs from S + L")
+        # Sparse telemetry records ROMC transitions, not every phase. Anchor
+        # completion to ROMC 13 phase 1 plus its remaining ten half-clocks.
+        ack_romc, entry_halves, remaining_halves = ((0x0F, 20, 0) if args.legacy_early_ack
+                                                   else (0x13, 32, 10))
+        ack_rows = [r for r in trace if accept["cycle"] < r["cycle"] < ack and
+                    r["romc"] == ack_romc and r["ph"] == 1]
+        if len(ack_rows) != 1:
+            raise ValueError(f"Missing ROMC {ack_romc:02X} acknowledgement anchor")
+        delta = ack - ack_rows[0]["cycle"] - 1
+        if abs(delta * HALF_HZ / MCLK - remaining_halves) > HALF_HZ / MCLK:
+            raise ValueError("CSV acknowledgement differs from the selected capture endpoint")
+        if ack_rows[0]["n"] - accept["n"] != entry_halves:
+            raise ValueError("Entry-to-vector-state timing differs from S + L or S + 2L")
         print(f"DI entry to acceptance: {active} active clocks + {lost} lost half clocks; {accesses} buffered reads.")
         print(f"First permitted fetch: live PC {accept['PC0']:04X}, op {accept['op']:02X}; no skipped permitted fetch found.")
         print(f"CSV mask/stall wall ticks: {event['masked_ticks']}/{event['stall_ticks']} (overlap; do not add).")

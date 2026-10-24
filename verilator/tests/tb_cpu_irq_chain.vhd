@@ -170,10 +170,12 @@ BEGIN
             accepted := true;
           END IF;
           IF int_ack = '1' THEN
-            ASSERT accepted AND elapsed = 357
+            -- Event G follows all vector-delivery clocks: S + 3L from
+            -- acceptance to completion, then the registered ack is visible.
+            ASSERT accepted AND elapsed = 379
               REPORT "Incorrect interrupt acknowledgement timing" SEVERITY failure;
-            ASSERT pc0 = x"158C"
-              REPORT "Interrupt changed the return PC before acknowledgement"
+            ASSERT pc0 = x"0200" AND pc1 = x"158C"
+              REPORT "Incorrect vector or saved return PC at acknowledgement"
               SEVERITY failure;
             acknowledged := true;
             EXIT;
@@ -185,7 +187,7 @@ BEGIN
         REPORT "ROM chain test timed out" SEVERITY failure;
     END LOOP;
     REPORT "ROM IRQ chain passed: 320 request phases, entry at 168 CPU clocks";
-    REPORT "LM-entry request to ack: 170.5 clocks = 85.25 us at 2 MHz, without bus waits";
+    REPORT "LM-entry request to ack: 181.5 clocks = 90.75 us at 2 MHz, without bus waits";
     std.env.stop;
   END PROCESS;
 END ARCHITECTURE;

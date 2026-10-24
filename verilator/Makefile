@@ -172,6 +172,8 @@ test-smi:
 	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853 --assert-level=error
 	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853_timer --assert-level=error
 	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853_timer -gdivider=1 --assert-level=error
+	$(GHDL) -a --std=08 --workdir=out/ghdl_smi $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_smi_vector.vhd
+	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_smi_vector --assert-level=error
 
 test-yint: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_yint.vhd

@@ -143,6 +143,21 @@ BEGIN
     wait_expiry(2 + 215*divider, "C8 reload");
     acknowledge;
 
+    -- Fig.4's clear input wins over a timeout on the acknowledge edge.
+    write_port(x"0F", x"7F"); tick('1');
+    int_ack <= '1'; tick('1'); int_ack <= '0'; tick;
+    ASSERT request = '0' REPORT "Acknowledge/expiry collision retained IRQ" SEVERITY failure;
+    wait_expiry(255*divider, "repeat after acknowledge/expiry");
+    acknowledge;
+
+    -- A coincident load still starts a fresh interval, including its delay,
+    -- when acknowledge and the old expiry occur on that same edge.
+    write_port(x"0F", x"7F"); tick('1');
+    int_ack <= '1'; write_port(x"0F", x"C8", '1'); int_ack <= '0';
+    ASSERT request = '0' REPORT "Acknowledge/expiry/reload retained IRQ" SEVERITY failure;
+    wait_expiry(2 + 215*divider, "C8 acknowledge/expiry/reload");
+    acknowledge;
+
     -- Timer reload clears only timer state, not a pending external request.
     write_port(x"0E", x"01");
     ext_int <= '1'; tick; ext_int <= '0'; tick;

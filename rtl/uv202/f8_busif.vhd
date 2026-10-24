@@ -126,6 +126,7 @@ BEGIN
       ext_wr_l <= '0';
       ext_wdata_l <= (OTHERS => '0');
       write_pending <= '0';
+      int_ack_l <= '0';
 
     ELSIF rising_edge(clk) THEN
       ext_rd_l <= '0';
@@ -278,9 +279,6 @@ BEGIN
 
           -- ROMC 0F saves the unfetched return address and loads the vector low byte.
           WHEN ROMC_0F =>
-            IF phase = 1 THEN
-              int_ack_l <= '1';
-            END IF;
             IF phase = 2 THEN
               dr_l <= int_vector(7 DOWNTO 0);
               dv_l <= '1';
@@ -297,6 +295,11 @@ BEGIN
             END IF;
             IF phase = 6 THEN
               pc0(15 DOWNTO 8) <= int_vector(15 DOWNTO 8);
+            END IF;
+            IF phase = 11 THEN
+              -- MK3853 Fig.6/7, event G: clear the serviced source at the
+              -- end of vector delivery, as the first ISR fetch begins.
+              int_ack_l <= '1';
             END IF;
 
           WHEN ROMC_1C =>
