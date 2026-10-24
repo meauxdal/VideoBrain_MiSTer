@@ -64,6 +64,26 @@ class ExtractorTests(unittest.TestCase):
             self.run_capture("Time [s],clock,xtal,phi,reset,dma,rq0,rq1,io",
                              [(80000, 0, 8), (0, 0, 8)])
 
+    def test_logic1_pause_position(self):
+        points = []
+        # Six PHI periods, with 2 us inserted immediately after the third
+        # falling edge. WRITE boundaries and all later events move together.
+        for t in range(0, 3500001, 62500):
+            xtal = int((t//125000) % 2 == 0)
+            phi = int((t//250000) % 2 == 0)
+            write = int(t < 125000 or 2875000 <= t < 3125000)
+            physical = t + (2000000 if t > 1250000 else 0)
+            points.append((physical, xtal | phi << 1 | write << 2 | 2 << 3 | 0x5A << 8, 16))
+        root = self.run_capture("Time[s], xtl, phi, write, romc0, romc1, romc2, romc3, romc4, d0, d1, d2, d3, d4, d5, d6, d7", points)
+        with (root/"out-cycles.csv").open() as f:
+            rows = list(csv.DictReader(f))
+        self.assertEqual(len(rows), 1)
+        r = rows[0]
+        self.assertEqual(int(r["phi_falls"]), 6)
+        self.assertEqual(int(r["phi_falls_before_gap"]), 3)
+        self.assertEqual(int(r["phi_fall_gap_count"]), 1)
+        self.assertEqual(int(r["max_phi_fall_gap_ps"]), 2500000)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -197,7 +197,9 @@ BEGIN
             END IF;
 
           WHEN ROMC_02 =>
-            IF phase = 1 THEN
+            -- F3853 Fig.16: DC0 addressing settles later than PC0 addressing.
+            -- The recorded long-read pause follows the third PHI falling edge.
+            IF phase = 5 THEN
               addr_v := dc0(13 DOWNTO 0);
               cls_v := classify(addr_v, '0');
               ext_addr_l <= addr_v;
@@ -206,7 +208,7 @@ BEGIN
                 ext_req_l <= '1';
               END IF;
             END IF;
-            IF phase = 2 THEN
+            IF phase = 6 THEN
               dr_l <= ext_rdata;
               dv_l <= '1';
               ext_rd_l <= '1';
@@ -221,12 +223,17 @@ BEGIN
             END IF;
 
           WHEN ROMC_05 =>
-            IF phase = 4 THEN
+            IF phase = 5 THEN
               addr_v := dc0(13 DOWNTO 0);
               cls_v := classify(addr_v, '1');
               ext_addr_l <= addr_v;
               ext_class_l <= cls_v;
-              IF cls_v /= ACC_NONE THEN
+            END IF;
+            -- F3853 Fig.18: /RAM WRITE is later than DC0 address selection.
+            -- Keep that address while DC0 increments and request at the fourth
+            -- PHI falling edge, matching the recorded write pause position.
+            IF phase = 8 THEN
+              IF ext_class_l /= ACC_NONE THEN
                 ext_req_l <= '1';
                 write_pending <= '1';
               ELSE

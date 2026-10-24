@@ -369,6 +369,21 @@ out/logic_captures/analyze_logic_csv: tests/analyze_logic_csv.cpp
 test-logic-csv: out/logic_captures/analyze_logic_csv
 	python3 -B tests/check_logic_csv.py $<
 
+.PHONY: test-sean-diag
+test-sean-diag:
+	mkdir -p out/sean_diag
+	$(GHDL) -a --std=08 --workdir=out/sean_diag $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_sean_diag.vhd
+	$(GHDL) -r --std=08 --workdir=out/sean_diag tb_sean_diag --assert-level=error --ieee-asserts=disable
+
+.PHONY: test-uv201-wait
+test-uv201-wait:
+	mkdir -p out/uv201_wait
+	$(GHDL) -a --std=08 --workdir=out/uv201_wait $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/uv202/uv202_cpu_gate.vhd $(RTL)/uv202/uv202_timing.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd $(RTL)/uv202/uv202_arbiter.vhd $(RTL)/uv202/uv202_top.vhd tests/tb_uv201_wait.vhd
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -ggap_csv=out/uv201_wait/read.csv
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -gwrite_test=true -ggap_csv=out/uv201_wait/write.csv
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -gdma_mode=true -ggap_csv=out/uv201_wait/read-dma.csv
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -gwrite_test=true -gdma_mode=true -ggap_csv=out/uv201_wait/write-dma.csv
+
 test-apl-source: test-apl-input test-cpu-interrupt test-tools
 	@mkdir -p out/source_test
 	$(V) --binary --timing -Wno-fatal --top-module tb_apl_source_loader \

@@ -176,9 +176,10 @@ or infer a complete opcode stream from the request-only sessions.
 
 The archives contain Saleae's internal format, not its public binary export
 format. [Saleae recommends exporting with Logic 2](https://www.saleae.com/support/logic-software/saving-and-exporting-data/sal-file-format).
-Metadata inspection is complete; transition measurements from these archives
-are not. Logic 2 was not found in the checked standard installation locations
-or running processes during this audit.
+The CSV exports were analyzed on 2026-10-24, together with a separate Timeshare
+Logic 1 bus capture, the paired diagnostic ROM and the Money Minder cassette
+transition CSV. See [the measured capture report](LOGIC-CAPTURE-ANALYSIS.md) for
+methods, counts, original-machine versus simulation comparisons and limits.
 
 ## Next timing comparison
 
@@ -198,12 +199,24 @@ BRCLK totals for UV201 accesses. Resolve these endpoints before interpreting a
 one-BRCLK discrepancy as a missing RTL stage. Full-speed results include
 propagation effects absent from the slowed experiments and ideal gate model.
 
-Export the saved sessions and measure same-polarity PHI gaps alongside both CPU
-request lines and DMA requests, excluding reset. Start with isolated accesses,
-then DMA contention. Compare distributions and phase dependence with an 80 ns
-sampling error budget; do not impose the screenshot's 48-clock/3-us pattern on
-all workloads. BRCLK/WACK captures would separate admission, service and restart
-costs; the existing channels cannot uniquely determine all three.
+The exported sessions now provide same-polarity PHI gap distributions alongside
+CPU/DMA requests, with reset exclusion and an 80 ns sampling grid. Clean read
+code 11 gaps in the normal capture cluster around 1.76/2.00 us, so adding delay
+solely to meet the older approximate sunk-cost account is not justified. See
+the capture report before interpreting the previous regression bounds as
+original-machine measurements. Next resolve access-specific service and request
+phase using a matched workload. BRCLK/WACK captures would separate admission,
+service and restart costs; the existing channels cannot uniquely determine all
+three. Do not impose one screenshot's pattern on every workload.
 
 No bus-wait constants were changed. The acknowledgement correction above is
 separate from the unresolved wait-duration investigation.
+
+The follow-up [UV201 phase audit](UV201-PHASE-AUDIT.md) compares the position of
+the pause within each long memory cycle, not just its duration. Captured DC0
+reads pause after the third PHI falling edge and writes after the fourth; the
+former bus interface paused after the first/second. ROMC 02/05 request placement
+and the corresponding CPU read-data consumption have been corrected without
+altering the active cycle totals or arbiter wait constants. The same audit
+records the necessary separation of the Expander 3870 vector-selection strobe
+from the main-board F3853's completion acknowledgement.

@@ -161,6 +161,42 @@ def summarize(root):
     }
     sim = pd.read_csv(root/"simulation.csv")
     result["simulation_same_polarity_gaps"] = {str(k): stats(v.gap_mclk*1e12/14318181) for k,v in sim.groupby("access_case")}
+    diagnostic = pd.read_csv(root/"vbdiagwreset-io.csv")
+    diagnostic = diagnostic[diagnostic.max_phi_gap_ps < 800000].reset_index(drop=True)
+    pairs = [(a.phi_falls+b.phi_falls, b.end_ps-a.start_ps)
+             for a,b in zip(diagnostic.itertuples(), list(diagnostic.itertuples())[1:])
+             if a.end_ps == b.start_ps]
+    result["paired_diagnostic"] = {
+        "steady_intervals": len(diagnostic),
+        "phi_counts_by_end_level": {str(k): {str(v): int(n) for v,n in g.phi_falls.value_counts().items()}
+                                    for k,g in diagnostic.groupby("end_level")},
+        "full_period_phi_counts": {str(k): int(v) for k,v in pd.Series([n for n,t in pairs]).value_counts().items()},
+        "full_period_seconds": {str(k/1e12): int(v) for k,v in pd.Series([t for n,t in pairs]).value_counts().items()},
+        "model_interval_phi_counts": [393752, 393788], "model_full_period_phi_count": 787540,
+        "inferred_phi_hz_from_model_full_period": [787540/(t/1e12) for n,t in pairs[:1]],
+    }
+    if "phi_falls_before_gap" in c:
+        uv = c[c.inferred_region == "uv201"]
+        result["uv201_pause_phase"] = {
+            f"{r:02X}": {
+                "cycles": len(v),
+                "falls_before_pause": {str(k): int(n) for k,n in v.phi_falls_before_gap.value_counts().items()},
+                "pauses_per_cycle": {str(k): int(n) for k,n in v.phi_fall_gap_count.value_counts().items()},
+                "register_counts": {f"{k:02X}": int(n) for k,n in (v.inferred_dc0 & 255).value_counts().items()},
+            } for r,v in uv[uv.romc.isin([2,5])].groupby("romc")}
+    for directory in ("uv201_old", "uv201_wait"):
+        folder = root.parent/directory
+        measurements = {}
+        for name in ("read", "write", "read-dma", "write-dma"):
+            path = folder/f"{name}.csv"
+            if not path.exists(): continue
+            a = pd.read_csv(path)
+            measurements[name] = {
+                "gap": stats(a.fall_gap_mclk*1e12/14318181),
+                "fall_half_phase_before_pause": sorted(map(int,a.fall_phase_before_gap.unique())),
+                "admission_phase_counts": {str(k): int(n) for k,n in a.admit_phase.value_counts().items()},
+            }
+        if measurements: result[directory] = measurements
     (root/"summary.json").write_text(json.dumps(result, indent=2)+"\n")
     print(json.dumps(result, indent=2))
 

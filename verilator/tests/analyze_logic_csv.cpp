@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     gaps<<"channel,edge,start_ps,end_ps,duration_ps,initial_state,final_state,request_codes_seen,dma_levels_seen,sideband_changes\n";
     events<<"time_ps,state,changed\n";
     hist<<"channel,kind,edge,duration_ps,count\n";
-    if(bus) { cycles.open(prefix+"-cycles.csv"); cycles<<"start_ps,end_ps,romc,data_end,data_write_rise,phi_falls,xtal_falls,max_phi_gap_ps,romc_changes\n"; }
+    if(bus) { cycles.open(prefix+"-cycles.csv"); cycles<<"start_ps,end_ps,romc,data_end,data_write_rise,phi_falls,xtal_falls,max_phi_gap_ps,romc_changes,max_phi_fall_gap_ps,phi_falls_before_gap,phi_fall_gap_count\n"; }
     else { io.open(prefix+"-io.csv"); io<<"start_ps,end_ps,end_level,phi_falls,xtal_falls,max_phi_gap_ps\n"; }
     std::array<std::array<Track,2>,3> track{};
     std::array<I,3> last_change{{-1,-1,-1}};
@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
     I previous_t=-1, reset_start=-1, active_ps=0, cycle_start=-1, max_phi_gap=0;
     uint64_t rows=0, duplicates=0, off_grid=0, valid_rows=0;
     unsigned previous=0, cycle_phi=0, cycle_xtal=0, romc_changes=0, data_rise=0;
+    I max_fall_gap=0; unsigned falls_before_gap=0, fall_gap_count=0;
     I io_start=-1, io_gap=0; uint64_t io_phi=0, io_xtal=0;
     const I grid=bus?62500:80000;
     while(std::getline(in,line)) {
@@ -85,6 +86,10 @@ int main(int argc, char** argv) {
             if(x.last>=0) {
               I delta=t-x.last; ++counts[{ch,1,edge,delta}];
               if(ch==phi) { max_phi_gap=std::max(max_phi_gap,delta); io_gap=std::max(io_gap,delta); }
+              if(bus && ch==phi && edge==0 && delta>800000) {
+                ++fall_gap_count;
+                if(delta>max_fall_gap) { max_fall_gap=delta; falls_before_gap=cycle_phi; }
+              }
               // >0.8 us cleanly separates a normal 0.5 us same-edge period.
               if(delta>800000) gaps<<ch<<','<<edge<<','<<x.last<<','<<t<<','<<delta<<','<<x.initial<<','<<state<<','<<x.req_seen<<','<<x.dma_seen<<','<<x.changes<<'\n';
             }
@@ -107,8 +112,9 @@ int main(int argc, char** argv) {
         if(changed&4) {
           if(state&4) data_rise=(state>>8)&255;
           else {
-            if(cycle_start>=0) cycles<<cycle_start<<','<<t<<','<<((previous>>3)&31)<<','<<((previous>>8)&255)<<','<<data_rise<<','<<cycle_phi<<','<<cycle_xtal<<','<<max_phi_gap<<','<<romc_changes<<'\n';
+            if(cycle_start>=0) cycles<<cycle_start<<','<<t<<','<<((previous>>3)&31)<<','<<((previous>>8)&255)<<','<<data_rise<<','<<cycle_phi<<','<<cycle_xtal<<','<<max_phi_gap<<','<<romc_changes<<','<<max_fall_gap<<','<<falls_before_gap<<','<<fall_gap_count<<'\n';
             cycle_start=t; cycle_phi=cycle_xtal=romc_changes=0; max_phi_gap=0;
+            max_fall_gap=0; falls_before_gap=fall_gap_count=0;
           }
         }
       }
