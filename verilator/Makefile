@@ -361,6 +361,14 @@ test-music-input: test-cartridges
 test-tools:
 	python3 -B tests/run_tools.py
 
+out/logic_captures/analyze_logic_csv: tests/analyze_logic_csv.cpp
+	mkdir -p out/logic_captures
+	$(CXX) -std=c++17 -O3 -Wall -Wextra $< -o $@
+
+.PHONY: test-logic-csv
+test-logic-csv: out/logic_captures/analyze_logic_csv
+	python3 -B tests/check_logic_csv.py $<
+
 test-apl-source: test-apl-input test-cpu-interrupt test-tools
 	@mkdir -p out/source_test
 	$(V) --binary --timing -Wno-fatal --top-module tb_apl_source_loader \

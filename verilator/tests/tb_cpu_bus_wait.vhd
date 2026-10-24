@@ -4,11 +4,13 @@ USE ieee.numeric_std.ALL;
 USE work.base_pack.ALL;
 USE work.f8_pack.ALL;
 USE work.uv202_pack.ALL;
+USE std.textio.ALL;
 
 ENTITY tb_cpu_bus_wait IS
   GENERIC (
     check_documented : boolean := true;
-    trace_bus : boolean := false
+    trace_bus : boolean := false;
+    gap_csv : string := ""
   );
 END ENTITY;
 
@@ -70,6 +72,8 @@ BEGIN
       int_vector => x"0000", int_ack => OPEN, pc0o => pc, pc1o => OPEN, dc0o => OPEN
     );
   PROCESS
+    FILE capture : text;
+    VARIABLE row : line;
     VARIABLE raw_count, active_count, start_raw, start_active : natural;
     VARIABLE next_pc, case_index, extra : natural;
     VARIABLE pending : boolean;
@@ -79,6 +83,11 @@ BEGIN
     VARIABLE shortest : counts_t := (OTHERS => natural'high);
     VARIABLE longest : counts_t := (OTHERS => 0);
   BEGIN
+    IF gap_csv /= "" THEN
+      file_open(capture, gap_csv, write_mode);
+      write(row, string'("offset,access_case,start_mclk,end_mclk,gap_mclk,lost_half_clocks"));
+      writeline(capture, row);
+    END IF;
     FOR offset IN 0 TO 127 LOOP
       reset_na <= '0'; clock_reset_na <= '0';
       FOR i IN 1 TO 32 LOOP WAIT UNTIL falling_edge(clk); END LOOP;
@@ -121,6 +130,14 @@ BEGIN
                   real(tick - halt_fall) * 2_000_000.0 / real(MCLK_HZ) - 1.0);
             END IF;
             halted := false;
+            IF gap_csv /= "" THEN
+              write(row, offset); write(row, string'(","));
+              write(row, case_index); write(row, string'(","));
+              write(row, halt_fall); write(row, string'(","));
+              write(row, tick); write(row, string'(","));
+              write(row, tick - halt_fall); write(row, string'(","));
+              write(row, gap_extra); writeline(capture, row);
+            END IF;
           END IF;
           last_fall := tick; last_fall_raw := raw_count;
         END IF;
@@ -174,6 +191,7 @@ BEGIN
       END LOOP;
     END IF;
     REPORT "128 reset offsets; cases: RES1 read, RAM read, cart read, RES2 read, UV201 read, RAM write, UV201 write";
+    IF gap_csv /= "" THEN file_close(capture); END IF;
     std.env.stop;
   END PROCESS;
 END ARCHITECTURE;

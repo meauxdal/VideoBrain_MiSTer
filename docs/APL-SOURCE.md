@@ -20,6 +20,8 @@ Immediate expressions, such as `01-sine.vbk`, execute as they are entered. For o
 
 Gunner corrects the printed listing's `BAR -30` and `BAR 30` to `BARH -30` and `BARH 30`. The original lines cause a syntax error; continued automatic entry appends later text to the rejected line and can produce repeated `SYNTAX 168` errors. Restart from a fresh cartridge prompt before loading the corrected file.
 
+Dicejack uses `BUSTED` instead of the printed dealer message `I BUSTED`, matching the stored dump. The longer message exceeds APL/S's 255-byte program limit, causing `CAPACITY 6` followed by `SYNTAX 6` at the final `ENDE`. Launch the corrected program with `D`.
+
 ## Preparing a listing
 
 See [keyboard converters](../tools/README.md#keyboard-files) for commands. Supply UTF-8 text containing exactly the lines to enter at the APL/S prompt. Program definitions must include EDIT and ENDE; remove printed headings, line numbers and OCR errors. Each nonblank line ends with NEXT.
