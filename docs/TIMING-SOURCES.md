@@ -10,12 +10,16 @@ can still finish too early if buffered accesses pause the clock too briefly.
 | Fairchild F3850 Table 3, printed pp. 3-21 through 3-25 (`refs/orphanedgames.com/fairchild-3850.pdf`, PDF pages 15-19) | Instruction ROMC order, short/long cycles, data-bus timing classes, interrupt restrictions | Does not specify VideoBrain arbitration or external clock stopping |
 | Fairchild 1975 F8 brochure (`refs/Fairchild_Semiconductor_-_F8_Microprocessor_brochure_-_1975.pdf`), printed pp. 9-11 (PDF pages 11-13) | Manufacturer summary corroborating BR7 totals, branch masks, IN timing and CPU-port timing exceptions | Summary totals do not specify bus phases or VideoBrain waits |
 | Osborne, *An Introduction to Microcomputers*, Vol. 2, September 1978 (`refs/Osborne_An_Introduction_to_Microcomputers_Volume_2_Sep78.pdf`), Chapter 2 | Detailed explanation of cycle overlap, WRITE/ROMC boundaries, F8 I/O and timer behavior | Covers both 3870 and F8 devices; some tables disagree internally; device manuals take precedence |
+| Terry Dollhoff, 1979 F8 chapter, [Sean Riddle's scan](https://www.seanriddle.com/f8_info.pdf) (`refs/orphanedgames.com/f8_info.pdf`), printed pp. 70-79 | Separately authored explanation and instruction byte lengths/totals; explicitly defines a short cycle as four clock periods | PK and DI/EI totals conflict with detailed MK3850 sequences; excerpt does not establish table derivation or independent timing measurements |
 | Fairchild F3852/F3853 manual and Mostek 1978 data book | Timer sequence, division, reload and interrupts | Input frequency and gating depend on the board |
+| Mostek June 1979 Microcomputer Products Data Book (`refs/datasheets-databooks-fairchild-mostek-manuals/1979_Mostek_Microcomputer_Products_Data_Book.pdf`) | Detailed MK3850/MK3853 timing chapters corroborate the 1978 sequences and completion boundary | Repeated material is not a new hardware measurement; 3870 summary conflicts and decimal-flag annotations remain visible in the [1979 comparison](MOSTEK-1979-AUDIT.md) |
+| Mostek 1981 3870/F8 data book (`refs/datasheets-databooks-fairchild-mostek-manuals/1981_3870_F8_Microcomputer_Data_Book.pdf`) | Later 3870 technical manual, instruction tables and timer/interrupt timing bounds | F8 device pages are brief summaries; inherited conflicts and 3870 distinctions need separate treatment; see the [1981 audit](MOSTEK-1981-AUDIT.md) |
 | Fairchild F8 User's Guide, May 1976 (`refs/67095665B_F8_Users_Guide_May76.pdf`) | ROMC 13 resets interrupt circuitry; event G and the explicit 3851-to-3853 interrupt-logic link corroborate the completion boundary | PSU sections need the SMI differences in section 5.1.2 applied |
 | Sean Riddle's connection records and photographs | Net connections and external gate topology | Do not establish propagation delays or internal ASIC behavior |
 | Sean's original-machine captures | Observed clocks and requests | Depend on recorded channels, sample resolution, reset and software state |
 | Kevtris, *VideoBrain Unwrapped*, Wait States section | UV202 service timing and full-speed CPU halt measurements | Separates a slowed, clock-modified machine from full-speed operation; interval endpoints differ |
 | Turner's [overview](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html), [instruction details](https://www.nyx.net/~lturner/public_html/F8_ins.html) and [opcode summary](https://www.nyx.net/~lturner/public_html/F8_opcodes.html) | Instruction index and timing cross-check | Contains discrepancies; resolve them with the device manuals |
+| Tobias V. Langhoff's [F8 Optable](https://tobiasvl.github.io/optable/f8/) and [opcode data](https://github.com/tobiasvl/optable/blob/master/_data/f8/opcodes.json), checked 2026-10-24 | Searchable opcode index and instruction-total cross-check; the page credits Pastraiser | Six documented opcode totals disagree with Fairchild Table 3; no ROMC phases or VideoBrain waits; its linked errata page returns 404 |
 | MAME and our regressions | Executable models and checks of explicit expectations | Agreement between models is not a hardware timing measurement |
 
 Use manufacturer tables for instruction expectations and board measurements for
@@ -51,6 +55,126 @@ Fairchild resolves these discrepancies in the web tables:
 Turner's machine-cycle unit is four PHI periods. His tables are related secondary
 sources, not independent corroboration of BR7's 3/3.5 entry. Fairchild specifies
 two cycles for BR7 rather than BT/BF's three.
+
+## F8 Optable comparison, 2026-10-24
+
+Compared the published opcode JSON's totals with the Fairchild Table 3
+expectations used by `tb_cpu_opcode_timing.vhd`, excluding the same 14
+undocumented/reserved encodings. Of 242 documented opcodes, 236 agree and six
+disagree. For conditional instructions this compares the possible taken and
+not-taken totals; it does not validate branch conditions or instruction semantics.
+
+The units below are four PHI periods, including the overlapping terminating
+fetch. A short cycle contributes 1 and a long cycle 1.5. These are active-clock
+totals, so external clock stops can increase elapsed time.
+
+| Opcode | Instruction | Optable total | Fairchild Table 3 / current core | Fairchild ROMC sequence |
+| --- | --- | --- | --- | --- |
+| 0C | PK | 2.5 | 4 | long 12, long 14, short 00 |
+| 1A | DI | 1 | 2 | short 1C, short 00 |
+| 1B | EI | 1 | 2 | short 1C, short 00 |
+| 1D | LR W,J | 1 | 2 | short 1C, short 00 |
+| 1E | LR J,W | 2 | 1 | short 00 |
+| 8F | BR7 | 3 / 3.5 | 2 / 2.5 | short 03 / long 01, then short 00 |
+
+BR7 totals are not-taken / taken. Its Optable entry repeats the discrepancy
+already identified in other summary tables; it supplies no new bus-sequence
+evidence to overturn the manufacturer sequence. PK's 4-unit total is 16 PHI
+periods, not the 10 implied by 2.5. DI, EI and LR W,J each require eight PHI
+periods, while LR J,W requires four. The existing execution regression was rerun
+for this comparison: all 968 cases passed, including these six opcodes.
+
+Optable correctly gives IN as 4 and distinguishes INS/OUTS ports 0/1 (2)
+from the documented external short-address ports 4-15 (4). It also assigns
+external-port behavior to reserved encodings A2/A3/B2/B3; those remain outside
+our documented-opcode audit. Its JSON labels both 1D and 1E as LR W,J, although
+1E transfers in the opposite direction. The combined F3850/MK3870 title and
+instruction totals do not establish VideoBrain-specific bus phases, interrupt
+acknowledgement timing or UV202 wait durations.
+
+This comparison changes no RTL or timing expectations. Treat the page as a
+convenient index with recorded exceptions, rather than another independent
+hardware timing measurement. The page explicitly credits Pastraiser; matching
+entries across those two sites therefore do not establish independent provenance.
+
+### Upstream corrections: issue 12
+
+In [Optable issue 12](https://github.com/tobiasvl/optable/issues/12), opened
+2026-07-01, e5frog reports corrections to the register mappings, AMD/CM flags
+and BR7 timing. Checked on 2026-10-24 against the local 1976 Fairchild manuals:
+
+| Correction | Manufacturer evidence | Current core |
+| --- | --- | --- |
+| 0E = LR Q,DC; 0F = LR DC,Q; 10 = LR DC,H | May 1976 User's Guide, Table 2-7, printed p. 2-18 (PDF page 59); 1976 Guide to Programming, Appendix D, printed p. D-2 (PDF page 113) | Already matches; 11 is LR H,DC |
+| 1E = LR J,W | Same manufacturer tables | Already matches; 1D is LR W,J |
+| 89 AMD modifies O/Z/C/S, preserves I | User's Guide, Table 2-7, printed p. 2-19 (PDF page 60); Guide to Programming, section 6.4, printed pp. 6-3/6-4 (PDF pages 40/41), and p. D-2 | Uses OP_ADDD, which updates all four arithmetic flags and preserves I |
+| 8D CM modifies O/Z/C/S, preserves I | User's Guide, Table 2-7, printed p. 2-20 (PDF page 61); Guide to Programming, sections 6.8/6.10, printed p. 6-7 (PDF page 44), and p. D-2 | Uses OP_CMP, which updates flags without writing the accumulator |
+| 8F BR7 = 2 / 2.5 | User's Guide, Table 2-7, printed p. 2-20 (PDF page 61); the earlier manufacturer sequence/brochure audit above | Already matches |
+
+The programming guide calls AMD's overflow/sign statuses not significant and
+explicitly says other status indicators are modified. This is not an instruction
+to preserve them or force them to zero. The summary in Appendix D marks all
+four arithmetic flags as affected for both AMD and CM. In the current RTL,
+AMD computes those flags from the binary sum before applying decimal correction;
+that observation describes the implementation, not an exhaustive flag-value
+validation from these summary tables.
+
+The issue provides a useful correction trail for the published table. Its
+claims above are supported by the manufacturer documents already in `refs/`;
+the cited Dollhoff book and veswiki were not needed to establish them here.
+No RTL change follows from these corrections. The 968-case timing test checks
+cycle sequences and durations, not AMD/CM flag semantics; the flag statements
+above were checked against the RTL and manuals rather than inferred from that
+test's pass result.
+
+## Dollhoff instruction lengths and totals (`f8_info.pdf`)
+
+Reviewed all five scanned spreads on 2026-10-24. The handwritten attribution
+on PDF page 1 identifies Terry Dollhoff, *16 bit Microprocessor Architecture*,
+1979; this matches the book reference in Optable issue 12. The excerpt contains
+printed pp. 70-79, with the length/timing table on pp. 78-79 (PDF page 5).
+It is a separately authored secondary reference, rather than another manufacturer
+databook printing. Its derivation and any underlying timing measurements are
+not stated in the excerpt, so independence of authorship should not be confused
+with independent hardware measurement.
+
+Printed p. 77 (PDF page 4) explicitly defines a short cycle as four basic
+clock periods: at 2 MHz it is 2 us. The timing column is in these short-cycle
+units, and the larger conditional-branch total applies when taken. The `Len`
+column gives bytes, not machine cycles. Its listed instruction byte lengths
+agree with our decode: three bytes for JMP/PI/DCI, two for immediate ALU,
+long-address IN/OUT and relative branches, and one for the remaining rows.
+This does not check program-counter sequencing at every intermediate ROMC phase.
+
+| Entry on pp. 78-79 | Dollhoff total | Detailed MK3850 / current core | Assessment |
+| --- | --- | --- | --- |
+| BR7, not taken / taken | 2 / 2.5 | 2 / 2.5 | Corroborates the corrected two-cycle sequence |
+| IN and OUT with immediate port address | 4 | 4 | Corroborates long-address I/O totals |
+| INS/OUTS ports 0/1; ports 4-7 | 2; 4 | 2; 4 | Corroborates CPU-port exception; table does not enumerate ports 8-15 |
+| LR J,W; LR W,J | 1; 2 | 1; 2 | Correct direction and distinct totals |
+| PK | 2.5 | 4 | Conflicts with long 12 + long 14 + short 00 |
+| DI and EI | 1 each | 2 each | Matches the shorter Mostek 3870 summary, but not the detailed MK3850 sequence |
+
+Other table totals agree with the current documented instruction families,
+including DS 1.5, ASD 2, PI 6.5, JMP 5.5 and DCI 6. The three conflicting
+instruction totals above do not justify changing the main-board F8. The DI/EI
+entries also do not independently settle the 3870-specific conflict: the
+chapter discusses both single-chip and multichip F8s without assigning separate
+DI/EI timings to each. POP is described as `PO=P`, not an exchange, but that
+generic summary likewise does not resolve the specific 3870 exchange claim.
+
+The prose supplies useful semantic cross-checks: printed p. 75 states S=1
+for a plus result and warns that JMP/PI modify A; p. 76 describes compare as
+operand minus A and the required H'66' preparation for decimal addition.
+Printed p. 74 correctly confines indirect post-increment/decrement to ISAR's
+low three bits, despite the table shorthand `ISAR=ISAR+1/-1` on pp. 77-78.
+The p. 77 statement that timer and external interrupts cannot both be enabled
+fits the older multichip peripheral control, not the 3870's separate enables.
+
+This adds corroboration for instruction lengths and selected totals, especially
+BR7, but no bus-phase, SMI synchronization or VideoBrain wait measurement.
+No RTL or test expectations changed, and simulations were not rerun for this
+documentation-only comparison.
 
 ## Additional corroboration: 1975 brochure and Osborne
 
