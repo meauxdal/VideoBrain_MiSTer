@@ -109,6 +109,12 @@ test-cpu-clock: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_cpu_clock.vhd
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_cpu_clock --assert-level=error
 
+.PHONY: test-cpu-ports
+test-cpu-ports:
+	mkdir -p out/cpu_ports
+	$(GHDL) -a --std=08 --workdir=out/cpu_ports -Wno-hide $(VHD_SRC) tests/tb_cpu_ports.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_ports tb_cpu_ports --assert-level=error --ieee-asserts=disable
+
 .PHONY: test-cpu-branches
 test-cpu-branches:
 	mkdir -p out/cpu_branches

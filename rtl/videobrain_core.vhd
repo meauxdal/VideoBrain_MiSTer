@@ -192,7 +192,7 @@ BEGIN
       tick     => tick,
       phase    => phase,
       po_a_n   => po_a_n_l,
-      pi_a_n   => x"FF",
+      pi_a_n   => po_a_n_l,
       po_b_n   => po_b_n_l,
       pi_b_n   => pi_b_n_l,
       port1_wr  => port1_wr_l,
@@ -375,9 +375,9 @@ BEGIN
   f8_po_b_n <= po_b_n_l;
   joy_enable <= joy_enable_l;
 
-  pi_b_n_l <= kbd_b_in_n AND unsigned'('1' &
-                    (po_b_n_l(6) AND expander_clock_n) &
-                    (po_b_n_l(5) AND expander_data_n) & "11111");
+  -- F3850 inputs sense the physical pins, including the output latch drive.
+  pi_b_n_l <= po_b_n_l AND kbd_b_in_n AND
+             unsigned'('1' & expander_clock_n & expander_data_n & "11111");
 
   PROCESS (clk, reset_na) IS
   BEGIN
