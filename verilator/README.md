@@ -13,6 +13,8 @@ Requires ghdl (VHDL-2008), verilator, zlib, and sdl2 for the graphical target. R
 
 `make test-cpu-ports` runs 1,280 cases through the full core using generated F8 programs. It checks every output value on both CPU ports, including port 1 readback with joystick fire and selected/unselected keyboard columns.
 
+`make test-smi` checks external-interrupt rearming and the F3853 timer. Timer tests use all 255 seeds from the Mostek 1978 data book's Table 2 (printed p.170), checking initial delays and 255-count repeats with dividers 31 and 1. They also cover paused clock enables, masked expiries, acknowledge isolation, reload priority and `$FF` stopping. These are checks in timer input-clock periods; the core's BRCLK connection remains unverified against the board.
+
     ./obj_dir/Vtop --run
     ./obj_dir_headless/Vtop --cart /path/to/cartridge.bin --frames 300 --shot-last
     ./obj_dir_headless/Vtop --help

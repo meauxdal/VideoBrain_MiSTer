@@ -156,8 +156,10 @@ test-cpu-gate:
 .PHONY: test-smi
 test-smi:
 	mkdir -p out/ghdl_smi
-	$(GHDL) -a --std=08 --workdir=out/ghdl_smi $(RTL)/f8/base_pack.vhd $(RTL)/f3853.vhd $(RTL)/uv201/uv201_yint.vhd tests/tb_f3853.vhd
+	$(GHDL) -a --std=08 --workdir=out/ghdl_smi $(RTL)/f8/base_pack.vhd $(RTL)/f3853.vhd $(RTL)/uv201/uv201_yint.vhd tests/tb_f3853.vhd tests/tb_f3853_timer.vhd
 	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853 --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853_timer --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853_timer -gdivider=1 --assert-level=error
 
 test-yint: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_yint.vhd

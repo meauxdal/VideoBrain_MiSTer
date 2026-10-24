@@ -67,7 +67,9 @@ Expander 1 work added actual execution of its firmware and digital tape transact
 
 MAME is an important preserved implementation and a practical reference where hardware measurements are missing. The core uses MAME-derived information for cartridge identification and slot layouts, parts of address decoding, and device behavior. The F8 implementation credits assistance from MAME's CPU model; the F3853 implementation explicitly references MAME.
 
-This creates shared assumptions that software compatibility cannot resolve. In particular, the current F3853 timer is an eight-bit down-counter with a prescale driven by BRCLK enables. Its sequence, clock source, and equivalence to the original device remain unverified. The implemented single-device subset also omits memory addressing and priority daisy chaining.
+This creates shared assumptions that software compatibility cannot resolve. The F3853 timer now uses the documented feedback shift-register sequence, with all 255 running seeds checked against the Mostek 1978 data book's conversion table (printed p.170). Tests also cover repeat periods, masked pending interrupts, reloads, stopping, and external-interrupt isolation. The initial timer clock follows the two-input-period delay shown in the F3852/F3853 timer block diagram (Figure 6).
+
+The timer input still uses BRCLK enables. Its board-level clock source and equivalence to the original device remain unverified; the timer tests establish behavior in input-clock periods, not measured VideoBrain timer intervals. The implemented single-device subset also omits memory addressing and priority daisy chaining.
 
 ## Approximations and conveniences
 
