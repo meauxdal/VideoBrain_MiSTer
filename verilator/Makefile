@@ -115,6 +115,7 @@ test-cpu-branches:
 	$(GHDL) -a --std=08 --workdir=out/cpu_branches $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_branches.vhd
 	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches --assert-level=error
 	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches -gcheck_br7=false --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches -gcheck_br7=false -gcheck_bt=true --assert-level=error
 
 .PHONY: test-cpu-interrupt
 test-cpu-interrupt:

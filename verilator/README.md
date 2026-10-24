@@ -9,7 +9,7 @@ Verilator reads Verilog only, so every build first runs the VHDL through `ghdl s
 
 Requires ghdl (VHDL-2008), verilator, zlib, and sdl2 for the graphical target. Run from this directory; the default ROM paths are relative to it.
 
-`make test-cpu-branches` runs ROM-free GHDL checks for BR7 across all 64 ISAR values and BF `$E` across all 32 status-register values. Both use signed displacement boundaries, check branch destinations and operand/fetch cycle lengths, and verify that ISAR or status flags remain unchanged.
+`make test-cpu-branches` runs ROM-free GHDL checks for BR7 across all 64 ISAR values and every BT/BF mask across all 32 status-register values, including directly loaded zero/sign combinations. The 4,160 cases use signed displacement boundaries, check branch destinations and operand/fetch cycle lengths, and verify that ISAR or status flags remain unchanged.
 
     ./obj_dir/Vtop --run
     ./obj_dir_headless/Vtop --cart /path/to/cartridge.bin --frames 300 --shot-last
