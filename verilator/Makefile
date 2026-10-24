@@ -153,6 +153,12 @@ test-cpu-gate:
 
 .PHONY: test-cpu-gate
 
+.PHONY: test-smi-clock
+test-smi-clock:
+	mkdir -p out/smi_clock
+	$(GHDL) -a --std=08 --workdir=out/smi_clock -Wno-hide $(VHD_SRC) tests/tb_smi_clock.vhd
+	$(GHDL) -r --std=08 --workdir=out/smi_clock tb_smi_clock --assert-level=error --ieee-asserts=disable
+
 .PHONY: test-smi
 test-smi:
 	mkdir -p out/ghdl_smi

@@ -69,7 +69,9 @@ MAME is an important preserved implementation and a practical reference where ha
 
 This creates shared assumptions that software compatibility cannot resolve. The F3853 timer now uses the documented feedback shift-register sequence, with all 255 running seeds checked against the Mostek 1978 data book's conversion table (printed p.170). Tests also cover repeat periods, masked pending interrupts, reloads, stopping, and external-interrupt isolation. The initial timer clock follows the two-input-period delay shown in the F3852/F3853 timer block diagram (Figure 6).
 
-The timer input still uses BRCLK enables. Its board-level clock source and equivalence to the original device remain unverified; the timer tests establish behavior in input-clock periods, not measured VideoBrain timer intervals. The implemented single-device subset also omits memory addressing and priority daisy chaining.
+The timer input uses CPU PHI periods, including CPU wait gating. Sean Riddle's board connection workbook (`refs/seanriddle.com/videobrain.xlsx`, `unique connections!A463:D463`) connects F3853 U16 pin 2 to F3850 U17 pin 1. The `all connections` sheet identifies both as PHI and connects TP4 to the same net. His `vbxtalyphicrystal.jpg` and `vbclocksandromcx.jpg` captures show PHI stopping with XTALY during waits. The core advances the CPU twice per PHI period, so the timer advances on every second accepted CPU enable. A full-core regression checks repeated timer interrupts against the nominal 2 MHz PHI rate. Exact edge phase and timer intervals under board-level contention remain unmeasured. The implemented single-device subset also omits memory addressing and priority daisy chaining.
+
+The feedback-register timer implementation passed MiSTer hardware checks for APL/S entry, tape save/load, and basic inputs while still connected to BRCLK. The subsequent PHI connection correction requires a new hardware check.
 
 ## Approximations and conveniences
 
@@ -87,7 +89,7 @@ Original-machine measurements would be especially valuable for:
 
 - CPU oscillator, request, WACK, and CPU clock traces during buffered reads, writes, and DMA contention, to reconcile total wait costs and restart phase.
 - UV202 field transitions, equalization and sync pulses, with a clear counter origin, to resolve the current half-line and pulse-width uncertainties.
-- F3853 timer behavior, including clock source, prescale, sequence, reload, and interrupt timing.
+- F3853 PHI and timer interrupt traces, including wait gating, reload phase, and interrupt timing.
 - Joystick pot ranges and pulse widths at known positions, together with UV201 freeze-counter phase and the effect of trim adjustments.
 - Matched audio captures at the DAC and receiver output, with the cartridge, key sequence, and recording path identified.
 - Expander cassette and serial signal captures, plus broader application and gameplay comparisons against original machines.

@@ -101,6 +101,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL tick : std_logic;
   SIGNAL phase : uint4;
   SIGNAL cpu_ce : std_logic;
+  SIGNAL smi_ce : std_logic;
   SIGNAL cpu_ce_raw, apl_hold, apl_paused : std_logic;
 
   SIGNAL ext_addr  : unsigned(13 DOWNTO 0);
@@ -238,11 +239,15 @@ BEGIN
 
   io_rdata <= smi_rdata WHEN smi_sel = '1' ELSE (OTHERS => '1');
 
+  -- Board U16.2 (PHI) connects to CPU U17.1, not BRCLK.
+  -- CPU ce advances half a PHI period and stops during bus waits.
+  smi_ce <= cpu_ce WHEN phase MOD 2 = 1 ELSE '0';
+
   u_smi : ENTITY work.f3853
     PORT MAP (
       clk        => clk,
       reset_na   => reset_na,
-      ce         => brclk_ena_l,
+      ce         => smi_ce,
       io_addr    => io_addr,
       io_rd      => io_rd,
       io_wr      => io_wr,
