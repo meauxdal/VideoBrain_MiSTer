@@ -18,7 +18,7 @@ The core is a working hardware reconstruction with specific unresolved accuracy 
 - Simulation checks instruction timing, bus transactions, signal sequencing, and regressions against explicit expectations. A passing test supports those expectations; it does not independently prove the hardware model.
 - MiSTer testing checks the implemented machine in use, including software, controls, and the output path. Coverage varies by application and feature.
 
-The main references are Kevtris's *VideoBrain Unwrapped*, Sean Riddle's preserved hardware material, VideoBrain patents and manuals, processor documentation, and MAME. The [project source list](../README.md#sources) provides starting points. The notes linked below preserve more specific evidence and test limits.
+The main references are Kevtris's *VideoBrain Unwrapped*, Sean Riddle's preserved hardware material, VideoBrain patents and manuals, processor documentation, and MAME. The [project source list](../README.md#sources) provides starting points. The [timing source audit](TIMING-SOURCES.md) distinguishes active opcode cycles from board waits, records discrepancies in secondary tables, and inventories the saved capture channels. The notes linked below preserve more specific evidence and test limits.
 
 ## Current implementation
 
