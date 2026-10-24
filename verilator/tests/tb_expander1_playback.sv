@@ -18,7 +18,7 @@ wire [31:0] sd_lba;
 wire sd_rd, sd_wr, sd_ack, sd_buff_wr;
 wire [13:0] sd_buff_addr;
 wire [7:0] sd_buff_dout, sd_buff_din;
-videobrain_tape tape(.*,.rewound(),.reset(!reset_na),.img_readonly(1'b0),.img_size(64'd16384),
+videobrain_tape tape(.*,.rewound(),.ended(),.reset(!reset_na),.img_readonly(1'b0),.img_size(64'd16384),
                      .sd_buff_addr(sd_buff_addr[8:0]));
 tape_sd_model card(.*);
 task transfer(input [7:0] value, output [7:0] result);

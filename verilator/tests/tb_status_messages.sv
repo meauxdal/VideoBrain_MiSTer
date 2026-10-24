@@ -6,7 +6,7 @@ reg reset = 1, osd = 0, vs = 0;
 reg [127:0] status = 0;
 reg started = 0, complete = 0, source_error = 0;
 reg aborted = 0, calibrating = 0;
-reg busy = 0, tape_error = 0, rewound = 0, cart_loaded = 0;
+reg busy = 0, tape_error = 0, rewound = 0, ended = 0, cart_loaded = 0;
 integer messages = 0, before_count;
 reg [7:0] last_info = 0;
 emu dut ();
@@ -58,6 +58,7 @@ initial begin
     force dut.tape_busy = busy;
     force dut.tape_error = tape_error;
     force dut.tape_rewound = rewound;
+    force dut.tape_ended = ended;
     force dut.cart_loaded = cart_loaded;
     force dut.joystick_connected = 1'b1;
     tick; reset = 0; tick;
@@ -119,6 +120,15 @@ initial begin
     if (messages != before_count) $fatal(1, "Lost menu deferral");
     osd = 0; expect_message(6);
     rewound = 1; tick; rewound = 0; expect_message(4);
+
+    busy = 1; tick; expect_message(5);
+    osd = 1;
+    ended = 1; tick; ended = 0;
+    busy = 0; tick; frame;
+    osd = 0; expect_message(10);
+    before_count = messages;
+    repeat (65) frame;
+    if (messages != before_count) $fatal(1, "End of tape notice repeated or became idle");
 
     busy = 1; tick; expect_message(5);
     busy = 0; tape_error = 1; tick; expect_message(3);

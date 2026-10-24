@@ -91,7 +91,7 @@ localparam CONF_STR = {
 	"R[0],Reset;",
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
-	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks;",
+	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks,End of tape;",
 	"v,1;",
 	"V,v",`BUILD_DATE
 };
@@ -122,6 +122,8 @@ wire [1:0] tape_mounted;
 wire [63:0] tape_size;
 wire tape_record_data, tape_record_enable, tape_playback_data, tape_playback_enable;
 wire [1:0] tape_deck_busy, tape_deck_error, tape_deck_rewound;
+wire [1:0] tape_deck_ended;
+wire tape_ended = |tape_deck_ended;
 wire tape_busy = |tape_deck_busy;
 wire tape_error = |tape_deck_error;
 wire tape_rewound = |tape_deck_rewound;
@@ -365,7 +367,8 @@ always @(posedge clk_sys) begin
 		if (source_aborted && !source_aborted_d) pending_info <= 8;
 		if (joy_calibrating && !joy_calibrating_d) pending_info <= 9;
 		if (tape_busy && !tape_busy_d) pending_info <= 5;
-		if (!tape_busy && tape_busy_d && !tape_error) pending_info <= 6;
+		if (!tape_busy && tape_busy_d && !tape_error && pending_info != 10) pending_info <= 6;
+		if (tape_ended) pending_info <= 10;
 		if (tape_rewound) pending_info <= 4;
 		if (source_error && !source_error_d) pending_info <= 2;
 		if (tape_error && !tape_error_d) pending_info <= 3;
@@ -412,6 +415,7 @@ videobrain_tapes tapes (
 	.record_data(tape_record_data), .record_enable(tape_record_enable),
 	.playback_enable(tape_playback_enable), .playback_data(tape_playback_data),
 	.busy(tape_deck_busy), .error(tape_deck_error), .rewound(tape_deck_rewound),
+	.ended(tape_deck_ended),
 	.sd_lba(tape_lba), .sd_rd(tape_rd), .sd_wr(tape_wr), .sd_ack(tape_ack),
 	.sd_buff_addr(tape_buff_addr[8:0]), .sd_buff_dout(tape_buff_dout),
 	.sd_buff_din(tape_buff_din), .sd_buff_wr(tape_buff_wr)

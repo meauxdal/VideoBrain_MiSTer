@@ -115,6 +115,12 @@ test-cpu-ports:
 	$(GHDL) -a --std=08 --workdir=out/cpu_ports -Wno-hide $(VHD_SRC) tests/tb_cpu_ports.vhd
 	$(GHDL) -r --std=08 --workdir=out/cpu_ports tb_cpu_ports --assert-level=error --ieee-asserts=disable
 
+.PHONY: test-cpu-opcode-timing
+test-cpu-opcode-timing:
+	mkdir -p out/cpu_opcode_timing
+	$(GHDL) -a --std=08 --workdir=out/cpu_opcode_timing $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_opcode_timing.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_opcode_timing tb_cpu_opcode_timing --assert-level=error --ieee-asserts=disable
+
 .PHONY: test-cpu-branches
 test-cpu-branches:
 	mkdir -p out/cpu_branches

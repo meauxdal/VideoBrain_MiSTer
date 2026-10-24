@@ -6,6 +6,8 @@ Choose **Mount Playback Tape** for LOAD or VERIFY. To load a core recording, wai
 
 Both mount entries are disabled while either deck is busy. Wait for both decks to finish before switching cores.
 
+At the end of a playback image, the deck releases busy and reports **End of tape**, even if the cartridge leaves its playback remote enabled. The tape stays at the end; use **Rewind Playback Tape** to play it again. This notice does not indicate whether LOAD or VERIFY succeeded.
+
 ## Tape tools
 
 Use the [tape tools](../tools/README.md#tape-images) to create an 8 MiB blank, trim unused capacity, or convert between WAV and VBT. Imports and trimmed images have little spare recording capacity; use a separate blank for SAVE.

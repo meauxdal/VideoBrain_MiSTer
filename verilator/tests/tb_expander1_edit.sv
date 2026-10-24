@@ -18,7 +18,7 @@ wire [31:0] sd_lba[2];
 wire [8:0] sd_buff_addr;
 wire [7:0] sd_buff_dout, sd_buff_din[2];
 wire sd_buff_wr;
-videobrain_tapes tapes(.*,.reset(!reset_na),.img_readonly(1'b0),.img_size(64'd16384));
+videobrain_tapes tapes(.*,.ended(),.reset(!reset_na),.img_readonly(1'b0),.img_size(64'd16384));
 tape_dual_sd_model #(.DELAY(800)) card(.*);
 task transfer(input [7:0] value, output [7:0] result);
     for (integer i = 7; i >= 0; i = i - 1) begin
