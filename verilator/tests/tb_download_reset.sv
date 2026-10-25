@@ -11,6 +11,56 @@ reg [10:0] ps2_key = 0;
 
 emu dut (.RESET(external_reset));
 
+task key_event(input [8:0] code, input pressed, input [35:0] expected);
+    ps2_key = {!ps2_key[10], pressed, code};
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.kbd_matrix !== expected)
+        $fatal(1, "Keyboard code %h pressed %b: got %h expected %h",
+               code, pressed, dut.kbd_matrix, expected);
+endtask
+
+task edit_alias(input [8:0] alias_code, original_code, input integer bit_index);
+    reg [35:0] expected;
+    expected = 36'd1 << bit_index;
+    key_event(alias_code, 1, expected);
+    key_event(alias_code, 1, expected); // typematic repeat
+    key_event(alias_code, 0, 0);
+    key_event(alias_code, 1, expected);
+    key_event(original_code, 1, expected);
+    key_event(alias_code, 0, expected);
+    key_event(original_code, 0, 0);
+    key_event(original_code, 1, expected);
+    key_event(alias_code, 1, expected);
+    key_event(original_code, 0, expected);
+    key_event(alias_code, 0, 0);
+endtask
+
+task number_alias(input [8:0] row_code, pad_code, original_code, input integer bit_index);
+    reg [35:0] expected;
+    expected = 36'd1 << bit_index;
+    key_event(row_code, 1, expected);
+    key_event(row_code, 1, expected); // typematic repeat
+    key_event(row_code, 0, 0);
+    key_event(pad_code, 1, expected);
+    key_event(pad_code, 0, 0);
+    // All three physical keys must have independent release state.
+    key_event(original_code, 1, expected);
+    key_event(row_code, 1, expected);
+    key_event(pad_code, 1, expected);
+    key_event(original_code, 0, expected);
+    key_event(row_code, 0, expected);
+    key_event(pad_code, 0, 0);
+    key_event(row_code, 1, expected);
+    key_event(original_code, 1, expected);
+    key_event(row_code, 0, expected);
+    key_event(original_code, 0, 0);
+    // Home and End have their own special-key aliases.
+    key_event(pad_code | 9'h100, 1,
+              pad_code == 9'h06c ? 36'd1 << 31 : pad_code == 9'h069 ? 36'd1 << 23 : 0);
+    key_event(pad_code | 9'h100, 0, 0);
+endtask
+
 always @(posedge dut.reset)
     if (check_no_reset) $fatal(1, "Keyboard download pulsed reset");
 
@@ -196,7 +246,78 @@ initial begin
     ps2_key = {!ps2_key[10], 1'b0, 9'h076};
     repeat (2) @(posedge clk);
     #1;
-    $display("Download reset checks passed");
+    number_alias(9'h016, 9'h069, 9'h01a, 33); // 1 = Z
+    number_alias(9'h01e, 9'h072, 9'h022, 30); // 2 = X
+    number_alias(9'h026, 9'h07a, 9'h021, 26); // 3 = C
+    number_alias(9'h025, 9'h06b, 9'h01b, 29); // 4 = S
+    number_alias(9'h02e, 9'h073, 9'h023, 25); // 5 = D
+    number_alias(9'h036, 9'h074, 9'h02b, 21); // 6 = F
+    number_alias(9'h03d, 9'h06c, 9'h01d, 24); // 7 = W
+    number_alias(9'h03e, 9'h075, 9'h024, 20); // 8 = E
+    number_alias(9'h046, 9'h07d, 9'h02d, 16); // 9 = R
+    number_alias(9'h045, 9'h070, 9'h04a, 34); // 0 = ?/0
+    edit_alias(9'h05a, 9'h004, 27); // Enter = F3
+    edit_alias(9'h15a, 9'h004, 27); // keypad Enter = F3
+    edit_alias(9'h066, 9'h005, 35); // Backspace = F1
+    edit_alias(9'h16c, 9'h006, 31); // Home = F2
+    edit_alias(9'h169, 9'h00c, 23); // End = F4
+    // Both Ctrl keys and both Enter keys; release order and repeats must not
+    // turn an ERASE into NEXT or release a simultaneously held physical F5.
+    for (integer ctrl = 0; ctrl < 2; ctrl = ctrl + 1) begin
+        for (integer pad = 0; pad < 2; pad = pad + 1) begin
+            key_event(ctrl ? 9'h114 : 9'h014, 1, 0);
+            key_event(pad ? 9'h15a : 9'h05a, 1, 36'd1 << 15);
+            key_event(9'h003, 1, 36'd1 << 15);
+            key_event(ctrl ? 9'h114 : 9'h014, 0, 36'd1 << 15);
+            key_event(pad ? 9'h15a : 9'h05a, 1, 36'd1 << 15);
+            key_event(9'h003, 0, 36'd1 << 15);
+            key_event(pad ? 9'h15a : 9'h05a, 0, 0);
+        end
+    end
+    key_event(9'h014, 1, 0);
+    key_event(9'h114, 1, 0);
+    key_event(9'h014, 0, 0);
+    key_event(9'h05a, 1, 36'd1 << 15);
+    key_event(9'h114, 0, 36'd1 << 15);
+    key_event(9'h15a, 1, (36'd1 << 15) | (36'd1 << 27));
+    key_event(9'h05a, 0, 36'd1 << 27);
+    key_event(9'h014, 1, 36'd1 << 27); // Ctrl after Enter must not retarget it.
+    key_event(9'h15a, 1, 36'd1 << 27);
+    key_event(9'h15a, 0, 0);
+    key_event(9'h014, 0, 0);
+    key_event(9'h05a, 1, 36'd1 << 27);
+    key_event(9'h15a, 1, 36'd1 << 27);
+    key_event(9'h05a, 0, 36'd1 << 27);
+    key_event(9'h15a, 0, 0);
+    // Aliases preserve the physical Shift key and independent digits.
+    key_event(9'h012, 1, 36'd1 << 11);
+    key_event(9'h016, 1, (36'd1 << 11) | (36'd1 << 33));
+    key_event(9'h072, 1, (36'd1 << 11) | (36'd1 << 33) | (36'd1 << 30));
+    key_event(9'h016, 0, (36'd1 << 11) | (36'd1 << 30));
+    key_event(9'h072, 0, 36'd1 << 11);
+    key_event(9'h012, 0, 0);
+    key_event(9'h016, 1, 36'd1 << 33);
+    key_event(9'h072, 1, (36'd1 << 33) | (36'd1 << 30));
+    key_event(9'h021, 1, (36'd1 << 33) | (36'd1 << 30) | (36'd1 << 26));
+    key_event(9'h05a, 1, (36'd1 << 33) | (36'd1 << 30) | (36'd1 << 26) | (36'd1 << 27));
+    key_event(9'h15a, 1, (36'd1 << 33) | (36'd1 << 30) | (36'd1 << 26) | (36'd1 << 27));
+    key_event(9'h066, 1, (36'd1 << 33) | (36'd1 << 30) | (36'd1 << 26) | (36'd1 << 27) | (36'd1 << 35));
+    ps2_key = {!ps2_key[10], 1'b1, 9'h014};
+    repeat (2) @(posedge clk);
+    #1;
+    key_event(9'h16c, 1, dut.kbd_matrix | (36'd1 << 31));
+    key_event(9'h169, 1, dut.kbd_matrix | (36'd1 << 23));
+    external_reset = 1;
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.kbd_matrix !== 0) $fatal(1, "Reset did not clear held keyboard aliases");
+    external_reset = 0;
+    repeat (2) @(posedge clk);
+    #1;
+    if (dut.kbd_matrix !== 0) $fatal(1, "Keyboard aliases returned after reset");
+    key_event(9'h05a, 1, 36'd1 << 27);
+    key_event(9'h05a, 0, 0); // Reset also cleared the held Ctrl modifier.
+    $display("Download reset and keyboard alias checks passed");
     $finish;
 end
 endmodule

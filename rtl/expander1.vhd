@@ -117,6 +117,9 @@ BEGIN
   printer_txd <= port4(0) WHEN port1_ready = '1' ELSE '1';
 
   ce_phi <= ce WHEN phase MOD 2 = 1 ELSE '0';
+  -- The 3870 vector selector must latch before its low byte is delivered.
+  -- f8_busif.int_ack is now the F3853 completion pulse, not entry selection.
+  int_start <= '1' WHEN ce = '1' AND romc = ROMC_0F AND phase = 1 ELSE '0';
   int_ack <= '1' WHEN ce = '1' AND romc = ROMC_13 AND phase = 6 ELSE '0';
 
   -- TODO: Connect EXT INT and the remaining peripheral circuitry.
@@ -145,7 +148,7 @@ BEGIN
       ext_rdata => rdata, ext_req => OPEN, ext_class => OPEN,
       ext_grant => '1', io_addr => io_addr, io_rd => OPEN, io_wr => io_wr,
       io_wdata => io_wdata, io_rdata => io_rdata,
-      int_vector => int_vector, int_ack => int_start,
+      int_vector => int_vector, int_ack => OPEN,
       pc0o => OPEN, pc1o => OPEN, dc0o => OPEN
       );
 END ARCHITECTURE rtl;

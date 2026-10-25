@@ -1,5 +1,7 @@
 # Audio diagnostic
 
+Historical capture commands below refer to investigation utilities now archived outside the repository. Current checks, run from `verilator/`, are `make test-audio`, `make test-cpu-audio`, and `make test-audio-path` (the last also requires NumPy).
+
 Audio is accepted for release after hardware listening with the retuned filter. The remaining high-note grit is an open accuracy question. The Happy Birthday capture predates that retune and has weak upper harmonics. Periodic timing modulation is present before filtering in the held-note capture; CPU/bus timing and analog response remain separate accuracy targets. Regular test tones establish timing cleanliness, not faithful original-machine filtering.
 
 `System > Audio Test` selects a 500 Hz, 1 kHz, 2 kHz or 4 kHz square-wave source ahead of the existing audio filter. It uses no CPU, ROM, keyboard or interrupt timing. The computer continues running. Off selects normal audio. This is an isolation test, not a sound correction. Filtering rounds its output.

@@ -9,6 +9,16 @@ Verilator reads Verilog only, so every build first runs the VHDL through `ghdl s
 
 Requires ghdl (VHDL-2008), verilator, zlib, and sdl2 for the graphical target. Run from this directory; the default ROM paths are relative to it.
 
+`make test-cpu-branches` runs ROM-free GHDL checks for BR7 across all 64 ISAR values and every BT/BF mask across all 32 status-register values, including directly loaded zero/sign combinations. The 4,160 cases use signed displacement boundaries, check branch destinations and operand/fetch cycle lengths, and verify that ISAR or status flags remain unchanged.
+
+`make test-cpu-opcode-timing` checks all 242 documented opcodes against an independent transcription of Fairchild F3850 Table 3 (printed pp. 3-21 through 3-25). Its 968 cases execute the CPU/bus interface with initialized scratchpad, two flag patterns and two ISAR values, checking ROMC order and every short/long cycle duration. It excludes undefined opcodes and external waits. See [timing sources](../docs/TIMING-SOURCES.md) for the source discrepancies and capture limits.
+
+`make test-cpu-ports` runs 1,280 cases through the full core using generated F8 programs. It checks every output value on both CPU ports, including port 1 readback with joystick fire and selected/unselected keyboard columns.
+
+`make test-smi` checks external-interrupt rearming and the F3853 timer. Timer tests use all 255 seeds from the Mostek 1978 data book's Table 2 (printed p.170), checking initial delays and 255-count repeats with dividers 31 and 1. They also cover paused clock enables, masked expiries, acknowledge isolation, reload priority and `$FF` stopping. These are checks in timer input-clock periods.
+
+`make test-smi-clock` runs a ROM through the full core and checks repeated timer IRQs at the DAC against 255 * 31 nominal 2 MHz PHI periods. Board records connect U16.2 to U17.1 (CPU PHI), and saved traces show this clock stopping during waits. The core derives one timer enable per two accepted CPU half-period enables. This regression checks the integrated rate without buffered-bus contention; it does not establish exact PHI edge phase or measured original-machine timer intervals.
+
     ./obj_dir/Vtop --run
     ./obj_dir_headless/Vtop --cart /path/to/cartridge.bin --frames 300 --shot-last
     ./obj_dir_headless/Vtop --help
@@ -21,7 +31,9 @@ Known cartridge ROMs are identified by CRC-32. `--cart-type` selects the slot pr
 
 ## Keyboard input
 
-User converters live in [tools](../tools/README.md#keyboard-files). `--source FILE@FRAME` accepts VBK1 and VBK2, including built-in Text without a cartridge. `make test-apl-source` runs the Python converter tests and RTL loader checks. `make test-music-input` checks the Music Teacher readiness hooks. `apl_next_sweep.py` generates timed probes for input diagnostics; see [NEXT timing sweeps](tests/APL-NEXT-SWEEP.md).
+The GUI uses the core's PC key aliases: number row and keypad `1234567890` map to `ZXCSDFWER/`, Backspace maps to BACK (F1), Home to PREVIOUS (F2), Enter and keypad Enter to NEXT (F3), End to SPECIAL (F4), and Ctrl+Enter to ERASE (F5). Either Ctrl key works with either Enter key; the destination stays fixed until Enter is released. SHIFT mode and cartridge overlays still determine the result. Timeshare uses F5 or Ctrl+Enter for carriage return. See [keyboard controls](../docs/HOW-TO-PLAY.md#keyboard-and-controllers).
+
+User converters live in [tools](../tools). `--source FILE@FRAME` accepts VBK1 and VBK2, including built-in Text without a cartridge. `make test-apl-source` runs the Python converter tests and RTL loader checks. `make test-music-input` checks the Music Teacher readiness hooks using the original ROM. Set `MT1_PATCHED_ROM=/path/to/modified.bin` to check an optional modified ROM too.
 
 `make replay-clock-source` uses the bundled Price Clock keyboard file. `make capture-apl-save` and `make replay-apl-tape` generate keyboard files with `../tools/apl_source.py`.
 
@@ -35,9 +47,9 @@ VBK2 retains the eight-byte VBK1 header, with magic `VBK2`. Count is payload byt
 
 VBK2 also accepts FE for the music Record/No-Record selector (inside shifted mode), and FD for Replay (inside lower mode). The menu setting is latched at download: Record maps FE to Z and FD to T; Playback maps FE to COMMA and FD to a silent wait with the encoded duration. Older cores reject these events. FA/FB/FC select Low/Middle/High with ROM acknowledgment. Their hold/gap bytes are placeholders (the converter emits 1/0); handshake state determines timing. These controls require lower SHIFT, as do physical octave keys. Keyboard > Music Repeat applies to both VBK1 and VBK2 and can be disabled during entry.
 
-## Joystick diagnostics
+## Joystick simulation
 
-Joystick pulse timing is runtime-configurable without rebuilding. Headless defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; MiSTer uses cartridge-selected linear presets. `--joy-timer-curve` retains the older shared curve for diagnostics. Values are MCLK ticks. With `--joy-trace`, `[joy-measure]` reports the selected axis, pot value, timer parameters, and measured pulse length. `bash joystick_sweep.sh [base:step ...]` cycles candidates independently on all eight axes in one Gladiator run, with neutral and each direction held in turn. The combined log is `out/joystick/sweep/gladiator_sweep.txt`.
+Joystick pulse timing is runtime-configurable without rebuilding. Headless defaults to Linear, `--joy-timer-base 2580 --joy-timer-step 7`; MiSTer uses cartridge-selected linear presets. `--joy-timer-curve` retains the older shared curve for diagnostics. Values are MCLK ticks. With `--joy-trace`, `[joy-measure]` reports the selected axis, pot value, timer parameters, and measured pulse length. `make test-joystick` and `make test-joystick-timing` check the controller and integrated pulse timing.
 
 ## selftest.rom
 
@@ -45,7 +57,7 @@ A hand-assembled F8 program that sets up one 16x16 object and halts, so the CPU,
 
     ./obj_dir_headless/Vtop --res1 selftest.rom --frames 8 --shot-last --ascii
 
-`make test-render` checks UV201 background/object modifiers, zoom and blanking. `python3 tests/pinball_background.py out/pinball` checks matching before/after state dumps and collision captures from the Pinball regression run.
+`make test-render` checks UV201 background/object modifiers, zoom and blanking.
 
 ## Converting VHDL to Verilog one file at a time
 
@@ -64,20 +76,14 @@ Run these from `verilator/`. ROM-based captures need local BIOS and cartridge fi
 
 | Utilities | Purpose |
 | --- | --- |
-| `joystick_*_check.sh`, `joystick_calibration_check.py`, `joystick_gain_check.py` | Capture routing, calibration and BIOS scaling behavior. |
-| `joystick_trace.sh`, `joystick_stability.sh`, `joystick_sweep.sh` | Capture joystick timing, stability and parameter sweeps. |
-| `joystick_*_summary.py`, `joystick_scaling_model.py` | Summarize captures and model scaling. |
-| `audio_*_capture.sh`, `audio_irq_diagnostic.sh` | Capture Music Teacher audio timing and interrupt behavior. |
-| `music_audio_check.sh`, `music_bank_check.sh` | Check music playback and octave switching. |
-| `patch_music_teacher.py` | Generate the experimental static-staff ED01 ROM for audio diagnostics. |
-| `tests/*.py`, `tests/tb_*` | Analyze captures and run Python, VHDL, Verilog and C++ regressions. |
+| `tests/tb_*` | Run CPU, bus, video, audio, cartridge, keyboard, joystick and tape regressions. |
+| `tests/run_tools.py` | Check the current APL/S, keyboard/music and tape converters. |
+| `tests/audio_filter_design.py`, `tests/test_audio_alias.py` | Check filter coefficients and alias rejection with `make test-audio`. |
+| `tests/check_audio_path.py` | Check the MiSTer I2S output path with `make test-audio-path` (requires NumPy). |
+| `tests/analyze_logic_csv.cpp`, `tests/check_logic_csv.py`, `tests/summarize_logic_captures.py` | Analyze logic captures and check the analyzer with `make test-logic-csv`. |
 | `strip_modules.py` | Replace selected synthesized modules during Verilog conversion. |
 
-`joystick_diag_check.sh` additionally requires `../../VideoBrain-Tests/JoystickDiag.bin`. The static-staff ROM is optional for normal core use. Create it for diagnostics with:
-
-```sh
-python3 patch_music_teacher.py /path/to/original-ed01.bin /path/to/static-staff.bin
-```
+Historical joystick sweeps, APL/S NEXT probes, Music Teacher IRQ/phase captures, and Pinball snapshot comparisons have been archived outside the repository with their saved outputs and original paths. They are not part of the current regression harness.
 
 Run all converter checks without building the simulator (Python 3.9 or newer, standard library only):
 

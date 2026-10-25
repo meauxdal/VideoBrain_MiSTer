@@ -1341,7 +1341,7 @@ int main(int argc, char** argv) {
                        f, pushes, pops, max_state,
                        overrun_n, ext_int_n, int_req_n, int_ack_n,
                        (unsigned)SMI(vec), (int)SMI(ext_enable),
-                       (int)SMI(timer_enable), (int)SMI(request));
+                       (int)SMI(timer_enable), (int)CORE(int_req));
                 ext_int_n = int_ack_n = int_req_n = io_wr_n = overrun_n = 0;
                 pushes = pops = umireq = dmagrant = lines_started = 0;
                 max_level = max_state = state_seen = 0;

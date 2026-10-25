@@ -31,6 +31,8 @@ Sean Riddle's board connection table in `vbexpander1.xlsx` shows U04.4 driving P
 
 The MK3870 data book (pages 7-13) defines ports 6/7: binary modulo-N counting, prescales 2/5/10/20/40/100/200, interval, pulse width and event modes, and separate interrupt latches. Timer interrupts take priority at 0x020; external interrupts use 0x0A0. The timer advances at half the crystal rate before prescaling. Port 6 reads the EXT INT pin in bit 7.
 
+The [1981 Mostek source audit](MOSTEK-1981-AUDIT.md) corroborates these functional rules but records unresolved DI/EI timing, POP semantics, interrupt selection/clearing, timer synchronization and reset-state questions in the shared F8 implementation. Current tests do not establish those internal 3870 timing boundaries.
+
 EXT INT is currently held high; pulse width and event modes are tested at the timer module but await peripheral wiring in Expander 1. Ports 4/5 expose digital serial inputs on bit 7 and outputs on bit 0. The serial interface uses logical mark/space levels (idle high), before RS-232 voltage conversion. The modem port connects to MiSTer's HPS UART, with synchronized receive input. The printer input remains idle and its output is unconnected.
 
 Serial command `04` takes a timing selector and routing flags. Timeshare uses `04 01 0D` and `04 02 0D` for 110 and 300 baud. Flags `0D` route host data to the modem and modem input to both the host and printer. The timer vector at `0020` contains `LR P0,Q`; command `04` sets Q to `041A`. Timer control `AA` selects /40 and enables timer interrupts, with external interrupts disabled.
@@ -45,7 +47,7 @@ The working path is Timeshare -> Expander 1 serial port -> MiSTer HPS UART -> Li
 
 ### Setup and keys
 
-Load Expander 1 firmware and the Timeshare cartridge. Set MiSTer's UART connection to **None** so Linux can access `/dev/ttyS1` directly. Timeshare defaults to 300 baud and full duplex. Its display is 24 columns by 15 lines. The Timeshare owner's handbook, printed pages 8-16, describes its terminal behavior and keyboard overlay. These PC key mappings use the core's keyboard matrix; PC Enter and Ctrl do not replace the cartridge's keys. In Timeshare, Shift is held while pressing a key, not toggled as in the BIOS.
+Load Expander 1 firmware and the Timeshare cartridge. Set MiSTer's UART connection to **None** so Linux can access `/dev/ttyS1` directly. Timeshare defaults to 300 baud and full duplex. Its display is 24 columns by 15 lines. The Timeshare owner's handbook, printed pages 8-16, describes its terminal behavior and keyboard overlay. These PC key mappings use the core's keyboard matrix. PC Enter (including keypad Enter) aliases F3 (NEXT), not Carriage Return; Ctrl does not replace CONTROL. In Timeshare, Shift is held while pressing a key, not toggled as in the BIOS.
 
 | Function | PC keyboard action |
 | --- | --- |

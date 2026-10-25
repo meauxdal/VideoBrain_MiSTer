@@ -101,6 +101,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL tick : std_logic;
   SIGNAL phase : uint4;
   SIGNAL cpu_ce : std_logic;
+  SIGNAL smi_ce : std_logic;
   SIGNAL cpu_ce_raw, apl_hold, apl_paused : std_logic;
 
   SIGNAL ext_addr  : unsigned(13 DOWNTO 0);
@@ -192,7 +193,7 @@ BEGIN
       tick     => tick,
       phase    => phase,
       po_a_n   => po_a_n_l,
-      pi_a_n   => x"FF",
+      pi_a_n   => po_a_n_l,
       po_b_n   => po_b_n_l,
       pi_b_n   => pi_b_n_l,
       port1_wr  => port1_wr_l,
@@ -238,11 +239,15 @@ BEGIN
 
   io_rdata <= smi_rdata WHEN smi_sel = '1' ELSE (OTHERS => '1');
 
+  -- Board U16.2 (PHI) connects to CPU U17.1, not BRCLK.
+  -- CPU ce advances half a PHI period and stops during bus waits.
+  smi_ce <= cpu_ce WHEN phase MOD 2 = 1 ELSE '0';
+
   u_smi : ENTITY work.f3853
     PORT MAP (
       clk        => clk,
       reset_na   => reset_na,
-      ce         => brclk_ena_l,
+      ce         => smi_ce,
       io_addr    => io_addr,
       io_rd      => io_rd,
       io_wr      => io_wr,
@@ -375,9 +380,9 @@ BEGIN
   f8_po_b_n <= po_b_n_l;
   joy_enable <= joy_enable_l;
 
-  pi_b_n_l <= kbd_b_in_n AND unsigned'('1' &
-                    (po_b_n_l(6) AND expander_clock_n) &
-                    (po_b_n_l(5) AND expander_data_n) & "11111");
+  -- F3850 inputs sense the physical pins, including the output latch drive.
+  pi_b_n_l <= po_b_n_l AND kbd_b_in_n AND
+             unsigned'('1' & expander_clock_n & expander_data_n & "11111");
 
   PROCESS (clk, reset_na) IS
   BEGIN

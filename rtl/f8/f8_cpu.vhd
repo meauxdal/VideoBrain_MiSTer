@@ -117,15 +117,36 @@ BEGIN
   BEGIN  
     IF rising_edge(clk) THEN
       port1_wr <= '0';
-      IF ce='1' THEN
+      -- Reset must work while the board clock generator holds ce low.
+      IF reset_na='0' THEN
+        opcode<=OP_RESET;
+        txt<=OPTXT(to_integer(OP_RESET));
+        madrs<=to_integer(OP_RESET)*8;
+        mop<=MICROCODE(to_integer(OP_RESET)*8);
+        phase_l<=0;
+        interrupt_cycle<='0';
+        iozcs<="00000";
+        po_a_n<=x"FF";
+        po_b_n<=x"FF";
+        sreg_wr<='0';
+        dv<='0';
+        test<='0';
+        testp<='0';
+        bcc<='0';
+        bccp<='0';
+        dstm<='0';
+      ELSIF ce='1' THEN
         mop<=MICROCODE(madrs);
         sreg_wr<='0';
         
         -----------------------------------------
         len_v:=mop.len;
-        IF (bcc='1' AND test='1') OR (opcode=x"8F" AND visarl=7) THEN
+        -- BR7 changes only the operand cycle; the following fetch stays short.
+        IF (bcc='1' AND test='1') OR
+           (opcode=x"8F" AND visarl/=7 AND mop.romc=ROMC_03) THEN
           len_v:=L;
-        ELSIF (bcc='1' AND test='0') OR (opcode=x"8F" AND visarl/=7) THEN
+        ELSIF (bcc='1' AND test='0') OR
+              (opcode=x"8F" AND visarl=7 AND mop.romc=ROMC_03) THEN
           len_v:=S;
         ELSE
           len_v:=mop.len;
@@ -152,7 +173,11 @@ BEGIN
           WHEN 2 =>
             NULL;  -- <dw :=> <AVOIR>
             
-          WHEN 3 =>
+          WHEN 3 | 7 =>
+            -- Long reads through DC0 now wait at the SMI's later request
+            -- phase. Consume dr only after the bus interface's phase-6 latch.
+            IF (phase_l=3 AND mop.romc/=ROMC_02) OR
+               (phase_l=7 AND mop.romc=ROMC_02) THEN
             CASE mop.rd IS
               WHEN RACC => rs1_v:=acc;
               WHEN R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 |
@@ -190,8 +215,11 @@ BEGIN
             alu<=rd_v;
             testp<=test_v;
             bccp <=to_std_logic(mop.op=OP_TST8 OR mop.op=OP_TST9);
+            END IF;
             
-          WHEN 4 =>
+          WHEN 4 | 8 =>
+            IF (phase_l=4 AND mop.romc/=ROMC_02) OR
+               (phase_l=8 AND mop.romc=ROMC_02) THEN
             dv<='0';
             IF dstm='1' THEN
               CASE mop.rd IS
@@ -219,6 +247,7 @@ BEGIN
                 WHEN OTHERS => NULL;
               END CASE;
             END IF;
+            END IF;
             
           WHEN 5 =>
             IF mop.rs=RISARP OR mop.rd=RISARP THEN
@@ -226,23 +255,6 @@ BEGIN
             END IF;
             IF mop.rs=RISARM OR mop.rd=RISARM THEN
               visar(2 DOWNTO 0)<=visar(2 DOWNTO 0)-1;
-            END IF;
-            
-          WHEN 7 =>
-            IF len_v=S THEN
-              IF mop.romc=ROMC_00 THEN -- IFETCH
-                IF interrupt_cycle='1' THEN
-                  opcode<=OP_INTERRUPT;
-                  txt<=OPTXT(to_integer(OP_INTERRUPT));
-                  madrs<=to_integer(OP_INTERRUPT)*8;
-                ELSE
-                  opcode<=dr;
-                  txt<=OPTXT(to_integer(dr));
-                  madrs<=to_integer(dr)*8;
-                END IF;
-              ELSE
-                madrs<=madrs+1;
-              END IF;
             END IF;
             
           WHEN 11 =>
@@ -266,20 +278,27 @@ BEGIN
             NULL;
 
         END CASE;
+
+        IF phase_l=7 AND len_v=S THEN
+          IF mop.romc=ROMC_00 THEN -- IFETCH
+            IF interrupt_cycle='1' THEN
+              opcode<=OP_INTERRUPT;
+              txt<=OPTXT(to_integer(OP_INTERRUPT));
+              madrs<=to_integer(OP_INTERRUPT)*8;
+            ELSE
+              opcode<=dr;
+              txt<=OPTXT(to_integer(dr));
+              madrs<=to_integer(dr)*8;
+            END IF;
+          ELSE
+            madrs<=madrs+1;
+          END IF;
+        END IF;
         
         IF mop.romc=ROMC_13 AND phase_l=6 THEN
           iozcs(4)<='0';
         END IF;
 
-        IF reset_na='0' THEN
-          opcode<=OP_RESET;
-          txt<=OPTXT(to_integer(OP_RESET));
-          madrs<=to_integer(OP_RESET)*8;
-          phase_l<=0;
-          interrupt_cycle<='0';
-          iozcs<="00000";
-          port1_wr<='0';
-        END IF;
         
       END IF;
 

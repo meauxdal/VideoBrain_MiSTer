@@ -12,23 +12,23 @@ Control references for the built-in programs and all eighteen cartridges. The il
 
 ## Keyboard and controllers
 
-The core maps physical VideoBrain key positions. A cartridge can give those keys different meanings, as shown in its manual overlay. PC Enter, Backspace, and number keys do not substitute for the corresponding VideoBrain functions.
+The core maps physical VideoBrain key positions. A cartridge can give those keys different meanings, as shown in its manual overlay. Every special key has a PC alias, listed below. These aliases follow the same SHIFT mode and cartridge functions. Ctrl+Enter (including keypad Enter, with either Ctrl key) sends F5, giving Timeshare a carriage return. The Enter destination is chosen when pressed and stays the same until released.
 
 ![Original VideoBrain keyboard](VB_Keyboard.gif)
 
 | PC key | VideoBrain key position |
 | --- | --- |
-| F1 | BACK / TEXT |
-| F2 | PREVIOUS / COLOR |
-| F3 | NEXT / CLOCK |
-| F4 | SPECIAL / ALARM |
-| F5 | ERASE / RESTART |
+| F1 / Backspace | BACK / TEXT |
+| F2 / Home | PREVIOUS / COLOR |
+| F3 / Enter / keypad Enter | NEXT / CLOCK |
+| F4 / End | SPECIAL / ALARM |
+| F5 / Ctrl+Enter | ERASE / RESTART |
 | Space | SPACE / RUN/STOP |
 | Shift | SHIFT |
 | `/` key | `?` / `0` |
 | Esc | MASTER CONTROL |
 
-Letters, comma, and semicolon use their matching PC keys. Numbers and symbols use the VideoBrain layout, not the PC key legends. SHIFT toggles in the BIOS, APL/S, and Financier; Timeshare uses held Shift. Follow each title's controls.
+Letters, comma, and semicolon use their matching PC keys. The PC number row and numeric keypad map `1234567890` to VideoBrain positions `ZXCSDFWER/`. These aliases do not change SHIFT: use numeric mode when the software requires it; in letter mode they produce the corresponding letters (or `?` for `0`). Cartridge overlays can give these positions other meanings. Other symbols use the VideoBrain layout. SHIFT toggles in the BIOS, APL/S, and Financier; Timeshare uses held Shift. Follow each title's controls.
 
 **Keyboard > Esc Soft Reset > Off** disables keyboard Master Control to protect against accidental presses beside F1. **System > Master Control (Soft Reset)** remains available. Master Control can discard entered work; it is not a backspace.
 
@@ -91,11 +91,11 @@ Original-machine Money Minder recordings and SD SAVE/LOAD are covered in [tape s
 
 ### Information Manager
 
-This prototype needs Expander 1 firmware. Its confirmed opening menu is PROGRAM / ENTER / REVIEW / EDIT. No complete manual is available here, and the application-specific keyboard controls remain unverified. Do not assume Money Minder or APL/S key meanings apply.
+This prototype needs Expander 1 firmware. See the [practical user manual](INFOMAN-MANUAL.md) for tested database creation, REVIEW and EDIT workflows. NEXT is F3 or Enter; SPECIAL is F4. To display saved records, enter `REVIEW` at `:`, then `PRINT ALL` at `/`. `LIST` is not a recognized command. The manual separates tested operation from features still being investigated.
 
 ### Timeshare
 
-Requires Expander 1 firmware for serial communication. **F5 sends Carriage Return**, **F4 is CONTROL**, and **Shift is held**, not toggled. Shift+H types `/`. Hold F4+Shift and tap D for full duplex (remote echo), or H for half duplex (local echo). The four layouts below are from the manual, pp. 11-14. Match their key positions to the PC mappings above.
+Requires Expander 1 firmware for serial communication. **F5 or Ctrl+Enter sends Carriage Return**, **F4 or End is CONTROL**, and **Shift is held**, not toggled. Shift+H types `/`. Hold F4+Shift and tap D for full duplex (remote echo), or H for half duplex (local echo). The four layouts below are from the manual, pp. 11-14. Match their key positions to the PC mappings above.
 
 ![Timeshare unshifted keyboard](controls/timeshare-unshifted.jpg)
 

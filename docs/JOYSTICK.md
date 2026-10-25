@@ -42,4 +42,4 @@ Run the input-routing, preset-selection and calibration regressions from WSL in 
 make test-joystick test-cartridges
 ```
 
-The checks cover routing, presets, calibration duration, reset/disconnect cancellation and live input restoration. On MiSTer, verify Tennis court travel, Gladiator horizontal aim, both Pinball flippers and four-controller routing. Detailed timing measurements and diagnostic simulator options are in [measurement notes](../verilator/joystick_verification.md).
+The checks cover routing, presets, calibration duration, reset/disconnect cancellation and live input restoration. On MiSTer, verify Tennis court travel, Gladiator horizontal aim, both Pinball flippers and four-controller routing. `make -C verilator test-joystick test-joystick-timing` runs the controller and integrated timing regressions. Historical calibration measurements and sweep utilities have been archived separately.

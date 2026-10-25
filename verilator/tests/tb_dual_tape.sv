@@ -8,7 +8,7 @@ reg img_readonly = 0;
 reg [63:0] img_size = 16384;
 reg record_data = 1, record_enable = 0, playback_enable = 0;
 wire playback_data;
-wire [1:0] busy, error, rewound, sd_rd, sd_wr, sd_ack;
+wire [1:0] busy, error, rewound, ended, sd_rd, sd_wr, sd_ack;
 wire [31:0] sd_lba[2];
 wire [8:0] sd_buff_addr;
 wire [7:0] sd_buff_dout, sd_buff_din[2];
@@ -78,6 +78,10 @@ initial begin
             end
         end
     end
+    wait(ended[0]);
+    @(negedge clk);
+    if (busy[0] || ended[1] || playback_data != 1)
+        $fatal(1,"Playback EOF did not release the source deck");
     playback_enable = 0;
     @(negedge clk);
     wait(busy == 0);

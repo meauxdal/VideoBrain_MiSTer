@@ -109,6 +109,32 @@ test-cpu-clock: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_cpu_clock.vhd
 	$(GHDL) -r --std=08 --workdir=$(WORK) tb_cpu_clock --assert-level=error
 
+.PHONY: test-cpu-ports
+test-cpu-ports:
+	mkdir -p out/cpu_ports
+	$(GHDL) -a --std=08 --workdir=out/cpu_ports -Wno-hide $(VHD_SRC) tests/tb_cpu_ports.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_ports tb_cpu_ports --assert-level=error --ieee-asserts=disable
+
+.PHONY: test-cpu-opcode-timing
+test-cpu-opcode-timing:
+	mkdir -p out/cpu_opcode_timing
+	$(GHDL) -a --std=08 --workdir=out/cpu_opcode_timing $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_opcode_timing.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_opcode_timing tb_cpu_opcode_timing --assert-level=error --ieee-asserts=disable
+
+.PHONY: test-cpu-branches
+test-cpu-branches:
+	mkdir -p out/cpu_branches
+	$(GHDL) -a --std=08 --workdir=out/cpu_branches $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_branches.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches -gcheck_br7=false --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches -gcheck_br7=false -gcheck_bt=true --assert-level=error
+
+.PHONY: test-cpu-reset
+test-cpu-reset:
+	mkdir -p out/cpu_reset
+	$(GHDL) -a --std=08 --workdir=out/cpu_reset $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_reset.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_reset tb_cpu_reset --assert-level=error --ieee-asserts=disable
+
 .PHONY: test-cpu-interrupt
 test-cpu-interrupt:
 	mkdir -p out/ghdl_cpu_interrupt
@@ -139,11 +165,21 @@ test-cpu-gate:
 
 .PHONY: test-cpu-gate
 
+.PHONY: test-smi-clock
+test-smi-clock:
+	mkdir -p out/smi_clock
+	$(GHDL) -a --std=08 --workdir=out/smi_clock -Wno-hide $(VHD_SRC) tests/tb_smi_clock.vhd
+	$(GHDL) -r --std=08 --workdir=out/smi_clock tb_smi_clock --assert-level=error --ieee-asserts=disable
+
 .PHONY: test-smi
 test-smi:
 	mkdir -p out/ghdl_smi
-	$(GHDL) -a --std=08 --workdir=out/ghdl_smi $(RTL)/f8/base_pack.vhd $(RTL)/f3853.vhd $(RTL)/uv201/uv201_yint.vhd tests/tb_f3853.vhd
+	$(GHDL) -a --std=08 --workdir=out/ghdl_smi $(RTL)/f8/base_pack.vhd $(RTL)/f3853.vhd $(RTL)/uv201/uv201_yint.vhd tests/tb_f3853.vhd tests/tb_f3853_timer.vhd
 	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853 --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853_timer --assert-level=error
+	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_f3853_timer -gdivider=1 --assert-level=error
+	$(GHDL) -a --std=08 --workdir=out/ghdl_smi $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_smi_vector.vhd
+	$(GHDL) -r --std=08 --workdir=out/ghdl_smi tb_smi_vector --assert-level=error
 
 test-yint: $(GEN_V)
 	$(GHDL) -a --std=08 --workdir=$(WORK) tests/tb_yint.vhd
@@ -168,6 +204,10 @@ test-audio: test-audio-io
 	$V -cc --exe --build --top-module videobrain_audio_fir --Mdir out/obj_audio_fir \
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio_fir.cpp)
 	./out/obj_audio_fir/Vvideobrain_audio_fir $(RTL)/videobrain_audio.sv
+
+.PHONY: test-audio-path
+test-audio-path:
+	python3 -B tests/check_audio_path.py --run
 
 test-expander1:
 	@mkdir -p out/expander1
@@ -321,15 +361,40 @@ test-apl-input: test-cartridges
 		"-gapl_image=../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
 
 MT1_ROM ?= ../software/1 Cartridges/Music Teacher 1 (1978.03.28)(VideoBrain Computer Company)(VideoBrain)(Cart)[ED01].bin
-MT1_PATCHED_ROM ?= ../software/1 Cartridges/Music Teacher 1 - Audio Focus (experimental).bin
+MT1_PATCHED_ROM ?=
 
 test-music-input: test-cartridges
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_ROM)"
-	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_PATCHED_ROM)"
+	@if [ -n "$(MT1_PATCHED_ROM)" ]; then \
+		$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_PATCHED_ROM)"; \
+	fi
 
 .PHONY: test-tools
 test-tools:
 	python3 -B tests/run_tools.py
+
+out/logic_captures/analyze_logic_csv: tests/analyze_logic_csv.cpp
+	mkdir -p out/logic_captures
+	$(CXX) -std=c++17 -O3 -Wall -Wextra $< -o $@
+
+.PHONY: test-logic-csv
+test-logic-csv: out/logic_captures/analyze_logic_csv
+	python3 -B tests/check_logic_csv.py $<
+
+.PHONY: test-sean-diag
+test-sean-diag:
+	mkdir -p out/sean_diag
+	$(GHDL) -a --std=08 --workdir=out/sean_diag $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_sean_diag.vhd
+	$(GHDL) -r --std=08 --workdir=out/sean_diag tb_sean_diag --assert-level=error --ieee-asserts=disable
+
+.PHONY: test-uv201-wait
+test-uv201-wait:
+	mkdir -p out/uv201_wait
+	$(GHDL) -a --std=08 --workdir=out/uv201_wait $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/uv202/uv202_cpu_gate.vhd $(RTL)/uv202/uv202_timing.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd $(RTL)/uv202/uv202_arbiter.vhd $(RTL)/uv202/uv202_top.vhd tests/tb_uv201_wait.vhd
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -ggap_csv=out/uv201_wait/read.csv
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -gwrite_test=true -ggap_csv=out/uv201_wait/write.csv
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -gdma_mode=true -ggap_csv=out/uv201_wait/read-dma.csv
+	$(GHDL) -r --std=08 --workdir=out/uv201_wait tb_uv201_wait --assert-level=error --ieee-asserts=disable -gwrite_test=true -gdma_mode=true -ggap_csv=out/uv201_wait/write-dma.csv
 
 test-apl-source: test-apl-input test-cpu-interrupt test-tools
 	@mkdir -p out/source_test
@@ -392,6 +457,18 @@ test-download-reset: $(TEST_BUILD_ID)
 	vvp out/download_reset/test
 
 .PHONY: test-download-reset
+
+# Real BIOS, cartridge, Expander firmware and unmounted tape decks.
+test-apl-reload: $(GEN_V)
+	$(V) --binary --timing -Wno-fatal -Wno-PINMISSING --top-module tb_apl_reload \
+		--Mdir out/apl_reload $(GEN_V) $(RTL)/videobrain_tape.sv $(RTL)/videobrain_tapes.sv tests/tb_apl_reload.sv
+	./out/apl_reload/Vtb_apl_reload \
+		"+bios1=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin" \
+		"+bios2=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin" \
+		"+expander=$(EXPANDER1_ROM)" \
+		"+cart=../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" $(APL_RELOAD_ARGS)
+
+.PHONY: test-apl-reload
 
 test-status-messages: $(TEST_BUILD_ID)
 	@mkdir -p out/status_messages

@@ -5,7 +5,7 @@ always #5 clk = ~clk;
 reg reset = 1, img_mounted = 0, img_readonly = 0, rewind = 0;
 reg [63:0] img_size = 16384;
 reg record_data = 1, record_enable = 0, playback_enable = 0;
-wire playback_data, busy, writable, error, rewound;
+wire playback_data, busy, writable, error, rewound, ended;
 wire [31:0] sd_lba;
 wire sd_rd, sd_wr, sd_ack, sd_buff_wr;
 wire [13:0] sd_buff_addr;
@@ -35,7 +35,9 @@ endtask
 
 integer writes_before;
 integer rewinds = 0;
+integer ends = 0;
 always @(negedge clk) begin
+    if (ended) ends = ends + 1;
     if (rewound) begin
         if (busy || error || reset || img_mounted) $fatal(1,"Premature rewind confirmation");
         rewinds = rewinds + 1;
@@ -47,6 +49,14 @@ initial begin
     mount_image();
     if (!writable || error) $fatal(1,"Blank mount failed");
     if (card.writes != 0) $fatal(1,"Mount changed image");
+    playback_enable = 1;
+    repeat(4) @(negedge clk);
+    #1;
+    if (busy || error || ends != 1 || playback_data != 1)
+        $fatal(1,"Empty tape did not report end cleanly");
+    repeat(100) @(negedge clk);
+    if (busy || ends != 1) $fatal(1,"Empty tape repeated its end notice");
+    playback_enable = 0;
     repeat(3) @(negedge clk);
     record_data = 1;
     record_enable = 1;
@@ -70,6 +80,13 @@ initial begin
     wait(dut.playing);
     @(negedge clk);
     if (error) $fatal(1,"Playback failed");
+    // Leave the motor remote on at physical end of tape.
+    wait(!busy);
+    @(negedge clk); #1;
+    if (ends != 2 || error || playback_data != 1)
+        $fatal(1,"End of tape did not release playback cleanly");
+    repeat(100) @(negedge clk);
+    if (busy || ends != 2) $fatal(1,"End of tape restarted with remote held");
     playback_enable = 0;
     @(negedge clk);
     wait(!busy);

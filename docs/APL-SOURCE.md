@@ -6,7 +6,7 @@ The bundled [Price games and listings](../examples/21-apl_s-games-james-price) c
 
 ## Starting a program
 
-Load a definition and wait for entry to finish. Type its launch name in letter mode, then press NEXT (PC F3). No RUN command is needed. SHIFT toggles letter/symbol mode; use symbol mode for numbers and NEXT after each answer.
+Load a definition and wait for entry to finish. Type its launch name in letter mode, then press NEXT (PC F3 or Enter). No RUN command is needed. SHIFT toggles letter/symbol mode; use symbol mode for numbers and NEXT after each answer.
 
 | File | Launch | Use |
 | --- | --- | --- |
@@ -17,6 +17,10 @@ Load a definition and wait for entry to finish. Type its launch name in letter m
 | `23-change.vbk` | `C` | Starts with X=89 and calculates coin change. |
 
 Immediate expressions, such as `01-sine.vbk`, execute as they are entered. For other programs, see the launch name and prompts in their `.txt` source. Roulette preserves the printed listing's omission of 23 from both betting lists.
+
+Gunner corrects the printed listing's `BAR -30` and `BAR 30` to `BARH -30` and `BARH 30`. The original lines cause a syntax error; continued automatic entry appends later text to the rejected line and can produce repeated `SYNTAX 168` errors. Restart from a fresh cartridge prompt before loading the corrected file.
+
+Dicejack uses `BUSTED` instead of the printed dealer message `I BUSTED`, matching the stored dump. The longer message exceeds APL/S's 255-byte program limit, causing `CAPACITY 6` followed by `SYNTAX 6` at the final `ENDE`. Launch the corrected program with `D`.
 
 ## Preparing a listing
 

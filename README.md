@@ -36,7 +36,7 @@ The OSD provides these file actions:
 | Mount Record Tape | Mount writable .vbt |
 | Keyboard > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
-For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to receive modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning.
+For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to receive modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning. See the [Information Manager user manual](docs/INFOMAN-MANUAL.md) for the tested create, review and edit sequences.
 
 .vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses as well. They can be used in any software. [Example](/examples) files and a [converter](tools/README.md#keyboard-files) to create new files are provided.
 
@@ -62,13 +62,17 @@ In the BIOS and most software, VideoBrain's SHIFT key is a toggle (like CapsLock
 
 Unique VideoBrain keys are mapped like this:
 
-    SPACE       RUN/STOP
-    ESC         MASTER CONTROL (soft reset)
-    F1          BACK/TEXT
-    F2          PREVIOUS/COLOR
-    F3          NEXT/CLOCK
-    F4          SPECIAL/ALARM
-    F5          ERASE/RESTART
+    SPACE           RUN/STOP
+    ESC             MASTER CONTROL (soft reset)
+    F1 / Backspace  BACK/TEXT
+    F2              PREVIOUS/COLOR
+    F3 / Enter      NEXT/CLOCK
+    F4              SPECIAL/ALARM
+    F5              ERASE/RESTART
+
+Both main Enter and keypad Enter alias F3. Enter and Backspace follow the same SHIFT mode and cartridge functions as F3 and F1; in Timeshare, carriage return remains F5.
+
+The PC number row and numeric keypad also map `1234567890` to the VideoBrain key positions `ZXCSDFWER/`. These are aliases for the physical keys: select VideoBrain's numeric/SHIFT mode when the software requires it. In letter mode, they enter the corresponding letters (or `?` for `0`); cartridge overlays can assign other functions.
 
 ## Joysticks
 
@@ -107,7 +111,7 @@ TERM=dumb socat -d -d \
   EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
 ```
 
-In Timeshare, F5 is Carriage Return; your all-purpose Enter key. Unlike the rest of the software library, SHIFT is held, not a toggle.
+In Timeshare, F5 sends Carriage Return to submit a line. PC Enter still aliases F3 (NEXT), not Carriage Return. Unlike the rest of the software library, SHIFT is held, not a toggle.
 
 Telehack spacing will be disorganized as it expects a larger screen by default. Type this command (/ is Shift+H):
 
@@ -149,6 +153,8 @@ Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/REA
 - [atariprotos.com](https://www.atariprotos.com/othersystems/videobrain/videobrain.htm)
 - [orphanedgames.com](https://orphanedgames.com/videobrain/)
 - [channel_f_and_videobrain Yahoo/groups.io group](https://groups.io/g/Channel-F-and-VideoBrain)
+- [Lowell O. Turner - nyx.net](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html)
+- [VESWiki](https://channelf.se/veswiki/index.php?title=Opcode)
 - [James Price - 21 APL/S Games and One-Liners for Your Umtech VideoBrain (GitHub)](https://github.com/jamescprice/21-APL-Games-and-One-Liners-For-Your-Umtech-Videobrain)
 - [Home Computer & Video Game Museum - VideoBrain](http://hcvgm.org/VideoBrain.html)
 - [oldcomputers.net/videobrain.html](https://www.oldcomputers.net/videobrain.html)
@@ -156,7 +162,7 @@ Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/REA
 
 ## Credits
 
-Core by [Elle Ball (meauxdal)](https://github.com/meauxdal) with assistance from Alan Steremberg [alanswx](http://github.com/alanswx). LLM assistance was used in the creation of this core.
+Core by [Elle Ball (meauxdal)](https://github.com/meauxdal) with assistance from [Alan Steremberg (alanswx)](http://github.com/alanswx). LLM assistance was used in the creation of this core.
 
 The F8 CPU and packages derive from [Grabulosaure's Channel F core](https://github.com/MiSTer-devel/ChannelF_MiSTer).
 

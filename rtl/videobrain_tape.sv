@@ -18,6 +18,7 @@ module videobrain_tape #(
     output wire writable,
     output reg error = 0,
     output reg rewound = 0,
+    output reg ended = 0,
     output reg [31:0] sd_lba = 0,
     output reg sd_rd = 0,
     output reg sd_wr = 0,
@@ -122,6 +123,7 @@ always @(posedge clk) begin
     playback_d <= playback_remote;
     rewind_d <= rewind;
     rewound <= 0;
+    ended <= 0;
 
     if (sd_buff_wr && operation == HEADER && io_state != 0) begin
         case (sd_buff_addr[8:2])
@@ -232,7 +234,10 @@ always @(posedge clk) begin
             playback_started <= 1;
             playing <= 0;
             error <= 0;
-        end else if (!RECORDING && (!mounted || (valid && length == 0))) begin
+        end else if (!busy && valid && length == 0) begin
+            ended <= 1;
+            error <= 0;
+        end else if (!RECORDING && !mounted) begin
             // A playback motor can be enabled during record-only setup.
             error <= 0;
         end else error <= 1;
@@ -261,11 +266,19 @@ always @(posedge clk) begin
                 mode <= IDLE;
                 playback_data <= 1;
             end
-        end else playback_data <= 1;
+        end else begin
+            // Release the deck after the complete final interval, even if the
+            // cartridge leaves its motor remote enabled waiting for more data.
+            mode <= IDLE;
+            playing <= 0;
+            playback_data <= 1;
+            ended <= 1;
+        end
     end
 
     // Stop playback, then rewind after any outstanding SD read.
     if (rewind_request) begin
+        ended <= 0;
         rewind_pending <= 1;
         mode <= IDLE;
         playing <= 0;
@@ -290,6 +303,7 @@ always @(posedge clk) begin
 
     // Finish any outstanding SD handshake after a machine reset or media change.
     if (reset || img_mounted) begin
+        ended <= 0;
         rewound <= 0;
         rewind_pending <= 0;
         mode <= IDLE;
