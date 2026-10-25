@@ -26,11 +26,11 @@ verilator/rtl_v/
 /output_files
 
 # more quartus stuff
-dse1_base.qsf
-dse1_base.qpf
 build_id.v
 c5_pin_model_dump.txt
 jtag.cdf
+dse1_base.qsf
+dse1_base.qpf
 *.srf
 /dse
 
