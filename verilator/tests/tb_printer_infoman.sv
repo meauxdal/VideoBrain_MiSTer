@@ -5,6 +5,7 @@ always #34.920639 clk=~clk;
 reg reset_na=0, host_data_n=1, host_clock_n=1;
 wire data_n, clock_n, interrupt_n, printer_txd, modem_txd;
 reg modem_rxd=1;
+reg apple=0,trace_serial=0;
 reg [15:0] dl_addr=0;
 reg [7:0] dl_data=0;
 reg dl_wr=0;
@@ -38,7 +39,7 @@ assign lbas[0]=tape_lba[0];assign lbas[1]=tape_lba[1];
 assign reads[1:0]=tape_rd;assign writes[1:0]=tape_wr;
 assign dins[0]=tape_din[0];assign dins[1]=tape_din[1];
 videobrain_tapes tapes(.clk(clk),.reset(!reset_na),.img_mounted(tape_mount),
-    .img_readonly(1'b0),.img_size(64'd131072),.rewind(tape_rewind),
+    .img_readonly(1'b0),.img_size(apple ? 64'd8388608 : 64'd131072),.rewind(tape_rewind),
     .record_data(record_data),.record_enable(record_enable),.playback_enable(playback_enable),
     .playback_data(playback_data),.busy(tape_busy),.error(tape_error),
     .sd_lba(tape_lba),.sd_rd(tape_rd),.sd_wr(tape_wr),.sd_ack(acks[1:0]),
@@ -112,27 +113,55 @@ task command(input string text);
         if(text[j]!=" " && symbols!=(text[j]=="=")) keypress(36'd1<<11);
         keypress(character_key(text[j]));
     end
+    if(trace_serial) begin
+        $write("Infoman input %s glyphs:",text);
+        for(integer j=0;j<16;j=j+1) $write(" %02h",core.u_sys_bus.sys_ram[j]);
+        $display(" symbols %b",symbols);$fflush();
+    end
     keypress(36'd1<<27);
     $display("Infoman command %s pc %h tape busy %b error %b",text,pc,tape_busy,tape_error);$fflush();
 endtask
 integer reference_fd=0,byte_count=0;
 reg [7:0] value;
 reg last_pin=1;
-integer idle_ticks=0;
+integer idle_ticks=0,edge_count=0;
+longint unsigned cycles=0,last_edge=0;
+reg [15:0] last_pc=0;
+integer milestones=0;
 always @(posedge clk) begin
+    last_pc<=pc;
+    if(trace_serial && reference_fd!=0 && pc!=last_pc && milestones<64 &&
+       (pc==16'h1411 || pc==16'h1422 || pc==16'h16b0 || pc==16'h3716 || pc==16'h3e2d)) begin
+        $display("Infoman path pc %h mode %02h printer %02h operation %02h",
+                 pc,core.u_sys_bus.cart_ram[16'h30b],core.u_sys_bus.cart_ram[16'h31a],
+                 core.u_sys_bus.cart_ram[16'h30f]);$fflush();
+        milestones<=milestones+1;
+    end
+    cycles<=cycles+1;
+    if(printer_txd!=last_pin) begin
+        if(trace_serial && reference_fd!=0 && edge_count<64) begin
+            $display("Printer edge %0d cycle %0d gap %0d level %b pc %h capture %0d error %0d",
+                     edge_count,cycles,cycles-last_edge,printer_txd,pc,status_code,error);$fflush();
+            edge_count<=edge_count+1;
+        end
+        last_edge<=cycles;
+    end
     last_pin<=printer_txd;
     if(printer_txd!=last_pin) idle_ticks<=0;
     else if(idle_ticks<40000000) idle_ticks<=idle_ticks+1;
 end
 initial forever begin
     @(negedge printer_txd);
-    repeat(47727+47727/2) @(posedge clk);
-    for(integer j=0;j<8;j=j+1) begin
-        value[j]=printer_txd;repeat(47727) @(posedge clk);
+    if(reference_fd!=0) begin
+        repeat(47727+47727/2) @(posedge clk);
+        for(integer j=0;j<8;j=j+1) begin
+            value[j]=printer_txd;repeat(47727) @(posedge clk);
+        end
+        if(!printer_txd) $fatal(1,"Report reference bad stop pc %h byte %h capture %0d error %0d",
+                               pc,value,status_code,error);
+        byte_count=byte_count+1;
+        $fwrite(reference_fd,"%c",value);
     end
-    if(!printer_txd) $fatal(1,"Report reference bad stop");
-    byte_count=byte_count+1;
-    if(reference_fd!=0) $fwrite(reference_fd,"%c",value);
 end
 
 task report(input string text,input string label);
@@ -155,6 +184,8 @@ string bios1,bios2,firmware,cartridge,fixture;
 integer fd,amount;
 reg [7:0] tape_bytes[131072];
 initial begin
+    apple=$test$plusargs("apple");
+    trace_serial=$test$plusargs("trace_serial");
     if(!$value$plusargs("bios1=%s",bios1) || !$value$plusargs("bios2=%s",bios2) ||
        !$value$plusargs("firmware=%s",firmware) || !$value$plusargs("cart=%s",cartridge) ||
        !$value$plusargs("fixture=%s",fixture)) $fatal(1,"Supply original ROMs and fixture");
@@ -166,14 +197,19 @@ initial begin
     card.media[1][0]='h56;card.media[1][1]='h42;card.media[1][2]='h54;card.media[1][3]='h31;
     {card.media[1][7],card.media[1][6],card.media[1][5],card.media[1][4]}=14318180;
     reset_na=1;
-    @(negedge clk);tape_mount=3;@(negedge clk);tape_mount=0;wait(tape_busy==0);
+    @(negedge clk);tape_mount=apple ? 1:3;@(negedge clk);tape_mount=0;wait(tape_busy==0);
     repeat(50000000) @(negedge clk);
     command("R");
     wait(command_ready);
     repeat(1000000) @(negedge clk);
-    if(core.u_sys_bus.cart_ram[16'h0e9] != 1)
-        $fatal(1,"Numeric fixture definition was not loaded");
+    if(core.u_sys_bus.cart_ram[16'h0e9] != (apple ? 8'h11:8'h01))
+        $fatal(1,"Fixture definition was not loaded");
     $display("Infoman REVIEW ready pc %h",pc);$fflush();
+    if(apple) begin
+        report("P DESC PTR","printer-infoman-apple-desc");
+        $display("Information Manager APPLE PTR report/tape path passed");
+        $finish;
+    end
     report("P DESC PTR","printer-infoman-desc");
     command("TOT=ITEM");wait(command_ready);repeat(1000000) @(negedge clk);
     report("P ALL PTR","printer-infoman-records");
