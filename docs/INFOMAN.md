@@ -52,7 +52,7 @@ The following capabilities are inferred from the ROM, not hardware-verified oper
 | Deleting and replacing | See the EDIT command analysis below for current-record targeting and DELETE selectors. Hardware output/reload checks remain outstanding. |
 | Record selection | Grammar and handlers support numbers, field names, value comparisons and wildcard handling. Establish exact syntax and matching rules. |
 | Field selection | REVIEW accepts FLD=fieldname to display one field; EDIT excludes it. See the analysis below; check a multi-field database on hardware. |
-| Database description | DESC displays the database name and field names, lengths and types in both REVIEW and EDIT. See the analysis below; check screen presentation on hardware. |
+| Database description | P DESC displays the database name and field names, lengths and types. REVIEW display is hardware-verified; EDIT still needs a hardware check. |
 | Counts and totals | REVIEW's TOT=numericfield selects an I/M field for accumulation; TOTAL (T) invokes the report. See SORT and PTR below. Hardware numeric reports remain unverified. |
 | Grouped summaries | SORT=fieldname selects a text key for grouped numeric reports in REVIEW. Groups retain first-encounter order; nine named groups plus OTHER. See the analysis below; hardware reports remain unverified. |
 | Tape merging | EDIT's MERGE/M concatenates inputs through a REWIND / KEY NEXT pause. No schema comparison, field mapping or later-header write. See the analysis below; hardware tape-change/output checks remain outstanding. |
@@ -153,9 +153,9 @@ Important limits from the code: keys always use eight bytes even if the declared
 
 REVIEW grammar entry 04 (TOTAL) and entry 05 (shared PRINT/DESC/selection grammar) continue at entry 0E, address 1772: `0F 0A 07`. PTR token 0F invokes operation 0A (1411), then entry 07 requires end of command. If PTR is absent, entry 0F at 1775 (`00 07 87`) invokes operation 07 (1415). These handlers set 1B1A to FF or 00 respectively, then enter processing at 3267.
 
-Thus the explicit forms include PRINT ALL PTR / P ALL PTR, PRINT PTR / P PTR, DESC PTR / PRINT DESC PTR / P DESC PTR, and TOTAL PTR / T PTR. PTR follows any record-selection argument. FLD/SORT/TOT configuration branches go directly to the end-of-command entry, so they have no PTR suffix. EDIT uses its own continuation at entry 15: the shared grammar is followed by operation 07 and entry 16, omitting the optional PTR branch. PTR has no shorter dictionary spelling.
+Thus the explicit forms include PRINT ALL PTR / P ALL PTR, PRINT PTR / P PTR, PRINT DESC PTR / P DESC PTR, and TOTAL PTR / T PTR. PTR follows any record-selection argument. FLD/SORT/TOT configuration branches go directly to the end-of-command entry, so they have no PTR suffix. EDIT uses its own continuation at entry 15: the shared grammar is followed by operation 07 and entry 16, omitting the optional PTR branch. PTR has no shorter dictionary spelling.
 
-The flag is not a persistent printer-configuration toggle: a subsequent output operation without PTR executes 1415 and clears it. The selection grammar has an unconditional default, so a bare PTR can reach processing without an explicit PRINT/DESC/TOTAL token; it does not initialize processing mode 1B0F. Do not document that parser side effect as an independent, well-defined printer setup command.
+The flag is not a persistent printer-configuration toggle: a subsequent output operation without PTR executes 1415 and clears it. Use PTR only as a suffix to an output command.
 
 The display routine formats screen text first. At 3615-3626 it calls 3716 only when display mode 1B0B is 3 and printer flag 1B1A is nonzero. Otherwise it follows the normal display/pacing path. This adds hard-copy transmission to formatted display rather than selecting a different record set.
 
@@ -167,7 +167,7 @@ The core holds Expander printer RX idle and exposes printer TX to the MiSTer wra
 
 ### DESC: database definition display
 
-DESC is a standalone command in the shared REVIEW/EDIT grammar. Entry 18 at 1790 is `11 14 99`: an optional PRINT token whose successful path continues at entry 19. Entry 19 at 1793 is `17 0F 00`: DESC invokes operation 0F and returns from the shared grammar. Consequently DESC, PRINT DESC and P DESC all select the same operation. The outer grammar requires end of command; there is no DESC record/field selector. DESC has no separate short dictionary spelling; D is DELETE.
+The shared REVIEW/EDIT grammar requires PRINT or P before DESC. Entry 18 at 1790 is `11 14 99`: PRINT invokes operation 14 and continues at entry 19. Entry 19 at 1793 is `17 0F 00`: DESC invokes operation 0F and returns from the shared grammar. Use PRINT DESC or P DESC, with an optional trailing PTR in REVIEW. Hardware REVIEW accepted P DESC and rejected bare DESC and DESC PTR. There is no DESC record/field selector. DESC has no separate short dictionary spelling; D is DELETE.
 
 Operation 0F at 1422 clears processing mode 1B0F. The shared processing action at 3267 sees zero, sets input/display mode 1B0B to 3, and calls 31C5. This applies in EDIT too: it overrides EDIT's interactive field-input mode for this operation.
 
@@ -181,7 +181,7 @@ Operation 0F at 1422 clears processing mode 1B0F. The shared processing action a
 
 The shared routine at 3444-344B checks mode 3 and bypasses keyboard editing through the display-only path at 3544. The definition-display loop contains no tape read/write calls and does not call the record-advance routine 3B40. It therefore leaves the current record and tape position unchanged. Although the existing definition validation code is reused, DESC does not offer interactive schema changes. It describes database fields rather than sorting records or displaying their values.
 
-The ROM establishes the fields displayed, command spellings, mode availability and lack of record advance. Exact screen layout, pacing and any printer routing remain to be checked in operation.
+Hardware REVIEW displayed the database definition with P DESC. The ROM establishes mode availability and lack of record advance; EDIT interaction and printer output still need hardware checks.
 
 ### EDIT mutation commands
 

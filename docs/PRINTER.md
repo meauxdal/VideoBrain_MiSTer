@@ -15,7 +15,7 @@ capture controller sends no acknowledgements or response characters.
 4. Select **Capture Baud**, then **Start Capture**. Wait for Active before
    requesting printer output. Information Manager uses 300; Timeshare uses its
    selected 110/300 transmission rate. Baud changes apply to the next session.
-5. In Information Manager REVIEW, request `DESC PTR`, `P ALL PTR`, or
+5. In Information Manager REVIEW, request `P DESC PTR`, `P ALL PTR`, or
    `TOTAL PTR` with the usual database/tape prerequisites. For simultaneous
    Timeshare, keep **System > UART Output > Modem** and run the normal UART
    bridge. The Printer UART selection remains an alternative diagnostic path.

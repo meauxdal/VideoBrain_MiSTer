@@ -174,7 +174,7 @@ initial begin
     if(core.u_sys_bus.cart_ram[16'h0e9] != 1)
         $fatal(1,"Numeric fixture definition was not loaded");
     $display("Infoman REVIEW ready pc %h",pc);$fflush();
-    report("DESC PTR","printer-infoman-desc");
+    report("P DESC PTR","printer-infoman-desc");
     command("TOT=ITEM");wait(command_ready);repeat(1000000) @(negedge clk);
     report("P ALL PTR","printer-infoman-records");
     report("TOTAL PTR","printer-infoman-total");

@@ -130,7 +130,7 @@ python3 /media/fat/Scripts/capture_printer.py \
   /media/fat/printer-report.bin --baud 300
 ```
 
-Wait for `Capturing` before requesting output. In Information Manager REVIEW, use an output command with the `PTR` suffix, for example `P ALL PTR`, `DESC PTR` or `TOTAL PTR`; the normal tape/record prerequisites still apply. Wait for output to finish, then press Ctrl+C in SSH. The utility syncs the file, reports the byte count and restores the previous UART settings. It refuses to overwrite an existing file. `--baud 110` supports firmware configured for 110 baud; `--idle-timeout 10` optionally stops after ten seconds without bytes, including before the first byte. The default waits until stopped because pauses between pages can be long.
+Wait for `Capturing` before requesting output. In Information Manager REVIEW, use an output command with the `PTR` suffix, for example `P ALL PTR`, `P DESC PTR` or `TOTAL PTR`; the normal tape/record prerequisites still apply. Wait for output to finish, then press Ctrl+C in SSH. The utility syncs the file, reports the byte count and restores the previous UART settings. It refuses to overwrite an existing file. `--baud 110` supports firmware configured for 110 baud; `--idle-timeout 10` optionally stops after ten seconds without bytes, including before the first byte. The default waits until stopped because pauses between pages can be long.
 
 The file preserves all eight bits, including leading NULs, parity-bearing bytes and CR/LF. It is a raw printer stream, not a screenshot or a Unicode conversion. For Information Manager only, a separate readable copy can remove its leading NULs:
 
