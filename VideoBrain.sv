@@ -55,6 +55,17 @@ localparam CONF_STR = {
 	"T[23],Rewind Playback Tape;",
 	"T[30],Rewind Record Tape;",
 	"-;",
+	"P5,Printer;",
+	"P5-;",
+	"d6P5S2,VBP,Mount Capture Image;",
+	"P5O[33],Capture Baud,300,110;",
+	"d7P5T[34],Start Capture;",
+	"P5T[35],Stop and Flush;",
+	"P5T[36],Capture Status;",
+	"P5-;",
+	"h9P5-,Printer Active;",
+	"h11P5-,Printer Busy;",
+	"h12P5-,Printer Error;",
 	"P4,Keyboard;",
 	"P4-;",
 	"P4F4,VBK,Load Keyboard File;",
@@ -92,7 +103,7 @@ localparam CONF_STR = {
 	"R[0],Reset;",
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
-	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks,End of tape;",
+	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks,End of tape,Printer no image,Printer scanning,Printer ready,Printer starting,Printer active,Printer flushing,Printer stalled,Printer full,Printer error,Printer read only,Printer bad image,Printer incomplete image,Printer storage error,Printer framing error,Printer overflow,Printer media changed,Printer reset interrupted;",
 	"v,1;",
 	"V,v",`BUILD_DATE
 };
@@ -114,7 +125,20 @@ wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
 wire [15:0] ioctl_index;
-wire [31:0] tape_lba[2];
+wire [31:0] tape_lba[2], disk_lba[3];
+wire [2:0] disk_rd, disk_wr, disk_ack, disk_mounted;
+wire [7:0] disk_buff_din[3];
+wire printer_busy, printer_active, printer_stalled;
+wire [3:0] printer_error, printer_status;
+assign tape_mounted = disk_mounted[1:0];
+assign tape_ack = disk_ack[1:0];
+assign disk_rd[1:0] = tape_rd;
+assign disk_wr[1:0] = tape_wr;
+genvar drive;
+generate for (drive=0; drive<2; drive=drive+1) begin : tape_bus
+    assign disk_lba[drive] = tape_lba[drive];
+    assign disk_buff_din[drive] = tape_buff_din[drive];
+end endgenerate
 wire [1:0] tape_rd, tape_wr, tape_ack;
 wire [13:0] tape_buff_addr;
 wire [7:0] tape_buff_dout, tape_buff_din[2];
@@ -128,15 +152,17 @@ wire tape_ended = |tape_deck_ended;
 wire tape_busy = |tape_deck_busy;
 wire tape_error = |tape_deck_error;
 wire tape_rewound = |tape_deck_rewound;
-wire [15:0] menu_mask = {5'd0, ~cart_loaded, 1'b0, ~tape_busy, 2'b00, status[19],
+wire [15:0] menu_mask = {3'd0, printer_error != 0, printer_busy && !printer_active, ~cart_loaded, printer_active, ~tape_busy,
+                         !printer_busy && printer_error == 0 && printer_status == 2, !printer_busy, status[19],
                          !joystick_connected, 4'b0011};
 reg info_req = 0;
 reg [7:0] info = 0, pending_info = 0;
-wire [5:0] sd_blk_cnt[2];
+wire [5:0] sd_blk_cnt[3];
 assign sd_blk_cnt[0] = 0;
 assign sd_blk_cnt[1] = 0;
+assign sd_blk_cnt[2] = 0;
 
-hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
+hps_io #(.CONF_STR(CONF_STR), .CONF_STR_BRAM(1), .VDNUM(3)) hps_io
 (
 	.clk_sys(clk_sys),
 	.HPS_BUS(HPS_BUS),
@@ -153,17 +179,17 @@ hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
 	.info_req(info_req),
 	.info(info),
 
-	.img_mounted(tape_mounted),
+	.img_mounted(disk_mounted),
 	.img_readonly(tape_readonly),
 	.img_size(tape_size),
-	.sd_lba(tape_lba),
+	.sd_lba(disk_lba),
 	.sd_blk_cnt(sd_blk_cnt),
-	.sd_rd(tape_rd),
-	.sd_wr(tape_wr),
-	.sd_ack(tape_ack),
+	.sd_rd(disk_rd),
+	.sd_wr(disk_wr),
+	.sd_ack(disk_ack),
 	.sd_buff_addr(tape_buff_addr),
 	.sd_buff_dout(tape_buff_dout),
-	.sd_buff_din(tape_buff_din),
+	.sd_buff_din(disk_buff_din),
 	.sd_buff_wr(tape_buff_wr),
 
 	.ioctl_download(ioctl_download),
@@ -394,8 +420,29 @@ always @(posedge clk_sys) source_vs_d <= vid_vs;
 reg source_started_d = 0, source_complete_d = 0, source_error_d = 0;
 reg source_aborted_d = 0, joy_calibrating_d = 0;
 reg tape_busy_d = 0, tape_error_d = 0;
+reg [3:0] printer_status_d = 0, printer_error_d = 0;
+reg printer_notice_error = 0;
+reg [7:0] printer_notice = 0;
+reg printer_query_d = 0;
+wire [7:0] printer_message = printer_error == 2 ? 8'd20 :
+    printer_error == 3 ? 8'd21 : printer_error == 4 ? 8'd22 :
+    printer_error == 5 ? 8'd23 : printer_error == 6 ? 8'd24 :
+    printer_error == 7 ? 8'd25 : printer_error == 9 ? 8'd26 :
+    printer_error == 10 ? 8'd27 : 8'd11 + {4'd0,printer_status};
 reg [5:0] tape_info_frames = 0;
 always @(posedge clk_sys) begin
+    printer_status_d <= printer_status;
+    printer_error_d <= printer_error;
+    printer_query_d <= status[36];
+    if (reset || status[22]) begin
+        printer_notice <= 0;
+        printer_notice_error <= 0;
+    end else if ((printer_status != printer_status_d || printer_error != printer_error_d ||
+                 status[36] && !printer_query_d) &&
+                (!printer_notice_error || status[36] && !printer_query_d)) begin
+        printer_notice <= printer_message;
+        printer_notice_error <= printer_error != 0;
+    end
 	source_started_d <= source_started;
 	source_complete_d <= source_complete;
 	source_error_d <= source_error;
@@ -410,7 +457,12 @@ always @(posedge clk_sys) begin
 	end else begin
 		// Defer until menu close
 		if (!OSD_STATUS && vid_vs && !source_vs_d) begin
-			if (pending_info != 0) begin
+			if (printer_notice != 0) begin
+                info <= printer_notice;
+                info_req <= 1;
+                printer_notice <= 0;
+                printer_notice_error <= 0;
+            end else if (pending_info != 0) begin
 				if (pending_info != 9 || joy_calibrating) begin
 					info <= pending_info;
 					info_req <= 1;
@@ -470,6 +522,17 @@ apl_source_loader source_loader (
 	.aborted(source_aborted),
 	.error(source_error),
 	.keys(source_keys)
+);
+
+videobrain_printer_capture printer_capture (
+    .clk(clk_sys), .reset(reset), .serial_in(expander_printer_txd),
+    .baud110(status[33]), .start(status[34]), .stop(status[35]),
+    .img_mounted(disk_mounted[2]), .img_readonly(tape_readonly), .img_size(tape_size),
+    .busy(printer_busy), .active(printer_active), .stalled(printer_stalled),
+    .error(printer_error), .status_code(printer_status),
+    .sd_lba(disk_lba[2]), .sd_rd(disk_rd[2]), .sd_wr(disk_wr[2]), .sd_ack(disk_ack[2]),
+    .sd_buff_addr(tape_buff_addr[8:0]), .sd_buff_dout(tape_buff_dout),
+    .sd_buff_din(disk_buff_din[2]), .sd_buff_wr(tape_buff_wr)
 );
 
 videobrain_tapes tapes (
@@ -645,6 +708,6 @@ videobrain_audio audio
 assign AUDIO_L = audio_sample;
 assign AUDIO_R = audio_sample;
 
-assign LED_USER = ioctl_download | source_busy | tape_busy;
+assign LED_USER = ioctl_download | source_busy | tape_busy | printer_busy;
 
 endmodule

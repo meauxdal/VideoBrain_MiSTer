@@ -170,10 +170,11 @@ BEGIN
 
   cart_loaded <= cart_loaded_l;
   apl_available <= '1' WHEN cart_auto_type = to_unsigned(CART_COMPLANG, 8) ELSE '0';
-  -- ED01 and the static-staff patch share the keyboard routine.
+  -- ED01 and both static-staff patches share the keyboard routine.
   music_input <= '1' WHEN cart_loaded_l = '1' AND dl_cart = '0' AND
     cart_size = to_unsigned(2048, cart_size'length) AND
-    (NOT cart_crc = CART_CRC_MUSICTEACHER1 OR NOT cart_crc = x"F4390144") ELSE '0';
+    (NOT cart_crc = CART_CRC_MUSICTEACHER1 OR NOT cart_crc = x"F4390144" OR
+     NOT cart_crc = x"3BE4D855") ELSE '0';
   -- Bank D input loop: release verified at 3C14, new key accepted at 3C20.
   apl_key_accepted <= '1' WHEN reset_na = '1' AND
     ext_rd = '1' AND ext_fetch = '1' AND

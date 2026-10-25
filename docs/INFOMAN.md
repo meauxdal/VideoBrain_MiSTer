@@ -56,7 +56,7 @@ The following capabilities are inferred from the ROM, not hardware-verified oper
 | Counts and totals | REVIEW's TOT=numericfield selects an I/M field for accumulation; TOTAL (T) invokes the report. See SORT and PTR below. Hardware numeric reports remain unverified. |
 | Grouped summaries | SORT=fieldname selects a text key for grouped numeric reports in REVIEW. Groups retain first-encounter order; nine named groups plus OTHER. See the analysis below; hardware reports remain unverified. |
 | Tape merging | EDIT's MERGE/M concatenates inputs through a REWIND / KEY NEXT pause. No schema comparison, field mapping or later-header write. See the analysis below; hardware tape-change/output checks remain outstanding. |
-| Printer reports | REVIEW accepts trailing PTR on PRINT, DESC and TOTAL output. Select System > UART Output > Printer for raw file capture through Linux. See the analysis below; live report capture and physical printing remain unverified. |
+| Printer reports | REVIEW accepts trailing PTR on PRINT, DESC and TOTAL output. Use Printer > Mount Capture Image and 300 baud for independent file capture; see [printer capture](PRINTER.md). See the analysis below; live report capture and physical printing remain unverified. |
 
 Single-deck append or editing remains unverified. EDIT with only the record deck populated produced I/O ERR; ENTER starts by defining a database. REVIEW's grammar and write-suppression path do not suggest a persistent ADD workflow.
 
@@ -163,7 +163,7 @@ The display routine formats screen text first. At 3615-3626 it calls 3716 only w
 
 At 3732-3777, the cartridge transmits a leading zero byte, five ASCII spaces, sixteen converted screen glyphs, then CR (0D) and LF (0A) for each buffered line. Glyph conversion uses the table at 3782, indexed at 3755. It iterates the buffered display lines using the count at 0C28, then waits for completion and returns through 3B19. This is a short-line screen-text dump; exact hard-copy layout, framing and physical-printer compatibility need operating checks.
 
-The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Select System > UART Output > Printer to capture this stream to a file through Linux; see [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Original-ROM tests verify printer-only transmission without responses at 110/300 baud; complete cartridge reports and physical printing still need hardware validation.
+The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Use Printer > Mount Capture Image at 300 baud to capture this stream independently; see [printer capture images](PRINTER.md). The shared-UART diagnostic remains available in [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Original-ROM tests verify printer-only transmission without responses at 110/300 baud; complete cartridge reports and physical printing still need hardware validation.
 
 ### DESC: database definition display
 

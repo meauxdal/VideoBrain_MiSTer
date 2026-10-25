@@ -238,15 +238,17 @@ test-expander1-serial: test-expander1
 
 .PHONY: test-expander1-serial
 
-test-printer: test-expander1-serial $(TEST_BUILD_ID)
+test-printer: test-expander1-serial $(TEST_BUILD_ID) test-printer-image test-printer-hps test-printer-rom test-printer-image test-printer-hps test-printer-rom
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
 		"-gfirmware=$(EXPANDER1_ROM)" -gprinter_only=true --assert-level=error --ieee-asserts=disable
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
 		"-gfirmware=$(EXPANDER1_ROM)" -gprinter_only=true -gbaud_rate=110 --assert-level=error --ieee-asserts=disable
 	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_printer_uart -o out/expander1/printer_uart \
-		tests/tb_printer_uart.sv ../VideoBrain.sv
+		tests/tb_printer_uart.sv ../VideoBrain.sv $(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv
 	vvp out/expander1/printer_uart
 	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_capture_printer.py
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_printer_image.py
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_printer_image.py
 
 .PHONY: test-printer
 
@@ -485,7 +487,89 @@ test-apl-reload: $(GEN_V)
 test-status-messages: $(TEST_BUILD_ID)
 	@mkdir -p out/status_messages
 	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_status_messages -o out/status_messages/test \
-		tests/tb_status_messages.sv ../VideoBrain.sv
+		tests/tb_status_messages.sv ../VideoBrain.sv $(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv
 	vvp out/status_messages/test
 
 .PHONY: test-status-messages
+
+
+test-printer-image:
+	@mkdir -p out/expander1
+	$(V) --binary --timing -Wno-fatal --top-module tb_printer_capture \
+		--Mdir out/expander1/obj_printer $(RTL)/videobrain_printer_rx.sv \
+		$(RTL)/videobrain_printer_capture.sv tests/tb_printer_capture.sv
+	./out/expander1/obj_printer/Vtb_printer_capture
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_printer_image.py
+
+.PHONY: test-printer-image
+
+
+test-printer-hps:
+	@mkdir -p out/expander1
+	$(V) --binary --timing -Wno-fatal -Wno-PROCASSWIRE -Wno-BLKANDNBLK -Wno-PINMISSING --top-module tb_printer_hps \
+		--Mdir out/expander1/obj_printer_hps ../sys/hps_io.sv \
+		$(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv \
+		tests/printer_hps_model.sv tests/tb_printer_hps.sv
+	./out/expander1/obj_printer_hps/Vtb_printer_hps
+
+.PHONY: test-printer-hps
+
+
+
+
+test-printer-rom: test-expander1
+	$(GHDL) synth --std=08 --workdir=out/expander1 --out=verilog expander1 > out/expander1/expander1.v
+	$(V) --binary --timing -Wno-fatal -Wno-PROCASSWIRE -Wno-BLKANDNBLK -Wno-PINMISSING \
+		--top-module tb_printer_rom --Mdir out/expander1/obj_printer_rom \
+		../sys/hps_io.sv out/expander1/expander1.v $(RTL)/videobrain_printer_rx.sv \
+		$(RTL)/videobrain_printer_capture.sv tests/printer_hps_model.sv tests/tb_printer_rom.sv
+	./out/expander1/obj_printer_rom/Vtb_printer_rom "+firmware=$(EXPANDER1_ROM)"
+
+.PHONY: test-printer-rom
+
+
+test-printer-cartridge: $(GEN_V)
+	@mkdir -p out/expander1
+	$(V) --binary --timing -Wno-fatal -Wno-PROCASSWIRE -Wno-BLKANDNBLK -Wno-PINMISSING \
+		--top-module tb_printer_cartridge --Mdir out/expander1/obj_printer_cartridge \
+		../sys/hps_io.sv $(GEN_V) $(RTL)/videobrain_printer_rx.sv \
+		$(RTL)/videobrain_printer_capture.sv tests/printer_hps_model.sv tests/tb_printer_cartridge.sv
+	./out/expander1/obj_printer_cartridge/Vtb_printer_cartridge \
+		"+bios1=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin" \
+		"+bios2=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin" \
+		"+firmware=$(EXPANDER1_ROM)" \
+		"+cart=../software/1 Cartridges/Timeshare (1978.09.01)(VideoBrain Computer Company)(VideoBrain)(Cart)[CM01].bin"
+
+.PHONY: test-printer-cartridge
+
+
+test-printer-infoman: $(GEN_V)
+	@mkdir -p out/expander1
+	python3 tests/make_printer_fixture.py out/expander1/infoman-printer.vbt
+	$(V) --binary --timing -Wno-fatal -Wno-PROCASSWIRE -Wno-BLKANDNBLK -Wno-PINMISSING \
+		--top-module tb_printer_infoman --Mdir out/expander1/obj_printer_infoman \
+		../sys/hps_io.sv $(GEN_V) $(RTL)/videobrain_printer_rx.sv \
+		$(RTL)/videobrain_printer_capture.sv $(RTL)/videobrain_tape.sv $(RTL)/videobrain_tapes.sv \
+		tests/printer_hps_model.sv tests/tb_printer_infoman.sv
+	./out/expander1/obj_printer_infoman/Vtb_printer_infoman \
+		"+bios1=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin" \
+		"+bios2=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin" \
+		"+firmware=$(EXPANDER1_ROM)" \
+		"+cart=../software/1 Cartridges/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
+		"+fixture=out/expander1/infoman-printer.vbt"
+
+.PHONY: test-printer-infoman
+
+
+test-printer-tapes: test-expander1
+	python3 ../tools/printer_image.py new out/expander1/printer-tape-blank.vbp --size 32768 || test -f out/expander1/printer-tape-blank.vbp
+	$(GHDL) synth --std=08 --workdir=out/expander1 --out=verilog expander1 > out/expander1/expander1.v
+	$(V) --binary --timing -Wno-fatal -Wno-PROCASSWIRE -Wno-BLKANDNBLK -Wno-PINMISSING \
+		--top-module tb_printer_tapes --Mdir out/expander1/obj_printer_tapes \
+		../sys/hps_io.sv out/expander1/expander1.v $(RTL)/videobrain_printer_rx.sv \
+		$(RTL)/videobrain_printer_capture.sv $(RTL)/videobrain_tape.sv $(RTL)/videobrain_tapes.sv \
+		tests/printer_hps_model.sv tests/tb_printer_tapes.sv
+	./out/expander1/obj_printer_tapes/Vtb_printer_tapes "+firmware=$(EXPANDER1_ROM)" +capture=0
+	./out/expander1/obj_printer_tapes/Vtb_printer_tapes "+firmware=$(EXPANDER1_ROM)" +capture=1
+
+.PHONY: test-printer-tapes

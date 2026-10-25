@@ -10,7 +10,7 @@ EDIT
 : _
 ```
 
-The 3870 timer, interrupt control ports and digital cassette SAVE/LOAD path are implemented. See [SD tape images](TAPE.md). MiSTer's HPS UART defaults to the modem serial port and can select the printer port for [file capture](#printer-file-capture). Expander 2 acoustic modem behavior and physical printing are not implemented.
+The 3870 timer, interrupt control ports and digital cassette SAVE/LOAD path are implemented. See [SD tape images](TAPE.md). MiSTer's HPS UART defaults to the modem serial port. Independent [printer capture images](PRINTER.md) save printer output while the modem remains connected; the UART can also select the printer for [diagnostic file capture](#printer-file-capture). Expander 2 acoustic modem behavior and physical printing are not implemented.
 
 The 2K firmware dump has CRC-32 `dac31abc`. Load it from the OSD's System > Load Expander 1 ROM entry, or put it in the VideoBrain games folder as `boot1.rom`. Keep the existing 4K BIOS in `boot0.rom`. Without an Expander ROM, its host outputs remain released. Reset restarts both processors and retains the ROM.
 
@@ -117,9 +117,11 @@ stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
 
 ## Printer file capture
 
+For independent capture alongside Timeshare, use the **Printer > Mount Capture Image** workflow in [Printer capture images](PRINTER.md). It saves actual printer TX through a third virtual drive and exports to raw bytes. The shared-UART diagnostic below remains available.
+
 The first capture path shares MiSTer's existing HPS UART. Select **System > UART Output > Printer** before starting printer output, then capture `/dev/ttyS1` from Linux to a normal file. This carries the actual Expander printer TX signal, including host-to-printer output and any firmware-directed modem-to-printer copies. It does not substitute modem TX for printer TX. Selecting **Modem** restores Timeshare's existing bidirectional connection. The single UART cannot service a Timeshare network bridge and printer capture simultaneously; stop the bridge before switching. Switching during a character can corrupt it.
 
-A mounted SD image would allow simultaneous ports but would need FPGA serial decoding, buffering, capacity handling and a fixed-size image/export format. Sharing the UART provides ordinary variable-length files with Linux handling framing and storage. Independent simultaneous capture is deferred.
+Independent capture uses a mounted VBP1 image, FPGA serial decoding, buffering and readback verification; see [operation and storage limits](PRINTER.md). Sharing the UART remains useful for ordinary variable-length diagnostic files with Linux handling framing and storage.
 
 Load the Expander ROM and a cartridge with printer support. Set MiSTer's UART connection to **None**, and stop other processes using `/dev/ttyS1`. Copy `tools/capture_printer.py` to MiSTer, then run over SSH, using a new destination filename:
 

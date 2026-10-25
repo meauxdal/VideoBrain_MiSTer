@@ -233,7 +233,7 @@ The printer flag applies to that output operation. An output command without PTR
 
 The ROM sends formatted screen text through the Expander 1 printer serial connection, converting VideoBrain glyphs to ASCII and terminating lines with carriage return and line feed. It selects the 300-baud timing setting and printer routing. The exact printer requirements and hard-copy formatting have not been verified in operation.
 
-For file capture, select **System > UART Output > Printer** and start the Linux capture utility before issuing the PTR command. See [printer file capture](EXPANDER1.md#printer-file-capture) for setup and raw file handling. Printer input stays idle; the original-ROM tests require no response characters. The shared UART handles modem or printer output one at a time. Live report capture and physical printing remain unverified. Commands without PTR continue to use normal screen review.
+For independent file capture, mount a printer image, select 300 baud, and Start Capture before issuing the PTR command. See [printer capture images](PRINTER.md) for setup, stopping/flushing and export. The shared UART diagnostic under **System > UART Output > Printer** remains available. Printer input stays idle; the original-ROM tests require no response characters. The shared UART handles modem or printer output one at a time. Live report capture and physical printing remain unverified. Commands without PTR continue to use normal screen review.
 
 ## Change a database
 
