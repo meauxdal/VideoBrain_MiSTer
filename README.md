@@ -36,7 +36,9 @@ The OSD provides these file actions:
 | Mount Record Tape | Mount writable .vbt |
 | Keyboard > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
-For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to receive modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning. See the [Information Manager user manual](docs/INFOMAN-MANUAL.md) for database concepts and instructions for creating, reading and editing databases.
+For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. 
+
+Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to receive modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning. See the [Information Manager user manual](docs/INFOMAN-MANUAL.md) for database concepts and instructions for creating, reading and editing databases.
 
 .vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses as well. They can be used in any software. [Example](/examples) files and a [converter](tools/README.md#keyboard-files) to create new files are provided.
 
