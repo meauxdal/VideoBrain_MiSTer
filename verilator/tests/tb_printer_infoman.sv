@@ -158,6 +158,29 @@ always @(posedge clk) begin
     if(printer_txd!=last_pin) idle_ticks<=0;
     else if(idle_ticks<40000000) idle_ticks<=idle_ticks+1;
 end
+wire [15:0] host_h={core.u_cpu.scratch_regs[10],core.u_cpu.scratch_regs[11]};
+reg [13:0] last_fetch_addr=14'h3fff;
+integer glyph_reads=0,line_events=0;
+always @(posedge clk) begin
+    if(core.u_sys_bus.ext_fetch && core.u_sys_bus.ext_rd) begin
+        last_fetch_addr<=core.u_sys_bus.ext_addr;
+        if(trace_transfer && reference_fd!=0 && core.u_sys_bus.ext_addr!=last_fetch_addr) begin
+            if(line_events<8 && (core.u_sys_bus.ext_addr==14'h3716 ||
+                                core.u_sys_bus.ext_addr==14'h3771 ||
+                                core.u_sys_bus.ext_addr==14'h3777)) begin
+                $display("Printer line pc %h count %02h buffer %02h pointer %04h",
+                         core.u_sys_bus.ext_addr,core.u_sys_bus.sys_ram[16'h028],
+                         core.u_sys_bus.sys_ram[16'h016],host_h);$fflush();
+                line_events<=line_events+1;
+            end
+            if(core.u_sys_bus.ext_addr==14'h3752 && glyph_reads<32) begin
+                $display("Printer glyph %0d pointer %04h value %02h",glyph_reads,host_h,
+                         core.u_sys_bus.sys_ram[host_h[9:0]]);$fflush();
+                glyph_reads<=glyph_reads+1;
+            end
+        end
+    end
+end
 integer transfer_fd=0,transfer_rows=0;
 reg transfer_started=0;
 reg host_wr_d=0,expander_wr_d=0,expander_irq_d=1,host_ack_d=0;
@@ -167,7 +190,7 @@ always @(posedge clk) begin
     expander_irq_d<=core.expander_interrupt_n;
     host_ack_d<=core.u_smi.int_ack;
     if(transfer_fd!=0 && pc==16'h3716) transfer_started<=1;
-    if(transfer_fd!=0 && transfer_started && transfer_rows<4096 &&
+    if(transfer_fd!=0 && transfer_started && transfer_rows<16384 &&
        ((core.io_wr && !host_wr_d) || (core.u_expander1.io_wr && !expander_wr_d) ||
         core.expander_interrupt_n!=expander_irq_d || printer_txd!=last_pin ||
         (core.u_smi.int_ack && !host_ack_d) ||
@@ -195,7 +218,7 @@ initial forever begin
             $display("Report reference bad stop pc %h byte %h capture %0d error %0d",
                      pc,value,status_code,error);$fflush();
             if(trace_transfer) begin
-                #500ms;
+                #2s;
                 $fclose(transfer_fd);transfer_fd=0;
             end
             $fatal(1,"Report reference bad stop");
