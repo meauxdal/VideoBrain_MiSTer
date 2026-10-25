@@ -65,10 +65,10 @@ Unique VideoBrain keys are mapped like this:
     SPACE           RUN/STOP
     ESC             MASTER CONTROL (soft reset)
     F1 / Backspace  BACK/TEXT
-    F2              PREVIOUS/COLOR
+    F2 / Home       PREVIOUS/COLOR
     F3 / Enter      NEXT/CLOCK
-    F4              SPECIAL/ALARM
-    F5              ERASE/RESTART
+    F4 / End        SPECIAL/ALARM
+    F5 / Ctrl+Enter ERASE/RESTART
 
 Both main Enter and keypad Enter alias F3. Enter and Backspace follow the same SHIFT mode and cartridge functions as F3 and F1; in Timeshare, carriage return remains F5.
 
