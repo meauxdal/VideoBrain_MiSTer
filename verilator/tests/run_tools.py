@@ -16,6 +16,9 @@ def main():
             "test_apl_next_sweep.py",
             "test_tape_convert.py",
             "test_trim_tape.py",
+            "test_audit_apl_tapes.py",
+            "test_fullset_naming.py",
+            "test_fullset_text.py",
         )
     )
     return not unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful()

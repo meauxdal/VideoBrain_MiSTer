@@ -153,6 +153,8 @@ Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/REA
 - [atariprotos.com](https://www.atariprotos.com/othersystems/videobrain/videobrain.htm)
 - [orphanedgames.com](https://orphanedgames.com/videobrain/)
 - [channel_f_and_videobrain Yahoo/groups.io group](https://groups.io/g/Channel-F-and-VideoBrain)
+- [Lowell O. Turner - nyx.net](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html)
+- [VESWiki](https://channelf.se/veswiki/index.php?title=Opcode)
 - [James Price - 21 APL/S Games and One-Liners for Your Umtech VideoBrain (GitHub)](https://github.com/jamescprice/21-APL-Games-and-One-Liners-For-Your-Umtech-Videobrain)
 - [Home Computer & Video Game Museum - VideoBrain](http://hcvgm.org/VideoBrain.html)
 - [oldcomputers.net/videobrain.html](https://www.oldcomputers.net/videobrain.html)
@@ -160,7 +162,7 @@ Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/REA
 
 ## Credits
 
-Core by [Elle Ball (meauxdal)](https://github.com/meauxdal) with assistance from Alan Steremberg [alanswx](http://github.com/alanswx). LLM assistance was used in the creation of this core.
+Core by [Elle Ball (meauxdal)](https://github.com/meauxdal) with assistance from [Alan Steremberg (alanswx)](http://github.com/alanswx). LLM assistance was used in the creation of this core.
 
 The F8 CPU and packages derive from [Grabulosaure's Channel F core](https://github.com/MiSTer-devel/ChannelF_MiSTer).
 
