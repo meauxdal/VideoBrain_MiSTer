@@ -221,7 +221,7 @@ int main(int argc, char** argv, char** env) {
                 {SDL_SCANCODE_W,24},{SDL_SCANCODE_D,25},{SDL_SCANCODE_C,26},{SDL_SCANCODE_F3,27},
                 {SDL_SCANCODE_Q,28},{SDL_SCANCODE_S,29},{SDL_SCANCODE_X,30},{SDL_SCANCODE_F2,31},
                 {SDL_SCANCODE_A,32},{SDL_SCANCODE_Z,33},{SDL_SCANCODE_SLASH,34},{SDL_SCANCODE_F1,35},
-                {SDL_SCANCODE_RETURN,27},{SDL_SCANCODE_KP_ENTER,27},{SDL_SCANCODE_BACKSPACE,35},
+                {SDL_SCANCODE_HOME,31},{SDL_SCANCODE_END,23},{SDL_SCANCODE_BACKSPACE,35},
                 {SDL_SCANCODE_1,33},{SDL_SCANCODE_2,30},{SDL_SCANCODE_3,26},{SDL_SCANCODE_4,29},
                 {SDL_SCANCODE_5,25},{SDL_SCANCODE_6,21},{SDL_SCANCODE_7,24},{SDL_SCANCODE_8,20},
                 {SDL_SCANCODE_9,16},{SDL_SCANCODE_0,34},
@@ -229,9 +229,18 @@ int main(int argc, char** argv, char** env) {
                 {SDL_SCANCODE_KP_5,25},{SDL_SCANCODE_KP_6,21},{SDL_SCANCODE_KP_7,24},{SDL_SCANCODE_KP_8,20},
                 {SDL_SCANCODE_KP_9,16},{SDL_SCANCODE_KP_0,34},
             };
+            static bool enter_held[2] = {}, enter_erase[2] = {};
+            const SDL_Scancode enters[] = {SDL_SCANCODE_RETURN, SDL_SCANCODE_KP_ENTER};
+            const Uint8* ks = SDL_GetKeyboardState(NULL);
             uint64_t m = 0;
+            for (int i = 0; i < 2; ++i) {
+                if (ks[enters[i]] && !enter_held[i])
+                    enter_erase[i] = ks[SDL_SCANCODE_LCTRL] || ks[SDL_SCANCODE_RCTRL];
+                enter_held[i] = ks[enters[i]];
+                if (!ImGui::GetIO().WantCaptureKeyboard && enter_held[i])
+                    m |= (uint64_t)1 << (enter_erase[i] ? 15 : 27);
+            }
             if (!ImGui::GetIO().WantCaptureKeyboard) {
-                const Uint8* ks = SDL_GetKeyboardState(NULL);
                 for (const auto& k : KEYMAP) if (ks[k.sc]) m |= (uint64_t)1 << k.bit;
             }
             top->kbd_matrix = m;

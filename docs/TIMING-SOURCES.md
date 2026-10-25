@@ -259,8 +259,9 @@ ROMC 13 phase 11; the F3853 consumes it on the following MCLK, at the beginning
 of the ISR fetch. The CPU's vector/return-address updates and cycle lengths
 are unchanged. This moves the acknowledgement telemetry endpoint by 11 PHI
 periods; old IRQ-to-ack measurements must retain their original endpoint.
-`audit_audio_irq.py` uses the corrected completion endpoint by default; use
-`--legacy-early-ack` only for captures from the old ROMC 0F implementation.
+The archived `audit_audio_irq.py` analyzer uses the corrected completion endpoint
+by default; its `--legacy-early-ack` option applies only to captures from the old
+ROMC 0F implementation.
 
 Printed p. 172 specifies separate clears: timer load or timer acknowledgement
 clears TIMER INTERRUPT; a control write or external acknowledgement clears

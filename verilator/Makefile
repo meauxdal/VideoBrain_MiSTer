@@ -129,6 +129,12 @@ test-cpu-branches:
 	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches -gcheck_br7=false --assert-level=error
 	$(GHDL) -r --std=08 --workdir=out/cpu_branches tb_cpu_branches -gcheck_br7=false -gcheck_bt=true --assert-level=error
 
+.PHONY: test-cpu-reset
+test-cpu-reset:
+	mkdir -p out/cpu_reset
+	$(GHDL) -a --std=08 --workdir=out/cpu_reset $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_reset.vhd
+	$(GHDL) -r --std=08 --workdir=out/cpu_reset tb_cpu_reset --assert-level=error --ieee-asserts=disable
+
 .PHONY: test-cpu-interrupt
 test-cpu-interrupt:
 	mkdir -p out/ghdl_cpu_interrupt
@@ -198,6 +204,10 @@ test-audio: test-audio-io
 	$V -cc --exe --build --top-module videobrain_audio_fir --Mdir out/obj_audio_fir \
 		$(RTL)/videobrain_audio.sv $(abspath tests/tb_audio_fir.cpp)
 	./out/obj_audio_fir/Vvideobrain_audio_fir $(RTL)/videobrain_audio.sv
+
+.PHONY: test-audio-path
+test-audio-path:
+	python3 -B tests/check_audio_path.py --run
 
 test-expander1:
 	@mkdir -p out/expander1
@@ -351,11 +361,13 @@ test-apl-input: test-cartridges
 		"-gapl_image=../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin"
 
 MT1_ROM ?= ../software/1 Cartridges/Music Teacher 1 (1978.03.28)(VideoBrain Computer Company)(VideoBrain)(Cart)[ED01].bin
-MT1_PATCHED_ROM ?= ../software/1 Cartridges/Music Teacher 1 - Audio Focus (experimental).bin
+MT1_PATCHED_ROM ?=
 
 test-music-input: test-cartridges
 	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_ROM)"
-	$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_PATCHED_ROM)"
+	@if [ -n "$(MT1_PATCHED_ROM)" ]; then \
+		$(GHDL) -r --std=08 --workdir=out/cartridges tb_cartridges --assert-level=error "-gmusic_image=$(MT1_PATCHED_ROM)"; \
+	fi
 
 .PHONY: test-tools
 test-tools:
@@ -445,6 +457,18 @@ test-download-reset: $(TEST_BUILD_ID)
 	vvp out/download_reset/test
 
 .PHONY: test-download-reset
+
+# Real BIOS, cartridge, Expander firmware and unmounted tape decks.
+test-apl-reload: $(GEN_V)
+	$(V) --binary --timing -Wno-fatal -Wno-PINMISSING --top-module tb_apl_reload \
+		--Mdir out/apl_reload $(GEN_V) $(RTL)/videobrain_tape.sv $(RTL)/videobrain_tapes.sv tests/tb_apl_reload.sv
+	./out/apl_reload/Vtb_apl_reload \
+		"+bios1=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin" \
+		"+bios2=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin" \
+		"+expander=$(EXPANDER1_ROM)" \
+		"+cart=../software/1 Cartridges/APL-S - The Computational Language (1979.01.24)(VideoBrain Computer Company)(VideoBrain)(Cart)[APL-S].bin" $(APL_RELOAD_ARGS)
+
+.PHONY: test-apl-reload
 
 test-status-messages: $(TEST_BUILD_ID)
 	@mkdir -p out/status_messages

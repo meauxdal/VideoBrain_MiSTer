@@ -117,7 +117,25 @@ BEGIN
   BEGIN  
     IF rising_edge(clk) THEN
       port1_wr <= '0';
-      IF ce='1' THEN
+      -- Reset must work while the board clock generator holds ce low.
+      IF reset_na='0' THEN
+        opcode<=OP_RESET;
+        txt<=OPTXT(to_integer(OP_RESET));
+        madrs<=to_integer(OP_RESET)*8;
+        mop<=MICROCODE(to_integer(OP_RESET)*8);
+        phase_l<=0;
+        interrupt_cycle<='0';
+        iozcs<="00000";
+        po_a_n<=x"FF";
+        po_b_n<=x"FF";
+        sreg_wr<='0';
+        dv<='0';
+        test<='0';
+        testp<='0';
+        bcc<='0';
+        bccp<='0';
+        dstm<='0';
+      ELSIF ce='1' THEN
         mop<=MICROCODE(madrs);
         sreg_wr<='0';
         
@@ -281,15 +299,6 @@ BEGIN
           iozcs(4)<='0';
         END IF;
 
-        IF reset_na='0' THEN
-          opcode<=OP_RESET;
-          txt<=OPTXT(to_integer(OP_RESET));
-          madrs<=to_integer(OP_RESET)*8;
-          phase_l<=0;
-          interrupt_cycle<='0';
-          iozcs<="00000";
-          port1_wr<='0';
-        END IF;
         
       END IF;
 

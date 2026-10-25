@@ -12,17 +12,17 @@ Control references for the built-in programs and all eighteen cartridges. The il
 
 ## Keyboard and controllers
 
-The core maps physical VideoBrain key positions. A cartridge can give those keys different meanings, as shown in its manual overlay. PC Enter (including keypad Enter) aliases F3, and Backspace aliases F1. These aliases follow the same SHIFT mode and cartridge functions; Timeshare still uses F5 for carriage return.
+The core maps physical VideoBrain key positions. A cartridge can give those keys different meanings, as shown in its manual overlay. Every special key has a PC alias, listed below. These aliases follow the same SHIFT mode and cartridge functions. Ctrl+Enter (including keypad Enter, with either Ctrl key) sends F5, giving Timeshare a carriage return. The Enter destination is chosen when pressed and stays the same until released.
 
 ![Original VideoBrain keyboard](VB_Keyboard.gif)
 
 | PC key | VideoBrain key position |
 | --- | --- |
 | F1 / Backspace | BACK / TEXT |
-| F2 | PREVIOUS / COLOR |
+| F2 / Home | PREVIOUS / COLOR |
 | F3 / Enter / keypad Enter | NEXT / CLOCK |
-| F4 | SPECIAL / ALARM |
-| F5 | ERASE / RESTART |
+| F4 / End | SPECIAL / ALARM |
+| F5 / Ctrl+Enter | ERASE / RESTART |
 | Space | SPACE / RUN/STOP |
 | Shift | SHIFT |
 | `/` key | `?` / `0` |
@@ -95,7 +95,7 @@ This prototype needs Expander 1 firmware. See the [practical user manual](INFOMA
 
 ### Timeshare
 
-Requires Expander 1 firmware for serial communication. **F5 sends Carriage Return**, **F4 is CONTROL**, and **Shift is held**, not toggled. Shift+H types `/`. Hold F4+Shift and tap D for full duplex (remote echo), or H for half duplex (local echo). The four layouts below are from the manual, pp. 11-14. Match their key positions to the PC mappings above.
+Requires Expander 1 firmware for serial communication. **F5 or Ctrl+Enter sends Carriage Return**, **F4 or End is CONTROL**, and **Shift is held**, not toggled. Shift+H types `/`. Hold F4+Shift and tap D for full duplex (remote echo), or H for half duplex (local echo). The four layouts below are from the manual, pp. 11-14. Match their key positions to the PC mappings above.
 
 ![Timeshare unshifted keyboard](controls/timeshare-unshifted.jpg)
 

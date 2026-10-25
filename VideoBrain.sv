@@ -229,8 +229,14 @@ wire        dl_wr   = (boot_dl | cart_dl | expander_dl) & ioctl_wr;
 reg [35:0] kbd_keys = 0;
 reg [35:0] kbd_number_row = 0, kbd_number_pad = 0;
 reg enter_key = 0, keypad_enter_key = 0, backspace_key = 0;
-// BACK/TEXT is bit 35; NEXT/CLOCK is bit 27.
-wire [35:0] kbd_edit_keys = {backspace_key, 7'd0, (enter_key | keypad_enter_key), 27'd0};
+reg home_key = 0, end_key = 0, left_ctrl = 0, right_ctrl = 0;
+reg enter_erase = 0, keypad_enter_erase = 0;
+// Latch the Enter destination on key-down; modifier release must not move it.
+wire ctrl_held = left_ctrl | right_ctrl;
+wire next_key = (enter_key && !enter_erase) | (keypad_enter_key && !keypad_enter_erase);
+wire erase_key = (enter_key && enter_erase) | (keypad_enter_key && keypad_enter_erase);
+wire [35:0] kbd_edit_keys = {backspace_key, 3'd0, home_key, 3'd0,
+                            next_key, 3'd0, end_key, 7'd0, erase_key, 15'd0};
 wire [35:0] kbd_matrix = kbd_keys | kbd_number_row | kbd_number_pad | kbd_edit_keys;
 
 wire       key_pressed = ps2_key[9];
@@ -249,6 +255,12 @@ always @(posedge clk_sys) begin
 		enter_key <= 0;
 		keypad_enter_key <= 0;
 		backspace_key <= 0;
+		home_key <= 0;
+		end_key <= 0;
+		left_ctrl <= 0;
+		right_ctrl <= 0;
+		enter_erase <= 0;
+		keypad_enter_erase <= 0;
 	end
 	else if (key_toggle != ps2_key[10]) begin
 		case (key_code)
@@ -298,8 +310,18 @@ always @(posedge clk_sys) begin
 			'h04A: kbd_keys[34] <= key_pressed;  // / = ?
 			'h005: kbd_keys[35] <= key_pressed;  // F1 = BACK/TEXT
 			// Physical aliases only: software still controls SHIFT and key meaning.
-			'h05A: enter_key <= key_pressed;         // Enter = F3 = NEXT/CLOCK
-			'h15A: keypad_enter_key <= key_pressed;  // keypad Enter = NEXT/CLOCK
+			'h05A: begin
+				enter_key <= key_pressed;
+				if (key_pressed && !enter_key) enter_erase <= ctrl_held;
+			end
+			'h15A: begin
+				keypad_enter_key <= key_pressed;
+				if (key_pressed && !keypad_enter_key) keypad_enter_erase <= ctrl_held;
+			end
+			'h014: left_ctrl <= key_pressed;
+			'h114: right_ctrl <= key_pressed;
+			'h16C: home_key <= key_pressed;          // Home = F2 = PREVIOUS/COLOR
+			'h169: end_key <= key_pressed;           // End = F4 = SPECIAL/ALARM
 			'h066: backspace_key <= key_pressed;     // Backspace = F1 = BACK/TEXT
 			'h045: kbd_number_row[34] <= key_pressed;  // 0 = /
 			'h070: kbd_number_pad[34] <= key_pressed;  // keypad 0 = /

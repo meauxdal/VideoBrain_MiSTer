@@ -55,8 +55,9 @@ task number_alias(input [8:0] row_code, pad_code, original_code, input integer b
     key_event(original_code, 1, expected);
     key_event(row_code, 0, expected);
     key_event(original_code, 0, 0);
-    // Extended navigation keys sharing keypad scan codes are not aliases.
-    key_event(pad_code | 9'h100, 1, 0);
+    // Home and End have their own special-key aliases.
+    key_event(pad_code | 9'h100, 1,
+              pad_code == 9'h06c ? 36'd1 << 31 : pad_code == 9'h069 ? 36'd1 << 23 : 0);
     key_event(pad_code | 9'h100, 0, 0);
 endtask
 
@@ -258,6 +259,32 @@ initial begin
     edit_alias(9'h05a, 9'h004, 27); // Enter = F3
     edit_alias(9'h15a, 9'h004, 27); // keypad Enter = F3
     edit_alias(9'h066, 9'h005, 35); // Backspace = F1
+    edit_alias(9'h16c, 9'h006, 31); // Home = F2
+    edit_alias(9'h169, 9'h00c, 23); // End = F4
+    // Both Ctrl keys and both Enter keys; release order and repeats must not
+    // turn an ERASE into NEXT or release a simultaneously held physical F5.
+    for (integer ctrl = 0; ctrl < 2; ctrl = ctrl + 1) begin
+        for (integer pad = 0; pad < 2; pad = pad + 1) begin
+            key_event(ctrl ? 9'h114 : 9'h014, 1, 0);
+            key_event(pad ? 9'h15a : 9'h05a, 1, 36'd1 << 15);
+            key_event(9'h003, 1, 36'd1 << 15);
+            key_event(ctrl ? 9'h114 : 9'h014, 0, 36'd1 << 15);
+            key_event(pad ? 9'h15a : 9'h05a, 1, 36'd1 << 15);
+            key_event(9'h003, 0, 36'd1 << 15);
+            key_event(pad ? 9'h15a : 9'h05a, 0, 0);
+        end
+    end
+    key_event(9'h014, 1, 0);
+    key_event(9'h114, 1, 0);
+    key_event(9'h014, 0, 0);
+    key_event(9'h05a, 1, 36'd1 << 15);
+    key_event(9'h114, 0, 36'd1 << 15);
+    key_event(9'h15a, 1, (36'd1 << 15) | (36'd1 << 27));
+    key_event(9'h05a, 0, 36'd1 << 27);
+    key_event(9'h014, 1, 36'd1 << 27); // Ctrl after Enter must not retarget it.
+    key_event(9'h15a, 1, 36'd1 << 27);
+    key_event(9'h15a, 0, 0);
+    key_event(9'h014, 0, 0);
     key_event(9'h05a, 1, 36'd1 << 27);
     key_event(9'h15a, 1, 36'd1 << 27);
     key_event(9'h05a, 0, 36'd1 << 27);
@@ -275,6 +302,11 @@ initial begin
     key_event(9'h05a, 1, (36'd1 << 33) | (36'd1 << 30) | (36'd1 << 26) | (36'd1 << 27));
     key_event(9'h15a, 1, (36'd1 << 33) | (36'd1 << 30) | (36'd1 << 26) | (36'd1 << 27));
     key_event(9'h066, 1, (36'd1 << 33) | (36'd1 << 30) | (36'd1 << 26) | (36'd1 << 27) | (36'd1 << 35));
+    ps2_key = {!ps2_key[10], 1'b1, 9'h014};
+    repeat (2) @(posedge clk);
+    #1;
+    key_event(9'h16c, 1, dut.kbd_matrix | (36'd1 << 31));
+    key_event(9'h169, 1, dut.kbd_matrix | (36'd1 << 23));
     external_reset = 1;
     repeat (2) @(posedge clk);
     #1;
@@ -283,6 +315,8 @@ initial begin
     repeat (2) @(posedge clk);
     #1;
     if (dut.kbd_matrix !== 0) $fatal(1, "Keyboard aliases returned after reset");
+    key_event(9'h05a, 1, 36'd1 << 27);
+    key_event(9'h05a, 0, 0); // Reset also cleared the held Ctrl modifier.
     $display("Download reset and keyboard alias checks passed");
     $finish;
 end
