@@ -165,6 +165,33 @@ At 3732-3777, the cartridge transmits a leading zero byte, five ASCII spaces, si
 
 The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Use Printer > Mount Capture Image at 300 baud to capture this stream independently; see [printer capture images](PRINTER.md). The shared-UART diagnostic remains available in [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Original-ROM tests verify printer-only transmission without responses at 110/300 baud; complete cartridge reports and physical printing still need hardware validation.
 
+### Printer execution and failure boundary
+
+P DESC PTR displays the database name before printing that buffered line.
+The NAME/LENGTH/TYPE loop follows only after that printer call returns.
+The relevant cartridge paths are:
+
+| Address | Operation |
+|---|---|
+| 1411, 1422, 3267, 31C5 | Select PTR and definition display, then display DB before iterating fields. |
+| 3615-3626, 3716-3730 | Enter printer output and send Expander command 04 02 02. |
+| 3DEC, 3E2D, 3E17 | Send command bits MSB first; send framed data LSB first through the timed port-1 callback. |
+| 3E76-3EE5 | Exchange foreground/transfer contexts using 1BD3-1BD9 and external interrupt vector 3EB5. |
+| 3EE6-3F29 | Run BIOS video housekeeping while waiting; count down a timeout, cancel through port 1 value 60, and resume with an error flag. |
+
+The Expander command-04 descriptor at 0095 points to timer handler 041A and
+rate table 009F. Selector 02 loads 49 from 00A3. Control AA selects /40;
+the handler advances serial output every third timer interrupt. This agrees
+with nominal 300 baud. Routing 02 copies host data to printer TX at 04C4-04CE;
+it does not require printer RX acknowledgements.
+
+Hardware stopped after DB: TEST with and without a mounted printer image.
+The later display failure also occurred without an image. These observations
+locate the unresolved failure in or after the first printer call, but do not
+identify the failing instruction. A missing interrupt should exercise the
+cartridge's timeout path; sustained failure also requires checking context
+restoration and the BIOS 4501 video-Y wait used by that path.
+
 ### DESC: database definition display
 
 The shared REVIEW/EDIT grammar requires PRINT or P before DESC. Entry 18 at 1790 is `11 14 99`: PRINT invokes operation 14 and continues at entry 19. Entry 19 at 1793 is `17 0F 00`: DESC invokes operation 0F and returns from the shared grammar. Use PRINT DESC or P DESC, with an optional trailing PTR in REVIEW. Hardware REVIEW accepted P DESC and rejected bare DESC and DESC PTR. There is no DESC record/field selector. DESC has no separate short dictionary spelling; D is DELETE.

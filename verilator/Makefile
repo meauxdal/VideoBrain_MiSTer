@@ -571,7 +571,7 @@ test-printer-infoman-apple: $(GEN_V)
 		"+bios2=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin" \
 		"+firmware=$(EXPANDER1_ROM)" \
 		"+cart=../software/1 Cartridges/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
-		"+fixture=../examples/saves/Information Manager - APPLE.vbt" +apple +trace_serial
+		"+fixture=../examples/saves/Information Manager - APPLE.vbt" +apple +trace_serial +trace_transfer
 
 .PHONY: test-printer-infoman test-printer-infoman-apple
 

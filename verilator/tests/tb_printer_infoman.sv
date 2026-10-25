@@ -5,7 +5,7 @@ always #34.920639 clk=~clk;
 reg reset_na=0, host_data_n=1, host_clock_n=1;
 wire data_n, clock_n, interrupt_n, printer_txd, modem_txd;
 reg modem_rxd=1;
-reg apple=0,trace_serial=0;
+reg apple=0,trace_serial=0,trace_transfer=0;
 reg [15:0] dl_addr=0;
 reg [7:0] dl_data=0;
 reg dl_wr=0;
@@ -108,10 +108,18 @@ reg command_ready=0;
 always @(posedge clk) if(pc>=16'h1228 && pc<=16'h1236) command_ready<=1;
 
 task command(input string text);
+    // 1228 enters prompt setup; 3453 is the ready keyboard-input loop.
+    wait(pc>=16'h3453 && pc<=16'h3455);
     command_ready=0;
     for(integer j=0;j<text.len();j=j+1) begin
         if(text[j]!=" " && symbols!=(text[j]=="=")) keypress(36'd1<<11);
         keypress(character_key(text[j]));
+    end
+    for(integer j=0;j<text.len();j=j+1) begin
+        if(core.u_sys_bus.sys_ram[j+1]>=8'h3b ||
+           core.u_sys_bus.cart_rom[16'h1782+core.u_sys_bus.sys_ram[j+1]]!==text[j])
+            $fatal(1,"Command %s character %0d was not entered: glyph %02h",
+                   text,j,core.u_sys_bus.sys_ram[j+1]);
     end
     if(trace_serial) begin
         $write("Infoman input %s glyphs:",text);
@@ -150,6 +158,32 @@ always @(posedge clk) begin
     if(printer_txd!=last_pin) idle_ticks<=0;
     else if(idle_ticks<40000000) idle_ticks<=idle_ticks+1;
 end
+integer transfer_fd=0,transfer_rows=0;
+reg transfer_started=0;
+reg host_wr_d=0,expander_wr_d=0,expander_irq_d=1,host_ack_d=0;
+always @(posedge clk) begin
+    host_wr_d<=core.io_wr;
+    expander_wr_d<=core.u_expander1.io_wr;
+    expander_irq_d<=core.expander_interrupt_n;
+    host_ack_d<=core.u_smi.int_ack;
+    if(transfer_fd!=0 && pc==16'h3716) transfer_started<=1;
+    if(transfer_fd!=0 && transfer_started && transfer_rows<4096 &&
+       ((core.io_wr && !host_wr_d) || (core.u_expander1.io_wr && !expander_wr_d) ||
+        core.expander_interrupt_n!=expander_irq_d || printer_txd!=last_pin ||
+        (core.u_smi.int_ack && !host_ack_d) ||
+        (pc!=last_pc && (pc==16'h3e17 || pc==16'h3e76 || pc==16'h3eb5 ||
+                        pc==16'h3ee6 || pc==16'h3f1f || pc==16'h3b19)))) begin
+        $fwrite(transfer_fd,"%0d,%04h,%04h,%b,%02h,%02h,%b,%02h,%02h,%b,%b,%b,%04h,%04h,%02h,%02h,%02h,%02h,%02h,%02h\n",
+                cycles,pc,core.u_expander1.addr,core.io_wr,core.io_addr,core.io_wdata,
+                core.u_expander1.io_wr,core.u_expander1.io_addr,core.u_expander1.io_wdata,
+                core.expander_interrupt_n,printer_txd,core.u_smi.int_ack,core.int_vector,
+                {core.u_cpu.scratch_regs[14],core.u_cpu.scratch_regs[15]},
+                core.u_cpu.scratch_regs[0],core.u_cpu.scratch_regs[31],
+                core.u_expander1.u_cpu.scratch_regs[2],core.u_expander1.u_cpu.scratch_regs[3],
+                core.u_expander1.u_cpu.scratch_regs[18],core.u_expander1.u_cpu.scratch_regs[22]);
+        transfer_rows<=transfer_rows+1;
+    end
+end
 initial forever begin
     @(negedge printer_txd);
     if(reference_fd!=0) begin
@@ -157,8 +191,15 @@ initial forever begin
         for(integer j=0;j<8;j=j+1) begin
             value[j]=printer_txd;repeat(47727) @(posedge clk);
         end
-        if(!printer_txd) $fatal(1,"Report reference bad stop pc %h byte %h capture %0d error %0d",
-                               pc,value,status_code,error);
+        if(!printer_txd) begin
+            $display("Report reference bad stop pc %h byte %h capture %0d error %0d",
+                     pc,value,status_code,error);$fflush();
+            if(trace_transfer) begin
+                #500ms;
+                $fclose(transfer_fd);transfer_fd=0;
+            end
+            $fatal(1,"Report reference bad stop");
+        end
         byte_count=byte_count+1;
         $fwrite(reference_fd,"%c",value);
     end
@@ -168,12 +209,18 @@ task report(input string text,input string label);
     integer before_count,file_id;
     before_count=byte_count;
     reference_fd=$fopen({"out/expander1/",label,".bin"},"wb");
+    if(trace_transfer) begin
+        transfer_started=0;transfer_rows=0;
+        transfer_fd=$fopen({"out/expander1/",label,"-transfer.csv"},"w");
+        $fwrite(transfer_fd,"cycle,host_pc,expander_addr,host_wr,host_port,host_value,expander_wr,expander_port,expander_value,irq_n,printer_tx,host_ack,host_vector,host_q,host_r0,host_r31,expander_r2,expander_r3,route,reload\n");
+    end
     @(negedge clk);start=1;@(negedge clk);start=0;wait(active);
     command(text);
     wait(byte_count>before_count);
     wait(command_ready && idle_ticks>=28636360 && tape_busy==0);
     @(negedge clk);stop=1;@(negedge clk);stop=0;wait(!busy);
     $fclose(reference_fd);reference_fd=0;
+    if(transfer_fd!=0) begin $fclose(transfer_fd);transfer_fd=0;end
     if(error!=0 || tape_error!=0) $fatal(1,"Report/cassette error %d/%b pc %h",error,tape_error,pc);
     file_id=$fopen({"out/expander1/",label,".vbp"},"wb");
     for(integer j=0;j<32768;j=j+1) $fwrite(file_id,"%c",card.media[2][j]);
@@ -186,6 +233,7 @@ reg [7:0] tape_bytes[131072];
 initial begin
     apple=$test$plusargs("apple");
     trace_serial=$test$plusargs("trace_serial");
+    trace_transfer=$test$plusargs("trace_transfer");
     if(!$value$plusargs("bios1=%s",bios1) || !$value$plusargs("bios2=%s",bios2) ||
        !$value$plusargs("firmware=%s",firmware) || !$value$plusargs("cart=%s",cartridge) ||
        !$value$plusargs("fixture=%s",fixture)) $fatal(1,"Supply original ROMs and fixture");
