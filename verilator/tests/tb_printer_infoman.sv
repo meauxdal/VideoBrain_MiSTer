@@ -10,6 +10,7 @@ reg [7:0] dl_data=0;
 reg dl_wr=0;
 reg [35:0] keys=0;
 wire [15:0] pc;
+wire symbols;
 wire record_data,record_enable,playback_enable,playback_data;
 wire [1:0] tape_busy,tape_error;
 reg [1:0] tape_mount=0,tape_rewind=0;
@@ -24,7 +25,7 @@ videobrain_core core(.clk(clk),.reset_na(reset_na),.progressive(1'b1),
     .expander_playback_data(playback_data),.expander_modem_rxd(modem_rxd),
     .expander_modem_txd(modem_txd),.expander_printer_txd(printer_txd),
     .dl_addr(dl_addr),.dl_data(dl_data),.dl_wr(dl_wr),.dl_index(download_index),
-    .cart_unload(1'b0),.unknown_cart_profile(8'd0),.pc0(pc));
+    .cart_unload(1'b0),.unknown_cart_profile(8'd0),.pc0(pc),.apl_symbols(symbols));
 reg [7:0] download_index=8'hff;
 wire [31:0] lbas[3];
 wire [2:0] reads,writes,acks;
@@ -98,12 +99,19 @@ function automatic [35:0] character_key(input byte c);
             default:k=35;
         endcase
         character_key=36'd1<<k;
-        if(c=="=") character_key=character_key|(36'd1<<11);
+
     end
 endfunction
 
+reg command_ready=0;
+always @(posedge clk) if(pc>=16'h1228 && pc<=16'h1236) command_ready<=1;
+
 task command(input string text);
-    for(integer j=0;j<text.len();j=j+1) keypress(character_key(text[j]));
+    command_ready=0;
+    for(integer j=0;j<text.len();j=j+1) begin
+        if(text[j]!=" " && symbols!=(text[j]=="=")) keypress(36'd1<<11);
+        keypress(character_key(text[j]));
+    end
     keypress(36'd1<<27);
     $display("Infoman command %s pc %h tape busy %b error %b",text,pc,tape_busy,tape_error);$fflush();
 endtask
@@ -134,7 +142,7 @@ task report(input string text,input string label);
     @(negedge clk);start=1;@(negedge clk);start=0;wait(active);
     command(text);
     wait(byte_count>before_count);
-    wait(idle_ticks>=28636360 && tape_busy==0);
+    wait(command_ready && idle_ticks>=28636360 && tape_busy==0);
     @(negedge clk);stop=1;@(negedge clk);stop=0;wait(!busy);
     $fclose(reference_fd);reference_fd=0;
     if(error!=0 || tape_error!=0) $fatal(1,"Report/cassette error %d/%b pc %h",error,tape_error,pc);
@@ -161,14 +169,23 @@ initial begin
     @(negedge clk);tape_mount=3;@(negedge clk);tape_mount=0;wait(tape_busy==0);
     repeat(50000000) @(negedge clk);
     command("R");
-    repeat(1000000) @(negedge clk);wait(tape_busy==0);
+    wait(command_ready);
+    repeat(1000000) @(negedge clk);
+    if(core.u_sys_bus.cart_ram[16'h0e9] != 1)
+        $fatal(1,"Numeric fixture definition was not loaded");
     $display("Infoman REVIEW ready pc %h",pc);$fflush();
     report("DESC PTR","printer-infoman-desc");
-    command("TOT=ITEM");
+    command("TOT=ITEM");wait(command_ready);repeat(1000000) @(negedge clk);
     report("P ALL PTR","printer-infoman-records");
     report("TOTAL PTR","printer-infoman-total");
     $display("Information Manager original-ROM PTR report/tape path passed");
     $finish;
 end
-initial begin #180s;$fatal(1,"Information Manager timeout pc %h bytes %0d tape %b/%b",pc,byte_count,tape_busy,tape_error);end
+initial begin
+    repeat(8) begin
+        #10s;
+        $display("Infoman progress pc %h bytes %0d cassette %b/%b input %b capture %0d",pc,byte_count,tape_busy,tape_error,command_ready,status_code);$fflush();
+    end
+end
+initial begin #90s;$fatal(1,"Information Manager timeout pc %h bytes %0d tape %b/%b",pc,byte_count,tape_busy,tape_error);end
 endmodule

@@ -40,7 +40,7 @@ parity. NUL, CR/LF, FF and flow-control values are not filtered.
 Timeshare's manual describes both keyboard entries and host output going to
 the printer. Its Expander routing copies modem input to printer TX. Remote
 echo therefore includes keyboard entries in full duplex; local screen echo
-alone must not be assumed to print them. Capture never fills in missing printer
+alone does not print them in the tested original-ROM configuration. Capture never fills in missing printer
 bytes from modem TX. PC ON/OFF controls display of control characters on the
 screen and does not start or stop capture. See the validation results below for
 the tested duplex/echo combinations.
@@ -144,8 +144,20 @@ image/export tests, faults and stock-hps_io three-drive contention. The
 standalone tests scale CLOCK_HZ for speed; the original-ROM capture test uses
 the real clock and firmware at both rates. `test-printer-cartridge` exercises
 Timeshare keyboard/echo/duplex behavior through the original machine ROMs.
+At both rates, typing A and CR and receiving X captured `41 8D 58` with remote
+echo, and only `58` without echo, in both full and half duplex. Capture on/off
+runs preserved keyboard modem transmission. The capture records printer TX;
+it does not add locally displayed keyboard characters to the stream.
 Stock hps_io tests suppress simulator diagnostics for pre-existing inactive
 PS/2 and video helper constructs; sys itself is unchanged.
+
+The October 25, 2026 Quartus 17.0.2 validation build used 13,641 ALMs and
+144 RAM blocks, compared with the saved pre-capture baseline's 12,797 ALMs and
+137 RAM blocks. Both capture memories infer as RAM. Constrained setup/hold
+checks pass; the existing framework still has unconstrained external ports.
+With the asynchronous board activity LED explicitly excluded in both timing
+audits, the baseline and candidate have identical unconstrained-path counts.
+The current candidate includes the committed OSD and Music Teacher changes.
 
 Hardware validation remains required. Test both rates with a running modem
 bridge, export known printer bytes, and confirm communication continues after

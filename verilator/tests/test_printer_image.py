@@ -73,7 +73,7 @@ class PrinterImageTests(unittest.TestCase):
             if count is not None:
                 self.assertEqual(len(payload), count)
             self.assertEqual(payload, b'\xa5' if name == 'reset' else bytes(i % 256 for i in range(len(payload))))
-        broken = root / 'printer-framing.vbp' 
+        broken = root / 'printer-framing.vbp'
         sessions, fault = vbp.inspect(broken)
         self.assertIsNone(fault)
         self.assertEqual(sessions[0]['reason'], 'framing')
@@ -98,6 +98,55 @@ class PrinterImageTests(unittest.TestCase):
                     self.assertIsNone(fault)
                     self.assertEqual(decoded[0]['reason'], 'clean')
                     self.assertEqual(decoded[0]['data'], b'\x3c' if route else b'\0\x20\xa5\r\n\xff')
+
+    def test_timeshare(self):
+        root = Path(__file__).resolve().parents[1] / 'out/expander1'
+        images = [root / f'printer-timeshare-{rate}-{mode}.vbp'
+                  for rate in range(2) for mode in range(4)]
+        if not all(p.exists() for p in images):
+            self.skipTest('run original Timeshare cartridge test first')
+        for i, image in enumerate(images):
+            sessions, fault = vbp.inspect(image)
+            self.assertIsNone(fault)
+            self.assertEqual(len(sessions), 1)
+            self.assertEqual(sessions[0]['reason'], 'clean')
+            self.assertEqual(sessions[0]['baud'], 300 if i < 4 else 110)
+            self.assertEqual(sessions[0]['data'], b'\x41\x8d\x58' if i % 2 else b'\x58')
+
+    def test_tape_contention(self):
+        image = Path(__file__).resolve().parents[1] / 'out/expander1/printer-tapes.vbp'
+        if not image.exists():
+            self.skipTest('run printer/tape contention test first')
+        sessions, fault = vbp.inspect(image)
+        self.assertIsNone(fault)
+        self.assertEqual(sessions[0]['reason'], 'clean')
+        payload = sessions[0]['data']
+        self.assertGreater(len(payload), 0)
+        self.assertEqual(payload, bytes(i % 16 for i in range(len(payload))))
+
+    def test_infoman(self):
+        root = Path(__file__).resolve().parents[1] / 'out/expander1'
+        labels = ['desc', 'records', 'total']
+        if not all((root / f'printer-infoman-{label}.vbp').exists() for label in labels):
+            self.skipTest('run original Information Manager report test first')
+        reports = []
+        for i, label in enumerate(labels):
+            sessions, fault = vbp.inspect(root / f'printer-infoman-{label}.vbp')
+            self.assertIsNone(fault)
+            self.assertEqual(len(sessions), i + 1)
+            self.assertTrue(all(s['reason'] == 'clean' for s in sessions))
+            data = bytes(sessions[-1]['data'])
+            self.assertEqual(data, (root / f'printer-infoman-{label}.bin').read_bytes())
+            self.assertGreater(len(data), 0)
+            self.assertEqual(len(data) % 24, 0)
+            for j in range(0, len(data), 24):
+                self.assertEqual(data[j:j + 6], b'\0     ')
+                self.assertEqual(data[j + 22:j + 24], b'\r\n')
+            reports.append(b'\n'.join(data[j + 6:j + 22] for j in range(0, len(data), 24)))
+        self.assertIn(b'ITEM', reports[0])
+        self.assertIn(b'2', reports[1])
+        self.assertIn(b'3', reports[1])
+        self.assertIn(b'5', reports[2])
 
 
 if __name__ == '__main__':

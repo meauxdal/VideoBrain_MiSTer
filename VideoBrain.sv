@@ -111,7 +111,7 @@ localparam CONF_STR = {
 	// === JOYSTICK BUTTONS ===
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
-	// === STATUS MESSAGES ===
+	// === INFO MESSAGES ===
 	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks,End of tape,Printer no image,Printer scanning,Printer ready,Printer starting,Printer active,Printer flushing,Printer stalled,Printer full,Printer error,Printer read only,Printer bad image,Printer incomplete image,Printer storage error,Printer framing error,Printer overflow,Printer media changed,Printer reset interrupted;",
 	"v,1;",
 	"V,v",`BUILD_DATE

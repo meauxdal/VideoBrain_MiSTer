@@ -238,7 +238,7 @@ test-expander1-serial: test-expander1
 
 .PHONY: test-expander1-serial
 
-test-printer: test-expander1-serial $(TEST_BUILD_ID) test-printer-image test-printer-hps test-printer-rom test-printer-image test-printer-hps test-printer-rom
+test-printer: test-expander1-serial $(TEST_BUILD_ID) test-printer-image test-printer-hps test-printer-rom
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
 		"-gfirmware=$(EXPANDER1_ROM)" -gprinter_only=true --assert-level=error --ieee-asserts=disable
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
@@ -247,7 +247,6 @@ test-printer: test-expander1-serial $(TEST_BUILD_ID) test-printer-image test-pri
 		tests/tb_printer_uart.sv ../VideoBrain.sv $(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv
 	vvp out/expander1/printer_uart
 	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_capture_printer.py
-	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_printer_image.py
 	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_printer_image.py
 
 .PHONY: test-printer
@@ -539,6 +538,7 @@ test-printer-cartridge: $(GEN_V)
 		"+bios2=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin" \
 		"+firmware=$(EXPANDER1_ROM)" \
 		"+cart=../software/1 Cartridges/Timeshare (1978.09.01)(VideoBrain Computer Company)(VideoBrain)(Cart)[CM01].bin"
+	python3 tests/test_printer_image.py PrinterImageTests.test_timeshare
 
 .PHONY: test-printer-cartridge
 
@@ -557,12 +557,13 @@ test-printer-infoman: $(GEN_V)
 		"+firmware=$(EXPANDER1_ROM)" \
 		"+cart=../software/1 Cartridges/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
 		"+fixture=out/expander1/infoman-printer.vbt"
+	python3 tests/test_printer_image.py PrinterImageTests.test_infoman
 
 .PHONY: test-printer-infoman
 
 
 test-printer-tapes: test-expander1
-	python3 ../tools/printer_image.py new out/expander1/printer-tape-blank.vbp --size 32768 || test -f out/expander1/printer-tape-blank.vbp
+	test -f out/expander1/printer-tape-blank.vbp || python3 ../tools/printer_image.py new out/expander1/printer-tape-blank.vbp --size 32768
 	$(GHDL) synth --std=08 --workdir=out/expander1 --out=verilog expander1 > out/expander1/expander1.v
 	$(V) --binary --timing -Wno-fatal -Wno-PROCASSWIRE -Wno-BLKANDNBLK -Wno-PINMISSING \
 		--top-module tb_printer_tapes --Mdir out/expander1/obj_printer_tapes \
@@ -571,5 +572,6 @@ test-printer-tapes: test-expander1
 		tests/printer_hps_model.sv tests/tb_printer_tapes.sv
 	./out/expander1/obj_printer_tapes/Vtb_printer_tapes "+firmware=$(EXPANDER1_ROM)" +capture=0
 	./out/expander1/obj_printer_tapes/Vtb_printer_tapes "+firmware=$(EXPANDER1_ROM)" +capture=1
+	python3 tests/test_printer_image.py PrinterImageTests.test_tape_contention
 
 .PHONY: test-printer-tapes

@@ -1,10 +1,13 @@
-# reference material; don't redistribute
-/refs
+# user-specific
+/AGENTS.md
 
 # local planning; not release documentation
 /ROADMAP.md
 
-# ROM and cartridge images
+# reference material; don't redistribute
+/refs
+
+# ROM and cartridge images; don't redistribute
 /software
 
 # verilator harness build products
@@ -22,30 +25,36 @@ verilator/rtl_v/
 /incremental_db
 /output_files
 
+# more quartus stuff
+dse1_base.qsf
+dse1_base.qpf
+build_id.v
+c5_pin_model_dump.txt
+jtag.cdf
+*.srf
+/dse
+
+# python stuff
+__pycache__/
+*.pyc
+
 # mac
 .DS_Store
 
 # miscellaneous
-*.log
-/rbf_archive
-/music_archive
-build_id.v
-c5_pin_model_dump.txt
-clean_safe.bat
-jtag.cdf
-VideoBrain.qws
-__pycache__/
-*.pyc
-*.srf
-/dse
-*.log
-VideoBrain.dse
-VideoBrain.archive.rpt
-dse1_base.qsf
-dse1_base.qpf
-VideoBrain.dse.rpt
-CLEANUP_HANDOFF.md
 /zip
 /tmp
 /emu
 /local
+*.log
+
+# vb-specific
+VideoBrain.qws
+VideoBrain.dse
+VideoBrain.archive.rpt
+VideoBrain.dse.rpt
+
+# meauxdal's stuff
+/rbf_archive
+/music_archive
+clean_safe.bat
