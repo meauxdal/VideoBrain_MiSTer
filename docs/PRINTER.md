@@ -7,6 +7,15 @@ capture controller sends no acknowledgements or response characters.
 
 ## Capture a report or session
 
+Information Manager's original prototype has printer row-count and serial
+startup problems in the tested execution path. Printer > InfoMan Fix (Reload)
+is Off by default, preserving the original software. To use the correction,
+select On before loading the original cartridge. Reload after changing this
+option in either direction. The core corrects only its loaded RAM copy of
+the recognized original image; automatic mapper detection still applies.
+See [Information Manager printer corrections](INFOMAN.md#printer-corrections)
+for the ROM analysis, theoretical hardware effects and validation limits.
+
 1. Copy `examples/blank-printer.vbp` to the SD card under a new name, or create
    an image with the tool below. Use a different file from either tape image.
 2. Load Expander 1 firmware and a cartridge with printer support.

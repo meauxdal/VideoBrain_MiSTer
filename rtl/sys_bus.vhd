@@ -59,7 +59,8 @@ ENTITY sys_bus IS
 
     joy_linear_base : OUT unsigned(13 DOWNTO 0) := to_unsigned(2580, 14);
     joy_linear_step : OUT unsigned(6 DOWNTO 0) := to_unsigned(7, 7);
-    unknown_cart_profile : IN uv8
+    unknown_cart_profile : IN uv8;
+    infoman_printer_fix : IN std_logic := '0'
     );
 END ENTITY sys_bus;
 
@@ -112,6 +113,29 @@ ARCHITECTURE rtl OF sys_bus IS
   -- APL uses seven 2K chips; the final 2K of its image is padding.
   TYPE cart_t IS ARRAY (0 TO 16383) OF uv8;
   SIGNAL cart_rom : cart_t := (OTHERS => (OTHERS => '0'));
+  SIGNAL cart_rom_we : std_logic;
+  SIGNAL cart_rom_wa : unsigned(13 DOWNTO 0);
+  SIGNAL cart_rom_wdata : uv8;
+
+  TYPE printer_patch_byte_t IS RECORD
+    address : natural RANGE 0 TO 16383;
+    data : uv8;
+  END RECORD;
+  TYPE printer_patch_t IS ARRAY (natural RANGE <>) OF printer_patch_byte_t;
+  -- InfoMan prototype: initialize printer rows and prime 300-baud serial idle.
+  CONSTANT INFOMAN_PRINTER_PATCH : printer_patch_t := (
+    (16#16CA#, x"28"), (16#16CB#, x"17"), (16#16CC#, x"F8"),
+    (16#16CD#, x"2B"), (16#16CE#, x"2B"),
+    (16#07F8#, x"40"), (16#07F9#, x"2A"), (16#07FA#, x"0C"),
+    (16#07FB#, x"28"), (16#07FC#, x"17"), (16#07FD#, x"29"),
+    (16#07FE#, x"3F"), (16#07FF#, x"F9"),
+    (16#1FF9#, x"70"), (16#1FFA#, x"2A"), (16#1FFB#, x"0F"),
+    (16#1FFC#, x"DF"), (16#1FFD#, x"17"), (16#1FFE#, x"1C"),
+    (16#1E31#, x"32"), (16#1E32#, x"94"), (16#1E33#, x"FE"),
+    (16#1E34#, x"20"), (16#1E35#, x"20"), (16#1E36#, x"B1")
+    );
+  SIGNAL printer_patch_active : std_logic := '0';
+  SIGNAL printer_patch_index : natural RANGE INFOMAN_PRINTER_PATCH'RANGE := 0;
 
   TYPE cart_ram_t IS ARRAY (0 TO 1023) OF uv8;
   SIGNAL cart_ram : cart_ram_t := (OTHERS => (OTHERS => '0'));
@@ -342,6 +366,22 @@ BEGIN
     END IF;
   END PROCESS;
 
+  cart_rom_we <= '0' WHEN cart_unload = '1' ELSE
+                 dl_cart WHEN dl_index = to_unsigned(2, 8) ELSE printer_patch_active;
+  cart_rom_wa <= dl_addr(13 DOWNTO 0) WHEN dl_index = to_unsigned(2, 8) ELSE
+                 to_unsigned(INFOMAN_PRINTER_PATCH(printer_patch_index).address, 14);
+  cart_rom_wdata <= dl_data WHEN dl_index = to_unsigned(2, 8) ELSE
+                    INFOMAN_PRINTER_PATCH(printer_patch_index).data;
+
+  PROCESS (clk) IS
+  BEGIN
+    IF rising_edge(clk) THEN
+      IF cart_rom_we = '1' THEN
+        cart_rom(to_integer(cart_rom_wa)) <= cart_rom_wdata;
+      END IF;
+    END IF;
+  END PROCESS;
+
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
@@ -389,9 +429,13 @@ BEGIN
         ELSIF cart_size = to_unsigned(16#2000#, cart_size'length) AND
               (NOT cart_crc) = CART_CRC_INFOMAN THEN
           cart_auto_type <= to_unsigned(CART_INFOMAN, 8);
+          IF infoman_printer_fix = '1' THEN cart_loaded_l <= '0'; END IF;
         ELSIF is_standard_cart(cart_crc, cart_size) THEN
           cart_auto_type <= to_unsigned(CART_STD, 8);
         END IF;
+      ELSIF printer_patch_active = '1' AND
+            printer_patch_index = INFOMAN_PRINTER_PATCH'high THEN
+        cart_loaded_l <= '1';
       ELSE
         cart_dl_prev <= '0';
       END IF;
@@ -410,8 +454,24 @@ BEGIN
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
-      IF dl_cart = '1' THEN
-        cart_rom(to_integer(dl_addr(13 DOWNTO 0))) <= dl_data;
+      IF cart_unload = '1' THEN
+        printer_patch_active <= '0';
+        printer_patch_index <= 0;
+      ELSIF dl_index = to_unsigned(2, 8) THEN
+        printer_patch_active <= '0';
+        printer_patch_index <= 0;
+      ELSIF cart_dl_prev = '1' AND
+            infoman_printer_fix = '1' AND
+            cart_size = to_unsigned(16#2000#, cart_size'length) AND
+            (NOT cart_crc) = CART_CRC_INFOMAN THEN
+        printer_patch_active <= '1';
+        printer_patch_index <= 0;
+      ELSIF printer_patch_active = '1' THEN
+        IF printer_patch_index = INFOMAN_PRINTER_PATCH'high THEN
+          printer_patch_active <= '0';
+        ELSE
+          printer_patch_index <= printer_patch_index + 1;
+        END IF;
       END IF;
     END IF;
   END PROCESS;

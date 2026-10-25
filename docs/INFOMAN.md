@@ -62,7 +62,7 @@ Single-deck append or editing remains unverified. EDIT with only the record deck
 
 ## ROM identity
 
-The three chips in MAME's `infoman.zip` are identical to Sean Riddle's corresponding ROM dumps. The assembled cartridge contains the same bytes plus a 2 KB zero-filled gap.
+The three chips in MAME's `infoman.zip` are identical to Sean Riddle's corresponding ROM dumps. The assembled cartridge contains the same bytes plus a 2 KB zero-filled gap. Public chip identities and hashes are listed in [MAME's VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml#L226). These identify the prototype dump; they do not establish its behavior on original hardware.
 
 | CPU addresses | MAME chip | SHA-1 |
 |---|---|---|
@@ -163,7 +163,7 @@ The display routine formats screen text first. At 3615-3626 it calls 3716 only w
 
 At 3732-3777, the cartridge transmits a leading zero byte, five ASCII spaces, sixteen converted screen glyphs, then CR (0D) and LF (0A) for each buffered line. Glyph conversion uses the table at 3782, indexed at 3755. It iterates the buffered display lines using the count at 0C28, then waits for completion and returns through 3B19. This is a short-line screen-text dump; exact hard-copy layout, framing and physical-printer compatibility need operating checks.
 
-The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Use Printer > Mount Capture Image at 300 baud to capture this stream independently; see [printer capture images](PRINTER.md). The shared-UART diagnostic remains available in [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Original-ROM tests verify printer-only transmission without responses at 110/300 baud; complete cartridge reports and physical printing still need hardware validation.
+The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Use Printer > Mount Capture Image at 300 baud to capture this stream independently; see [printer capture images](PRINTER.md). The shared-UART diagnostic remains available in [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Expander ROM tests verify printer-only transmission without responses at 110/300 baud. P DESC PTR and P ALL PTR passed hardware tests with the cartridge corrections below; totals and physical printing remain unverified.
 
 ### Printer execution and failure boundary
 
@@ -185,12 +185,136 @@ the handler advances serial output every third timer interrupt. This agrees
 with nominal 300 baud. Routing 02 copies host data to printer TX at 04C4-04CE;
 it does not require printer RX acknowledgements.
 
-Hardware stopped after DB: TEST with and without a mounted printer image.
-The later display failure also occurred without an image. These observations
-locate the unresolved failure in or after the first printer call, but do not
-identify the failing instruction. A missing interrupt should exercise the
-cartridge's timeout path; sustained failure also requires checking context
-restoration and the BIOS 4501 video-Y wait used by that path.
+Hardware remained at DB: TEST with and without a mounted printer image.
+The synchronized original-ROM reproduction enters 3716 with line counter
+0C28 equal to 00. The first glyph reads span 0FAF-0FBE, including BIOS workspace
+rather than the intended text. Values outside the glyph table select unrelated
+ROM bytes through signed ADC. At 3774, the counter underflows from 00 to FF,
+then FE after the next line. The loop therefore attempts 256 lines, roughly
+four minutes at 300 baud. No initializer for 0C28 was found on this path.
+The cartridge chip hashes match the documented prototype ROMs above.
+
+A separate startup framing fault precedes that output. The Expander copies
+the last setup bit before the host's start bit, producing ten low bit periods
+for the initial NUL. The strict receiver reports framing and stops capture;
+serial transfer and interrupt acknowledgements continue afterward. This does
+not establish how a physical printer tolerates startup or justify changing
+the original ROM or silently discarding malformed bytes.
+
+The later hardware display corruption/blanking also occurred without a
+printer image. Its cause remains unresolved; the counter underflow explains
+the prolonged first printer call, but the observed reads alone do not explain
+a change to display state.
+
+### Expected effects on original hardware
+
+The observations above come from MiSTer hardware and simulation. There is no
+original-VideoBrain printer trace confirming these failures. The row-count
+finding follows the cartridge instructions; the serial-startup finding also
+depends on modeled host/Expander timing. A timing discrepancy in emulation
+has not been ruled out by the successful patch.
+
+If an original machine enters 3716 with 0C28=00, the same instructions should
+attempt 256 lines, reading unintended memory and taking roughly four minutes
+per printer invocation at 300 baud. A physical printer could print garbage
+and excess lines while the screen appears stalled. Different initial RAM
+contents could change the count and selected rows; original-machine RAM
+initialization on this path has not been verified. These reads do not by
+themselves explain display corruption or blanking.
+
+If the serial startup waveform is also reproduced, its initial NUL stays low
+for about ten bit periods. A receiver checking the stop bit at the usual
+position can report a framing error. A physical printer might discard that
+NUL, substitute a character, or indicate an error; recovery depends on the
+printer. The core's capture controller stops on framing error, so capture
+failure does not prove that a physical printer would stop or reject the rest
+of the report.
+
+For a bounded printer trace, run from `verilator`:
+
+```
+make test-printer-infoman-apple INFOMAN_APPLE_ARGS=+diagnose_printer
+```
+
+This observes six simulated seconds after printer entry, records rejected
+frames, and writes system-RAM/video-register writes with the executing PC to
+`out/expander1/printer-infoman-apple-diagnostic-writes.csv`. Diagnostic
+completion is not a passing printer test. The default test still rejects
+framing errors.
+
+The six-second APPLE diagnostic decoded 164 valid frames and rejected the
+initial NUL. The line count reached FA and video remained enabled. BIOS
+routine 427F repeatedly wrote the same object-register values throughout
+this window. The delayed hardware display failure was not reproduced.
+
+### Printer corrections
+
+Printer > InfoMan Fix (Reload) is Off by default. Off preserves the original
+cartridge bytes and execution. On opts into a software correction rather than
+a change to CPU or Expander emulation. Set the option before loading the
+original cartridge; reload after changing it in either direction. A soft
+reset alone does not replace the loaded bytes.
+
+When On, the core patches its loaded RAM copy only for an 8192-byte image
+with the original InfoMan CRC B5CB57CE. The option is sampled at download
+completion, and cartridge availability stays low until the writes finish.
+The ROM file and Expander firmware remain unchanged. Other images, including
+those using the Info. Manager mapper fallback, are not modified. The same
+correction is available through the standalone patcher for independent tests;
+users do not need a separately patched ROM for the core option.
+
+The cartridge test compares all ROM bytes with the original when Off and
+with the hardware-tested patched image when On. It checks CPU/DMA reads,
+soft-reset retention, reload in both directions, and rejection of an altered
+CRC even with the mapper fallback selected. The toggle integration still
+needs a hardware build and test using the original cartridge image.
+
+`tools/patch_infoman_printer.py` accepts only the original 8192-byte image
+(SHA256 `9b580726ad5d899a316901ad4513622a9e66e8131da3d6ac3de40180a2200d8f`)
+and creates a separate output without overwriting an existing file:
+
+```
+python3 tools/patch_infoman_printer.py original.bin infoman-printer-count.bin
+```
+
+The patch copies the formatter's scroll count R0 at 36C6 into printer counter
+0C28. A hook at 36CA calls padding at 17F8 and 3FF9, preserving the original
+cursor clear and return. It does not change serial startup. This experiment
+requires the Information Manager cartridge profile because its checksum
+differs from the original. Simulation uses `+cart_profile=4`.
+
+The APPLE test accepts `INFOMAN_APPLE_CART` to select an experimental image
+and `INFOMAN_APPLE_ARGS` for diagnostic options. Use a distinct `+report_label`
+to preserve earlier traces; `+check_printer_rows` asserts counts of 1-7 and
+glyph reads within 0F3F-0FAE with valid glyph indices. The APPLE count-only
+experiment printed DB: TEST, NAME: ITEM, LENGTH: 008 and TYPE: A, then returned
+to the prompt. All row/glyph assertions passed. Its 92 decoded bytes match
+those four lines exactly; the four leading NUL frames were rejected.
+
+Add `--serial-idle` to create a combined experiment. At 3E31 it replaces the
+redundant callback-vector setup with a delay and an idle-high port write.
+The preceding command sender already selects callback 3E17 and leaves R2=0
+after routing byte 02. A 256-iteration DS/BNZ loop allows that bit to be
+sampled before driving mark ahead of the first 300-baud printer timer copy.
+Later bytes enter with R2=1 and wait one iteration. Data and stop bits are
+unchanged. This timing correction is specific to this ROM's 300-baud setup.
+
+```
+python3 tools/patch_infoman_printer.py original.bin infoman-printer-idle.bin --serial-idle
+```
+
+Hardware testing of the combined image confirmed P DESC PTR displayed the
+APPLE database definition, returned to the prompt, and captured without a
+reported framing error. P ALL PTR record printing also passed hardware
+testing with the combined image. Select System > Mapper Fallback > Info. Manager
+before loading the patched cartridge. The original cartridge and Expander
+firmware remain unchanged. Exported-byte comparison, totals, multi-line
+fields and prolonged display stability remain unverified.
+
+The strict APPLE test's `+check_apple_report` option checks all 96 expected
+bytes, rejects framing errors, and checks the callback/loop-register entry
+state. Use it with `+check_printer_rows` and `+cart_profile=4`, without
+`+diagnose_printer`, to test the combined image.
 
 ### DESC: database definition display
 

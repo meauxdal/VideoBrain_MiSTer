@@ -559,6 +559,9 @@ test-printer-infoman: $(GEN_V)
 		"+fixture=out/expander1/infoman-printer.vbt"
 	python3 tests/test_printer_image.py PrinterImageTests.test_infoman
 
+INFOMAN_APPLE_ARGS ?= +trace_serial +trace_transfer
+INFOMAN_APPLE_CART ?= ../software/1 Cartridges/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin
+
 test-printer-infoman-apple: $(GEN_V)
 	@mkdir -p out/expander1
 	$(V) --binary --timing -Wno-fatal -Wno-PROCASSWIRE -Wno-BLKANDNBLK -Wno-PINMISSING \
@@ -570,8 +573,8 @@ test-printer-infoman-apple: $(GEN_V)
 		"+bios1=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin" \
 		"+bios2=../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin" \
 		"+firmware=$(EXPANDER1_ROM)" \
-		"+cart=../software/1 Cartridges/Information Manager (1978)(VideoBrain Computer Company)(VideoBrain)(Cart)(prototype)[VB-1200].bin" \
-		"+fixture=../examples/saves/Information Manager - APPLE.vbt" +apple +trace_serial +trace_transfer
+		"+cart=$(INFOMAN_APPLE_CART)" \
+		"+fixture=../examples/saves/Information Manager - APPLE.vbt" +apple $(INFOMAN_APPLE_ARGS)
 
 .PHONY: test-printer-infoman test-printer-infoman-apple
 

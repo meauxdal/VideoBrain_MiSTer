@@ -18,7 +18,7 @@ videobrain_core core(.clk(clk),.reset_na(reset_na),.progressive(1'b1),
     .expander_playback_data(1'b1),.expander_modem_rxd(modem_rxd),
     .expander_modem_txd(modem_txd),.expander_printer_txd(printer_txd),
     .dl_addr(dl_addr),.dl_data(dl_data),.dl_wr(dl_wr),.dl_index(download_index),
-    .cart_unload(1'b0),.unknown_cart_profile(8'd0),.pc0(pc));
+    .cart_unload(1'b0),.unknown_cart_profile(8'd0), .infoman_printer_fix(1'b0),.pc0(pc));
 reg [7:0] download_index=8'hff;
 wire [31:0] lbas[3];
 wire [2:0] reads,writes,acks;

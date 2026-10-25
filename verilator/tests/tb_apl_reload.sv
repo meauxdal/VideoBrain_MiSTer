@@ -21,7 +21,7 @@ videobrain_core core (
     .expander_playback_enable(playback_enable), .expander_playback_data(playback_data),
     .expander_modem_rxd(1'b1), .f8_po_a_n(port_a), .f8_po_b_n(port_b),
     .dl_addr(dl_addr), .dl_data(dl_data), .dl_wr(dl_wr), .dl_index(dl_index),
-    .cart_unload(1'b0), .unknown_cart_profile(8'd0),
+    .cart_unload(1'b0), .unknown_cart_profile(8'd0), .infoman_printer_fix(1'b0),
     .apl_input_ready(ready), .y_zoom(y_zoom), .background(background),
     .video_en(video_en), .pc0(pc)
 );

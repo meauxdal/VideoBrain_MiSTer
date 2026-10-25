@@ -152,6 +152,7 @@ module top(
       .cart_unload(1'b0),
       .cart_loaded(),
       .unknown_cart_profile (cart_type),
+      .infoman_printer_fix (1'b0),
       .apl_available (apl_available),
       .apl_load_error (apl_load_error),
       .apl_symbols (apl_symbols),
