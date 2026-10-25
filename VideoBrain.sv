@@ -80,6 +80,7 @@ localparam CONF_STR = {
 	"P2-;",
 	"P2F0,BIN,Load BIOS;",
 	"P2F2,BIN,Load Expander 1 ROM;",
+	"P2O[32],UART Output,Modem,Printer;",
 	"P2-;",
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
 	"P2O[24],Reset on Cartridge Load,On,Off;",
@@ -188,6 +189,11 @@ hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
 
 
 wire clk_sys;
+wire expander_modem_rxd, expander_modem_txd, expander_printer_txd;
+// Select before starting a transfer. The shared HPS UART captures the actual
+// printer connector, including firmware-directed modem-to-printer copies.
+assign UART_TXD = status[32] ? expander_printer_txd : expander_modem_txd;
+assign expander_modem_rxd = status[32] ? 1'b1 : UART_RXD;
 wire pll_locked;
 pll pll
 (
@@ -500,8 +506,9 @@ videobrain_core core
 	.expander_record_enable (tape_record_enable),
 	.expander_playback_data (tape_playback_data),
 	.expander_playback_enable (tape_playback_enable),
-	.expander_modem_rxd (UART_RXD),
-	.expander_modem_txd (UART_TXD),
+	.expander_modem_rxd (expander_modem_rxd),
+	.expander_modem_txd (expander_modem_txd),
+	.expander_printer_txd (expander_printer_txd),
 	.f8_po_a_n  (),
 	.f8_po_b_n  (),
 

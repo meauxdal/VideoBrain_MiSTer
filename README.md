@@ -36,23 +36,33 @@ The OSD provides these file actions:
 | Mount Record Tape | Mount writable .vbt |
 | Keyboard > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
-For tape function in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. 
+### Cartridges (BIN)
 
-Information Manager's EDIT mode requires a tape with an existing saved record in Playback, in addition to Record tape to receive modified data. If this is not configured, an I/O ERR will occur. You may also encounter this error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning. See the [Information Manager user manual](docs/INFOMAN-MANUAL.md) for database concepts and instructions for creating, reading and editing databases.
+All 18 (17 retail and 1 prototype) known VideoBrain cartridge dumps are supported. Cartridge ROMs must be a single raw .bin image, with any split chip dumps assembled in the correct layout. Mappers are selected automatically for all known titles. System > Mapper Fallback can be used to manually set the memory mapping for an unrecognized cartridge.
 
-.vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses as well. They can be used in any software. [Example](/examples) files and a [converter](tools/README.md#keyboard-files) to create new files are provided.
+Information Manager and APL/S: The Computational Language need assembled ROM images. See [cartridge assembly](docs/CARTRIDGES.md#split-cartridge-conversion).
 
-The converter accepts valid text files and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries.
+### Tapes (VBT)
+
+Tapes are used to save and restore user data on the VideoBrain, not to load software directly. To enable tape save/load in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. 
+
+You may encounter an I/O error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning. See [tape setup and recording behavior](docs/TAPE.md) for more info on loading from/saving to tape.
+
+Note that [Information Manager](docs/INFOMAN-MANUAL.md)'s EDIT mode uniquely requires a tape with an existing saved record in Playback, in addition to a Record tape to receive modified data. If this is not configured, an I/O ERR will occur. 
+
+### Keyboard Entry (VBK)
+
+.vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses (including playback of monophonic music files in Music Teacher 1). They can be loaded in any software, including the BIOS. [Example](/examples) files and a [converter](tools/README.md#keyboard-files) to create new files are provided.
+
+The converter accepts text files containing supported inputs and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries. The loader is configured to wait just long enough for the software to signal it is ready to accept each new keypress, preventing dropped inputs. Pressing any key or opening the OSD aborts entry. Keyboard > Menu Aborts VBK can be optionally disabled to allow .vbk playback to continue while in the menu.
 
 Music Macro Language (.mml) files can also be converted. MML files must use a simplified subset of the QB64 PLAY format. The converter generates unique musical .vbk files (with VBK2 header for differentiation from text entry files) for automatic playback in the free play mode in Music Teacher 1. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
 
-Unload Cartridge returns to the built-in BIOS.
+### Options
 
 System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, pressing this key will instantly wipe out any program in RAM. Keyboard > Esc Soft Reset > Off can be set to prevent accidental activation.
 
-System > Info Messages can optionally disable pop-up notifications.
-
-See [tape setup and recording behavior](docs/TAPE.md) for more info on loading from/saving to tape.
+Pop-up overlays provide status during use: keyboard file entry starting, finishing or being aborted; joystick calibration in progress; and tape activity, rewinding, end of tape or errors. Tape busy means a tape operation is in progress; Tape idle means activity has ended, but does not verify the saved data. Tape error reports a controller failure even if the software reports TAPE OK. Messages appear after the OSD closes. System > Info Messages > Off disables these notifications, including error messages.
 
 ## Keyboard
 
@@ -90,53 +100,13 @@ Joysticks > Paired Sticks lets a controller's right stick and Fire (Paired) oper
 
 VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary. It seems to work fine, but please try with this setting disabled if you have issues.
 
-## Split cartridge dumps
+## Timeshare online over UART
 
-Information Manager and APL/S: The Computational Language need assembled ROM images. See [cartridge assembly](docs/CARTRIDGES.md#split-cartridge-conversion).
+The Timeshare cartridge can connect to remote text services through MiSTer's HPS UART and a Linux network bridge. Interactive sessions with Telehack have been verified at 300 baud, bringing online text adventures and commands to the VideoBrain's 24-column, 15-line display. Timeshare sends and displays uppercase characters only.
 
-## Timeshare over UART - Telehack Example
+Expander 1 firmware (boot1.rom) is required. See the [Timeshare setup and Telehack example](docs/EXPANDER1.md#timeshare-over-uart) for connection commands, keyboard controls, and display setup.
 
-Timeshare can connect to a text service through HPS, mimicking the function of the Expander 2 acoustic modem (acoustic emulation is not implemented). Notably, Timeshare can't send or display lowercase characters. This limits what you can realistically interface with. Telehack works well, though.
-
-Expander 1 ROM (boot1.rom) is required for serial.
-
-1. Load Timeshare cartridge
-2. Set MiSTer's UART connection to None
-3. Ensure SSH is enabled on your MiSTer, then run this command over SSH (requires socat and telnet):
-
-```sh
-stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
-  cs8 -parenb -cstopb clocal istrip
-
-TERM=dumb socat -d -d \
-  FILE:/dev/ttyS1 \
-  EXEC:'telnet telehack.com 23',pty,setsid,ctty,rawer,echo=0
-```
-
-In Timeshare, F5 sends Carriage Return to submit a line. PC Enter still aliases F3 (NEXT), not Carriage Return. Unlike the rest of the software library, SHIFT is held, not a toggle.
-
-Telehack spacing will be disorganized as it expects a larger screen by default. Type this command (/ is Shift+H):
-
-```text
-STTY /TTY
-```
-
-(If you don't see what you're typing, you might be in half-duplex mode. To set full duplex in Timeshare use F4 + Shift + D. Full-duplex is the default. To set half-duplex, it's F4 + Shift + H)
-
-You'll be prompted for the number of columns and rows your setup allows. Timeshare uses 24 by 15.
-
-```text
-NUMBER OF COLS? 24
-NUMBER OF ROWS? 15
-```
-
-You should get a confirmation.
-
-```text
-%SIZE SET: 24X15
-```
-
-See [Timeshare setup, keys, and diagnostics](docs/EXPANDER1.md#timeshare-over-uart).
+For printer output, select **System > UART Output > Printer** and use the [Linux file-capture utility](docs/EXPANDER1.md#printer-file-capture). It captures the actual printer stream, including Information Manager's PTR output. **Modem** is the default for Timeshare; the UART serves one port at a time. Printer capture is simulation-tested; live MiSTer capture remains unverified.
 
 ## Tools
 

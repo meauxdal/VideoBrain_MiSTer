@@ -27,6 +27,7 @@ BEGIN
       audio_code => OPEN, audio_stb => audio_stb, joy_enable => OPEN,
       expander_record_data => OPEN, expander_record_enable => OPEN,
       expander_playback_enable => OPEN, expander_modem_txd => OPEN,
+      expander_printer_txd => OPEN,
       f8_po_a_n => OPEN, f8_po_b_n => OPEN, brclk_ena => OPEN,
       ce_pix => OPEN, vid_idx => OPEN, vid_r => OPEN, vid_g => OPEN,
       vid_b => OPEN, vid_de => OPEN, vid_hs => OPEN, vid_vs => OPEN,

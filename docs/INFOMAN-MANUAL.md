@@ -126,13 +126,13 @@ Mount a fresh writable blank in **Mount Record Tape**, then submit `ENTER` at `:
 
 Press NEXT after each answer. The program returns to `NAME:` to collect another field definition. When the definition is complete, leave the next `NAME:` empty and press SPECIAL. At `OK (Y/N)?`, check your definition before submitting `Y`. Confirming it records the database definition and begins record entry.
 
-For a small inventory, you could name the database `STOCK` and define ITEM with length `8` and type `A`. At the next empty `NAME:`, press SPECIAL and confirm with `Y`. The program will then ask for `ITEM:` values.
+For a complete worked example, follow the [APPLE tape tutorial](../examples/saves/README.md#information-manager-apple). It covers database creation, recording, reload verification and an edited output copy.
 
 ### Enter records
 
 The program uses the field names as prompts. Type a value at each prompt and press NEXT to accept it. A complete set of field values makes one record. Information Manager records a completed record before asking for the next one.
 
-For the one-field inventory, entering `APPLE` at `ITEM:` and pressing NEXT creates one record. The next empty `ITEM:` prompt is the start of another record, not a request to rename the field. Enter the next item there, or leave the prompt empty and press SPECIAL to finish entry.
+After a complete record, the next empty field prompt starts another record. It does not rename the field. Enter another record there, or leave the prompt empty and press SPECIAL to finish entry.
 
 For a definition with several fields, fill in each field of the record in turn. Finish the last record before using SPECIAL at the start of the next empty record. The ROM contains loops for multiple fields and records; hardware verification so far covers a single text field and a single record. See [coverage and additional features](#coverage-and-additional-features) before relying on a larger database.
 
@@ -145,7 +145,7 @@ Use REVIEW when you want to inspect saved data. A Record Tape is not needed.
 1. Mount the database with **Mount Playback Tape** and select **Rewind Playback Tape**.
 2. Submit `REVIEW` at `:`. The program reads the definition and first record, then presents `/`.
 3. Submit `PRINT ALL` at `/` to display the remaining records, including the first record already read.
-4. Check the field labels and values. A database containing ITEM = APPLE displays `ITEM: APPLE`.
+4. Check every field label and value against the records you entered.
 5. After the records, the program displays `END OF TAPE` and returns to `/`. Submit `EXIT` to return to the opening screen.
 
 `END OF TAPE` after the expected records is normal completion of this listing. If records are missing, the message alone does not establish that the database is complete.
@@ -233,7 +233,7 @@ The printer flag applies to that output operation. An output command without PTR
 
 The ROM sends formatted screen text through the Expander 1 printer serial connection, converting VideoBrain glyphs to ASCII and terminating lines with carriage return and line feed. It selects the 300-baud timing setting and printer routing. The exact printer requirements and hard-copy formatting have not been verified in operation.
 
-**The current MiSTer core does not connect the printer output.** Its printer receive input is held idle and transmit output is left unconnected; the modem UART connection does not provide this printer destination. PTR syntax and its ROM output path are documented here, but there is no working hard-copy output in this core configuration. Continue to use commands without PTR for normal screen review.
+For file capture, select **System > UART Output > Printer** and start the Linux capture utility before issuing the PTR command. See [printer file capture](EXPANDER1.md#printer-file-capture) for setup and raw file handling. Printer input stays idle; the original-ROM tests require no response characters. The shared UART handles modem or printer output one at a time. Live report capture and physical printing remain unverified. Commands without PTR continue to use normal screen review.
 
 ## Change a database
 
@@ -248,7 +248,7 @@ Use EDIT to make a revised copy of an existing database. Keep the source image i
 7. Wait for recording activity to finish and the user LED to clear.
 8. Mount the output file as Playback Tape, rewind it, and use REVIEW followed by PRINT ALL to check the revised database.
 
-For example, changing ITEM from `APPLE` to `PEPSI` replaces that field's value in the output database. The field is still named ITEM, and its text width is still eight characters. Editing a value does not redefine the database structure.
+Editing a value changes that record in the output copy; it does not rename the field or redefine its type or width. The [APPLE tape tutorial](../examples/saves/README.md#information-manager-apple) includes an edit and reload check.
 
 The one-field workflow has been checked both by accepting an unchanged value and by changing it and reading back the output. Detailed cursor, insertion and deletion key behavior still needs documentation.
 
@@ -330,6 +330,6 @@ The ROM also contains commands for more advanced database work. These terms desc
 | `SORT` | REVIEW's `SORT=fieldname` groups numeric reports by an A/text field; see the instructions above. It preserves tape order. Grouped hardware reports remain to be checked. |
 | `TOT`, `TOTAL` | In REVIEW, TOT=numericfield chooses the I/M field to sum; TOTAL (T) displays the accumulated report. See SORT above for grouped counts, sums and the grand total. Numeric hardware reports remain unverified. |
 | `MERGE` | EDIT's MERGE/M copies the remaining input, pauses for another tape and continues the same output. Use matching layouts; see the procedure above. Hardware tape-change/output checks remain outstanding. |
-| `PTR` | REVIEW's trailing printer modifier, as in P ALL PTR, DESC PTR or TOTAL PTR. See the instructions above. The core's printer output is unconnected; hard-copy operation remains unverified. |
+| `PTR` | REVIEW's trailing printer modifier, as in P ALL PTR, DESC PTR or TOTAL PTR. See the file-capture instructions above; physical printing remains unverified. |
 
 Use the [research notes](INFOMAN.md) for command-table details and open questions. They distinguish recognized command words from complete, tested operating instructions.

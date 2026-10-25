@@ -37,6 +37,7 @@ ENTITY videobrain_core IS
     expander_playback_enable : OUT std_logic;
     expander_modem_rxd : IN std_logic := '1';
     expander_modem_txd : OUT std_logic;
+    expander_printer_txd : OUT std_logic;
 
     f8_po_a_n : OUT uv8;
     f8_po_b_n : OUT uv8;
@@ -405,7 +406,7 @@ BEGIN
       record_data => expander_record_data, record_enable => expander_record_enable,
       playback_data => expander_playback_data, playback_enable => expander_playback_enable,
       modem_rxd => modem_rxd_sync, modem_txd => expander_modem_txd,
-      printer_rxd => '1', printer_txd => OPEN,
+      printer_rxd => '1', printer_txd => expander_printer_txd,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index
       );

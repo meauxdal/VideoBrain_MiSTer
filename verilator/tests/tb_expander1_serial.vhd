@@ -5,7 +5,8 @@ USE std.env.ALL;
 USE work.base_pack.ALL;
 
 ENTITY tb_expander1_serial IS
-  GENERIC (firmware : string := ""; baud_rate : positive := 300);
+  GENERIC (firmware : string := ""; baud_rate : positive := 300;
+           printer_only : boolean := false);
 END ENTITY;
 
 ARCHITECTURE test OF tb_expander1_serial IS
@@ -23,9 +24,11 @@ ARCHITECTURE test OF tb_expander1_serial IS
   SIGNAL reverse_ports : boolean := false;
   SIGNAL tx_line, copy_line, rx_line : std_logic;
   SIGNAL tx_done, copy_done, host_done, rx_done : boolean := false;
+  TYPE byte_list IS ARRAY (natural RANGE <>) OF uv8;
+  CONSTANT printer_bytes : byte_list := (x"00", x"20", x"A5", x"0D", x"0A", x"FF");
 BEGIN
   clk <= NOT clk AFTER 34920639 fs;
-  tx_line <= printer_txd WHEN reverse_ports ELSE modem_txd;
+  tx_line <= printer_txd WHEN reverse_ports OR printer_only ELSE modem_txd;
   copy_line <= modem_txd WHEN reverse_ports ELSE printer_txd;
   modem_rxd <= rx_line WHEN NOT reverse_ports ELSE '1';
   printer_rxd <= rx_line WHEN reverse_ports ELSE '1';
@@ -63,7 +66,11 @@ BEGIN
     FOR test IN 0 TO 1 LOOP
       WAIT UNTIL running;
       tx_done <= false;
-      receive_byte(tx_line, x"A5");
+      IF printer_only THEN
+        FOR i IN printer_bytes'RANGE LOOP receive_byte(tx_line, printer_bytes(i)); END LOOP;
+      ELSE
+        receive_byte(tx_line, x"A5");
+      END IF;
       tx_done <= true;
       WAIT UNTIL NOT running;
     END LOOP;
@@ -73,6 +80,7 @@ BEGIN
   PROCESS IS
     VARIABLE value : uv8;
   BEGIN
+    IF printer_only THEN WAIT; END IF;
     FOR test IN 0 TO 1 LOOP
       WAIT UNTIL running;
       copy_done <= false;
@@ -96,6 +104,7 @@ BEGIN
   PROCESS IS
     VARIABLE value : uv8;
   BEGIN
+    IF printer_only THEN WAIT; END IF;
     FOR test IN 0 TO 1 LOOP
       WAIT UNTIL running;
       host_done <= false;
@@ -122,6 +131,7 @@ BEGIN
     CONSTANT value : uv8 := x"3C";
   BEGIN
     rx_line <= '1';
+    IF printer_only THEN WAIT; END IF;
     FOR test IN 0 TO 1 LOOP
       WAIT UNTIL running;
       rx_done <= false;
@@ -186,7 +196,7 @@ BEGIN
     dl_wr <= '0';
 
     FOR test IN 0 TO 1 LOOP
-      reverse_ports <= test = 1;
+      reverse_ports <= test = 1 AND NOT printer_only;
       host_data_n <= '1';
       host_clock_n <= '1';
       reset_na <= '1';
@@ -194,14 +204,29 @@ BEGIN
       host_clock_n <= '0';
       transfer(4);
       IF baud_rate = 110 THEN transfer(1); ELSE transfer(2); END IF;
-      IF test = 0 THEN transfer(16#0D#); ELSE transfer(16#32#); END IF;
+      IF printer_only THEN transfer(2);
+      ELSIF test = 0 THEN transfer(16#0D#); ELSE transfer(16#32#); END IF;
+      -- The command receiver samples the last host bit after releasing IRQ.
+      -- Keep it stable through command completion before driving serial data.
+      WAIT FOR 2 ms;
       host_data_n <= '0';
       running <= true;
-      serial_bit('0');
-      FOR i IN 0 TO 7 LOOP serial_bit(payload(i)); END LOOP;
-      serial_bit('1');
+      IF printer_only THEN
+        FOR b IN printer_bytes'RANGE LOOP
+          serial_bit('0');
+          FOR i IN 0 TO 7 LOOP serial_bit(printer_bytes(b)(i)); END LOOP;
+          -- Information Manager's 3E2D routine sends eight data bits and two
+          -- mark intervals. No incoming printer character is supplied.
+          serial_bit('1');
+          serial_bit('1');
+        END LOOP;
+      ELSE
+        serial_bit('0');
+        FOR i IN 0 TO 7 LOOP serial_bit(payload(i)); END LOOP;
+        serial_bit('1');
+      END IF;
       WAIT FOR 4 * bit_time;
-      ASSERT tx_done AND copy_done AND host_done AND rx_done
+      ASSERT tx_done AND (printer_only OR (copy_done AND host_done AND rx_done))
         REPORT "Serial transaction did not complete" SEVERITY failure;
       reset_na <= '0';
       running <= false;
@@ -209,14 +234,36 @@ BEGIN
       ASSERT modem_txd = '1' AND printer_txd = '1' AND interrupt_n = '1'
         REPORT "Reset did not release serial/host outputs" SEVERITY failure;
     END LOOP;
-    REPORT "Original ROM serial transmit, receive, routing and reset passed";
+    IF printer_only THEN
+      REPORT "Original ROM printer-only stream, idle RX and reset passed";
+    ELSE
+      REPORT "Original ROM serial transmit, receive, routing and reset passed";
+    END IF;
     stop;
     WAIT;
   END PROCESS;
 
   PROCESS IS
   BEGIN
-    WAIT FOR 1 sec;
+    IF NOT printer_only THEN WAIT; END IF;
+    FOR test IN 0 TO 1 LOOP
+      WAIT UNTIL running;
+      WAIT UNTIL falling_edge(printer_txd);
+      WAIT FOR bit_time / 2;
+      -- The unused modem must remain at mark at each printer bit center.
+      FOR bit IN 0 TO printer_bytes'LENGTH * 11 - 1 LOOP
+        ASSERT modem_txd = '1'
+          REPORT "Printer-only serial bits leaked to modem" SEVERITY failure;
+        WAIT FOR bit_time;
+      END LOOP;
+      WAIT UNTIL NOT running;
+    END LOOP;
+    WAIT;
+  END PROCESS;
+
+  PROCESS IS
+  BEGIN
+    WAIT FOR 2 sec;
     ASSERT false REPORT "Serial simulation timed out" SEVERITY failure;
   END PROCESS;
 END ARCHITECTURE;

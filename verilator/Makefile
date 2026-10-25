@@ -238,6 +238,18 @@ test-expander1-serial: test-expander1
 
 .PHONY: test-expander1-serial
 
+test-printer: test-expander1-serial $(TEST_BUILD_ID)
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
+		"-gfirmware=$(EXPANDER1_ROM)" -gprinter_only=true --assert-level=error --ieee-asserts=disable
+	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_serial \
+		"-gfirmware=$(EXPANDER1_ROM)" -gprinter_only=true -gbaud_rate=110 --assert-level=error --ieee-asserts=disable
+	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_printer_uart -o out/expander1/printer_uart \
+		tests/tb_printer_uart.sv ../VideoBrain.sv
+	vvp out/expander1/printer_uart
+	PYTHONDONTWRITEBYTECODE=1 python3 tests/test_capture_printer.py
+
+.PHONY: test-printer
+
 test-expander1-record: test-expander1
 	$(GHDL) -a --std=08 --workdir=out/expander1 tests/tb_expander1_record.vhd
 	$(GHDL) -r --std=08 --workdir=out/expander1 tb_expander1_record \

@@ -6,35 +6,13 @@ For database concepts and operating instructions, see the [user manual](INFOMAN-
 
 Load the cartridge and [Expander 1 firmware](EXPANDER1.md). The initial menu shows PROGRAM / ENTER / REVIEW / EDIT. NEXT is F3 or Enter; SPECIAL is F4.
 
-### Create a small database
+### Worked tape example
 
-Mount a fresh writable [blank tape](TAPE.md) in **Mount Record Tape** before confirming the definition. This ENTER path records incrementally; it does not wait for a separate SAVE.
+Follow the [APPLE tape tutorial](../examples/saves/README.md#information-manager-apple) to create, record, reload and edit the one-record TEST database.
 
-| Prompt | Type | Press |
-|---|---|---|
-| Initial `:` | `ENTER` | NEXT |
-| `DB:` | `TEST` | NEXT |
-| `NAME:` | `ITEM` | NEXT |
-| `LENGTH:` | `008` | NEXT |
-| `TYPE:` | `A` | NEXT |
-| Next empty `NAME:` | Nothing | SPECIAL |
-| `OK (Y/N)?` | `Y` | NEXT |
-| `ITEM:` | `APPLE` | NEXT |
-| Next empty `ITEM:` | Nothing | SPECIAL |
+Hardware testing completed entry and returned to the main page. The saved image contains nine CRC-valid blocks: three identical copies each of the 253-byte TEST definition (ITEM, length 008, type A), the eight-byte `APPLE   ` record, and the zero-length end marker. Hardware REVIEW followed by PRINT ALL displayed `ITEM: APPLE`, then END OF TAPE, confirming the one-record save/load round trip. EXIT returned to the main menu.
 
-Hardware testing completed entry and returned to the main page. The saved image contains nine CRC-valid blocks: three identical copies each of the 253-byte TEST definition (ITEM, length 008, type A), the eight-byte `APPLE   ` record, and the zero-length end marker. Hardware REVIEW followed by PRINT ALL displayed `ITEM: APPLE`, then END OF TAPE, confirming the one-record save/load round trip.
-
-The ROM writes the definition after Y, each completed record before the next field prompt, and an end marker when SPECIAL finishes record entry. Each write is repeated three times. Allow the transfer pauses and wait for the user LED to clear before unmounting. Tape idle only reports controller inactivity.
-
-### Load and display records
-
-1. Finish entry with SPECIAL at an empty ITEM prompt and wait for tape activity to end. Preserve the resulting image.
-2. Start the cartridge again with Expander 1 loaded and choose **Mount Playback Tape** for the saved image.
-3. Choose **Rewind Playback Tape** before playback.
-4. At the initial `:`, type `REVIEW` and press NEXT (F3).
-5. At the `/` prompt, type `PRINT ALL` and press NEXT.
-6. The test database displays `ITEM: APPLE`, then END OF TAPE and another `/` prompt. END OF TAPE is the observed completion of this one-record listing.
-7. At `/`, type `EXIT` and press NEXT to return to the main menu. This is hardware-verified after PRINT ALL.
+The ROM writes the definition after Y, each completed record before the next field prompt, and an end marker when SPECIAL finishes record entry. Each write is repeated three times.
 
 REVIEW's `05 00 02` setup enables the record remote before switching to playback. The controller must preserve the image and playback position during this transition-free handoff; immediate recording invalidation causes I/O ERR. The original-firmware two-record SAVE/LOAD test covers this setup, alongside controller timing, append, protection and interruption tests.
 
@@ -78,7 +56,7 @@ The following capabilities are inferred from the ROM, not hardware-verified oper
 | Counts and totals | REVIEW's TOT=numericfield selects an I/M field for accumulation; TOTAL (T) invokes the report. See SORT and PTR below. Hardware numeric reports remain unverified. |
 | Grouped summaries | SORT=fieldname selects a text key for grouped numeric reports in REVIEW. Groups retain first-encounter order; nine named groups plus OTHER. See the analysis below; hardware reports remain unverified. |
 | Tape merging | EDIT's MERGE/M concatenates inputs through a REWIND / KEY NEXT pause. No schema comparison, field mapping or later-header write. See the analysis below; hardware tape-change/output checks remain outstanding. |
-| Printer reports | REVIEW accepts trailing PTR on PRINT, DESC and TOTAL output. The ROM uses Expander printer routing; current core printer TX is unconnected. See the analysis below; hard-copy results remain unverified. |
+| Printer reports | REVIEW accepts trailing PTR on PRINT, DESC and TOTAL output. Select System > UART Output > Printer for raw file capture through Linux. See the analysis below; live report capture and physical printing remain unverified. |
 
 Single-deck append or editing remains unverified. EDIT with only the record deck populated produced I/O ERR; ENTER starts by defining a database. REVIEW's grammar and write-suppression path do not suggest a persistent ADD workflow.
 
@@ -185,7 +163,7 @@ The display routine formats screen text first. At 3615-3626 it calls 3716 only w
 
 At 3732-3777, the cartridge transmits a leading zero byte, five ASCII spaces, sixteen converted screen glyphs, then CR (0D) and LF (0A) for each buffered line. Glyph conversion uses the table at 3782, indexed at 3755. It iterates the buffered display lines using the count at 0C28, then waits for completion and returns through 3B19. This is a short-line screen-text dump; exact hard-copy layout, framing and physical-printer compatibility need operating checks.
 
-The current core binds Expander printer RX to idle and TX to OPEN in `videobrain_core.vhd`. The [Expander 1 notes](EXPANDER1.md) describe that unconnected path. PTR's syntax and transmission intent are established by the ROM, but this core configuration has no printer destination and no hardware hard-copy result is claimed.
+The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Select System > UART Output > Printer to capture this stream to a file through Linux; see [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Original-ROM tests verify printer-only transmission without responses at 110/300 baud; complete cartridge reports and physical printing still need hardware validation.
 
 ### DESC: database definition display
 

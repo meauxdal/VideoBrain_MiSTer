@@ -112,6 +112,7 @@ module top(
       .expander_playback_enable (playback_enable),
       .expander_modem_rxd (1'b1),
       .expander_modem_txd (),
+      .expander_printer_txd (),
       .f8_po_a_n  (po_a_n),
       .f8_po_b_n  (po_b_n),
 
