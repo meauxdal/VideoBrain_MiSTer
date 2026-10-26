@@ -4,7 +4,9 @@ An FPGA implementation of the 1978 Umtech VideoBrain Family Computer.
 
 ## Status
 
-No observed issues across all known software titles. All VideoBrain peripherals supported and working. 4x joystick support. Expander 1 support. 2x virtual tape support with save/load function. Timeshare networking support using UART to simulate Expander 2 acoustic modem. Printer support via image file mounting as well as via UART. F8 instruction cycle timing has been thoroughly referenced against all available documentation. See [accuracy and remaining-work report](docs/ACCURACY.md) for current scope and evidence limits.
+No observed issues across all known software titles. All VideoBrain peripherals supported and working. 4x joystick support. Expander 1 support. 2x virtual tape support with save/load function. Timeshare networking support using UART to simulate Expander 2 acoustic modem. Printer support via image file mounting as well as via UART. 
+
+F8 instruction cycle timing has been thoroughly referenced against all available hardware measurements and documentation. See [accuracy and remaining-work report](docs/ACCURACY.md) for current scope and evidence limits.
 
 ## Installing
 
@@ -145,16 +147,16 @@ See [contributing](CONTRIBUTING.md) for user-supplied ROM paths and validation r
 
 ## Sources
 
-- [Sean Riddle](https://www.seanriddle.com/vbinfo.html)
-- [kevtris](http://blog.kevtris.org/blogfiles/videobrain/videobrain_unwrapped.txt)
+- [Sean Riddle - seanriddle.com](https://www.seanriddle.com/vbinfo.html)
+- [Kevin Horton - kevtris.org](http://blog.kevtris.org/blogfiles/videobrain/videobrain_unwrapped.txt)
+- [Tempest - atariprotos.com](https://www.atariprotos.com/othersystems/videobrain/videobrain.htm)
+- [orphanedgames.com](https://orphanedgames.com/videobrain/)
 - [MAME](https://github.com/mamedev/mame/tree/master/src/mame/vidbrain)
 - US patents [US4232374A](https://patents.google.com/patent/US4232374A) & [US4177462A](https://patents.google.com/patent/US4177462A)
-- [atariprotos.com](https://www.atariprotos.com/othersystems/videobrain/videobrain.htm)
-- [orphanedgames.com](https://orphanedgames.com/videobrain/)
 - [channel_f_and_videobrain Yahoo/groups.io group](https://groups.io/g/Channel-F-and-VideoBrain)
-- [Lowell O. Turner - nyx.net](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html)
-- [VESWiki](https://channelf.se/veswiki/index.php?title=Opcode)
 - [James Price - 21 APL/S Games and One-Liners for Your Umtech VideoBrain (GitHub)](https://github.com/jamescprice/21-APL-Games-and-One-Liners-For-Your-Umtech-Videobrain)
+- [E5frog - VESWiki](https://channelf.se/veswiki/index.php?title=Opcode)
+- [Lowell O. Turner - nyx.net](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html)
 - [Home Computer & Video Game Museum - VideoBrain](http://hcvgm.org/VideoBrain.html)
 - [oldcomputers.net/videobrain.html](https://www.oldcomputers.net/videobrain.html)
 - [forums.atariage.com](https://forums.atariage.com/topic/71151-videobrain-anyone-have-info/)
