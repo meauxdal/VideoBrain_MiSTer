@@ -20,7 +20,7 @@ for the ROM analysis, theoretical hardware effects and validation limits.
    an image with the tool below. Use a different file from either tape image.
 2. Load Expander 1 firmware and a cartridge with printer support.
 3. In **Printer > Mount Capture Image**, mount that file. Wait for scanning to
-   finish; **Capture Status** reports Ready. Mounting does not write the file.
+   finish; **Show Capture Status** reports Ready. Mounting does not write the file.
 4. Select **Capture Baud**, then **Start Capture**. Wait for Active before
    requesting printer output. Information Manager uses 300; Timeshare uses its
    selected 110/300 transmission rate. Baud changes apply to the next session.
@@ -28,7 +28,7 @@ for the ROM analysis, theoretical hardware effects and validation limits.
    `TOTAL PTR` with the usual database/tape prerequisites. For simultaneous
    Timeshare, keep **System > UART Output > Modem** and run the normal UART
    bridge. The Printer UART selection remains an alternative diagnostic path.
-6. When output finishes, choose **Stop and Flush**, then wait for Ready and the
+6. When output finishes, choose **Stop and Save**, then wait for Ready and the
    user LED to clear. Unmount the printer image before exporting it, modifying
    it from Linux, switching cores, or removing media. Tape activity can also
    keep the LED on; check the individual status before changing either image.
@@ -82,7 +82,7 @@ append to interrupted/error images; create a new destination after recovery.
 
 ## Errors and storage limits
 
-Capture Status distinguishes absent/read-only/bad/incomplete media, framing,
+Show Capture Status distinguishes absent/read-only/bad/incomplete media, framing,
 storage readback failure, FIFO overflow, image full and reset interruption.
 Persistent Printer Error/Busy/Active menu rows remain available when info
 popups are disabled. The Start action is unavailable during activity or a

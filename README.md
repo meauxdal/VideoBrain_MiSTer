@@ -65,7 +65,7 @@ Music Macro Language (.mml) files can also be converted. MML files must use a si
 
 ### Printer capture (VBP)
 
-The Expander 1 printer stream can be saved to a mounted `.vbp` image while Timeshare uses the UART for modem communication. Mount a copy of [blank-printer.vbp](examples/blank-printer.vbp), select the baud rate, and choose **Start Capture**. When finished, choose **Stop and Flush**, wait for Ready, and unmount before exporting. See [printer capture](docs/PRINTER.md) for Information Manager corrections, export commands and hardware validation still required.
+The Expander 1 printer stream can be saved to a mounted `.vbp` image while Timeshare uses the UART for modem communication. Mount a copy of [blank-printer.vbp](examples/blank-printer.vbp), select the baud rate, and choose **Start Capture**. When finished, choose **Stop and Save**, wait for Ready, and unmount before exporting. See [printer capture](docs/PRINTER.md) for Information Manager corrections, export commands and hardware validation still required.
 
 ### Options
 

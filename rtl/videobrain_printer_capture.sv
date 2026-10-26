@@ -16,6 +16,7 @@ module videobrain_printer_capture #(
     output wire busy,
     output wire active,
     output wire stalled,
+    output reg mounted = 0,
     output reg [3:0] error = 0,
     output reg [3:0] status_code,
     output reg [31:0] sd_lba = 0,
@@ -35,7 +36,7 @@ localparam START=1, DATA=2, STOP=3;
 // Errors: absent, protected, format, incomplete, storage, framing, overflow,
 // capacity, media changed, reset. STOP reasons: clean/reset/framing/overflow/full.
 reg [3:0] state = IDLE, after_io = IDLE;
-reg mounted = 0, readonly = 1, scanning = 0, accepting = 0;
+reg readonly = 1, scanning = 0, accepting = 0;
 reg session_open = 0, stopping = 0, rate = 0, drop_tail = 0;
 reg start_d = 0, stop_d = 0, reset_d = 0;
 reg [31:0] sectors = 0, scan_lba = 0, append_lba = 1;

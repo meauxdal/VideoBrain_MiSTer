@@ -66,7 +66,7 @@ python3 tools/printer_image.py inspect session.vbp
 python3 tools/printer_image.py export session.vbp printer.bin
 ```
 
-After Stop and Flush, wait for Ready and unmount before exporting. Export
+After Stop and Save, wait for Ready and unmount before exporting. Export
 preserves all eight bits and exact payload length. It refuses existing outputs
 and incomplete/error sessions unless `--recover` is explicit. Optional
 `--session N`, `--text FILE`, `--remove-nul` and `--normalize-crlf` select a

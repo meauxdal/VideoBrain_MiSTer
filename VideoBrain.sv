@@ -75,7 +75,7 @@ localparam CONF_STR = {
 	"P3-;",
 	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[38],Analog Mode,Absolute,Relative;",
-	"D4P3O[40:39],Relative Speed,Slow,Normal,Fast;",
+	"DDP3O[40:39],Relative Speed,Slow,Normal,Fast;",
 	"P3-;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
     // === VIDEO SUBMENU ===
@@ -93,8 +93,8 @@ localparam CONF_STR = {
 	"P5O[33],Capture Baud,300,110;",
 	"P5-;",
 	"d7P5T[34],Start Capture;",
-	"P5T[35],Stop and Flush;",
-	"P5T[36],Capture Status;",
+	"DEP5T[35],Stop Capture and Save;",
+	"DEP5T[36],Show Capture Status;",
 	"P5-;",
 	"P5O[37],InfoMan Print Fix (Reset),Off,On;",
 	"P5-;",
@@ -146,7 +146,7 @@ wire [15:0] ioctl_index;
 wire [31:0] tape_lba[2], disk_lba[3];
 wire [2:0] disk_rd, disk_wr, disk_ack, disk_mounted;
 wire [7:0] disk_buff_din[3];
-wire printer_busy, printer_active, printer_stalled;
+wire printer_busy, printer_active, printer_stalled, printer_mounted;
 wire [3:0] printer_error, printer_status;
 assign tape_mounted = disk_mounted[1:0];
 assign tape_ack = disk_ack[1:0];
@@ -170,7 +170,7 @@ wire tape_ended = |tape_deck_ended;
 wire tape_busy = |tape_deck_busy;
 wire tape_error = |tape_deck_error;
 wire tape_rewound = |tape_deck_rewound;
-wire [15:0] menu_mask = {3'd0, printer_error != 0, printer_busy && !printer_active, ~cart_loaded, printer_active, ~tape_busy,
+wire [15:0] menu_mask = {1'b0, !printer_mounted, !joystick_connected || !status[38], printer_error != 0, printer_busy && !printer_active, ~cart_loaded, printer_active, ~tape_busy,
                          !printer_busy && printer_error == 0 && printer_status == 2, !printer_busy, status[19],
                          !joystick_connected, 4'b0011};
 reg info_req = 0;
@@ -548,7 +548,7 @@ videobrain_printer_capture printer_capture (
     .clk(clk_sys), .reset(reset), .serial_in(expander_printer_txd),
     .baud110(status[33]), .start(status[34]), .stop(status[35]),
     .img_mounted(disk_mounted[2]), .img_readonly(tape_readonly), .img_size(tape_size),
-    .busy(printer_busy), .active(printer_active), .stalled(printer_stalled),
+    .busy(printer_busy), .active(printer_active), .stalled(printer_stalled), .mounted(printer_mounted),
     .error(printer_error), .status_code(printer_status),
     .sd_lba(disk_lba[2]), .sd_rd(disk_rd[2]), .sd_wr(disk_wr[2]), .sd_ack(disk_ack[2]),
     .sd_buff_addr(tape_buff_addr[8:0]), .sd_buff_dout(tape_buff_dout),
