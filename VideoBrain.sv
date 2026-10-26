@@ -96,7 +96,7 @@ localparam CONF_STR = {
 	"DEP5T[35],Stop Capture and Save;",
 	"DEP5T[36],Show Capture Status;",
 	"P5-;",
-	"P5O[37],InfoMan Print Fix (Reset),Off,On;",
+	"P5O[37],InfoMan Printer Fix,Off,On;",
 	"P5-;",
 	"h9P5-,Printer Active;",
 	"h11P5-,Printer Busy;",
