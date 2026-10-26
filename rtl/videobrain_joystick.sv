@@ -5,6 +5,7 @@ module videobrain_joystick (
 	input          calibrate,
 	input          enabled,
 	input          relative_mode,
+	input    [1:0] relative_speed,
 	input    [1:0] paired,
 	input    [1:0] preset,
 	input  [127:0] buttons,
@@ -26,14 +27,30 @@ function automatic [7:0] stick_pot(input neg, input pos, input [7:0] axis);
 	stick_pot = (neg == pos) ? axis_to_pot(axis) : (neg ? 8'd0 : 8'd255);
 endfunction
 
-function automatic [15:0] advance_pot(input [15:0] position, input [7:0] pot);
+function automatic [15:0] advance_pot(input [15:0] position, input [7:0] pot, input [1:0] speed);
 	reg signed [17:0] movement;
+	reg signed [17:0] magnitude;
+	reg signed [17:0] rate;
 	reg signed [17:0] next_position;
 	begin
 		movement = $signed({10'd0, pot}) - 18'sd128;
-		if (movement > 18'sd8) movement = (movement - 18'sd8) <<< 3;
-		else if (movement < -18'sd8) movement = (movement + 18'sd8) <<< 3;
-		else movement = 0;
+		magnitude = movement < 0 ? -movement : movement;
+		magnitude = magnitude > 18'sd8 ? magnitude - 18'sd8 : 18'sd0;
+		rate = magnitude <<< 3;
+		// Higher speeds retain fine control, then steepen at two deflections.
+		if (speed == 2'd1 || speed == 2'd2) begin
+			if (magnitude > 18'sd32)
+				rate = rate + ((magnitude - 18'sd32) <<< 4);
+			if (magnitude > 18'sd80)
+				rate = rate + ((magnitude - 18'sd80) <<< 4);
+		end
+		if (speed == 2'd2) begin
+			if (magnitude > 18'sd32)
+				rate = rate + ((magnitude - 18'sd32) <<< 5);
+			if (magnitude > 18'sd80)
+				rate = rate + ((magnitude - 18'sd80) <<< 4);
+		end
+		movement = movement < 0 ? -rate : rate;
 		next_position = $signed({2'b00, position}) + movement;
 		if (next_position < 0) advance_pot = 16'h0000;
 		else if (next_position > 18'sd65280) advance_pot = 16'hff00;
@@ -116,8 +133,8 @@ for (i = 0; i < 4; i = i + 1) begin : sticks
 			horizontal_position <= 16'h8000;
 		end else if (frame_tick) begin
 			// Keep eight fractional bits; clamp the entire state to avoid windup.
-			vertical_position <= advance_pot(vertical_position, selected_pots[7:0]);
-			horizontal_position <= advance_pot(horizontal_position, selected_pots[15:8]);
+			vertical_position <= advance_pot(vertical_position, selected_pots[7:0], relative_speed);
+			horizontal_position <= advance_pot(horizontal_position, selected_pots[15:8], relative_speed);
 		end
 	end
 	assign pots[i*16 +: 16] = !enabled ? 16'h8080 :

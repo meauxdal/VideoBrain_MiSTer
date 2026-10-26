@@ -4,9 +4,7 @@ An FPGA implementation of the 1978 Umtech VideoBrain Family Computer.
 
 ## Status
 
-The core is approaching 1.0. Daily use and testing of difficult software and peripheral paths have revealed no further known core bugs. The principal remaining accuracy work requires original-machine measurements, particularly for UV201, UV202, audio and joystick timing, and can continue after release. F8 instruction timing has been extensively cross-referenced against available documentation.
-
-Information Manager testing continues primarily to complete its reconstructed manual and document software quirks. Music Teacher patch improvements and possible musical homebrew are separate from core release requirements. See the [accuracy and remaining-work report](docs/ACCURACY.md) for current scope and evidence limits.
+No observed issues across all known software titles. All VideoBrain peripherals supported and working. 4x joystick support. Expander 1 support. 2x virtual tape support with save/load function. Timeshare networking support using UART to simulate Expander 2 acoustic modem. Printer support via image file mounting as well as via UART. F8 instruction cycle timing has been thoroughly referenced against all available documentation. See [accuracy and remaining-work report](docs/ACCURACY.md) for current scope and evidence limits.
 
 ## Installing
 

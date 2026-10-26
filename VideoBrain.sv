@@ -72,6 +72,7 @@ localparam CONF_STR = {
 	"P3O[5],Joysticks,Connected,Disconnected;",
 	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
 	"D4P3O[38],Analog Mode,Absolute,Relative;",
+	"D4P3O[40:39],Relative Speed,Slow,Normal,Fast;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3R[20],Calibrate Sticks;",
     // === VIDEO SUBMENU ===
@@ -407,6 +408,7 @@ videobrain_joystick joysticks (
 	.calibrating(joy_calibrating),
 	.enabled(joystick_connected),
 	.relative_mode(status[38]),
+	.relative_speed(status[40:39]),
 	.paired(status[17:16]),
 	.preset(status[15:14]),
 	.buttons({joystick_3, joystick_2, joystick_1, joystick_0}),

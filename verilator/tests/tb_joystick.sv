@@ -6,6 +6,7 @@ reg frame_tick = 0;
 reg calibrate = 0;
 reg enabled = 0;
 reg relative_mode = 0;
+reg [1:0] relative_speed = 0;
 reg [1:0] paired = 0;
 reg [1:0] preset = 0;
 reg [127:0] buttons = 0;
@@ -303,6 +304,50 @@ initial begin
 	relative_mode = 1;
 	tick();
 	assert (pots == {8{8'h80}}) else $fatal(1, "Relative reentry centers state");
+	calibrate = 0;
+	paired = 0;
+	for (int speed = 0; speed < 4; speed++) begin
+		reg [15:0] previous_position;
+		previous_position = 16'h8000;
+		for (int axis = 0; axis < 128; axis++) begin
+			reg [15:0] position;
+			position = dut.advance_pot(16'h8000, 8'(128 + axis), 2'(speed));
+			assert (position >= previous_position) else $fatal(1, "Speed curve must be monotonic");
+			assert (axis > 8 || position == 16'h8000) else $fatal(1, "Speed curve deadband");
+			assert (axis > 40 || position == dut.advance_pot(16'h8000, 8'(128 + axis), 0))
+				else $fatal(1, "Speed curve preserves fine movement");
+			assert (int'(position) + int'(dut.advance_pot(16'h8000, 8'(128 - axis), 2'(speed))) == 65536)
+				else $fatal(1, "Speed curve direction symmetry");
+			if (speed == 3)
+				assert (position == dut.advance_pot(16'h8000, 8'(128 + axis), 0))
+					else $fatal(1, "Reserved speed uses Slow");
+			previous_position = position;
+		end
+	end
+	for (int speed = 1; speed <= 2; speed++) begin
+		relative_speed = 2'(speed);
+		center_relative();
+		left_sticks = {4{16'h7f80}};
+		frame();
+		assert (pots == (speed == 1 ? {4{16'h748b}} : {4{16'h6698}}))
+			else $fatal(1, "Higher speed full deflection");
+		left_sticks = 0;
+		repeat (10) frame();
+		assert (pots == (speed == 1 ? {4{16'h748b}} : {4{16'h6698}}))
+			else $fatal(1, "Higher speed release holds");
+		relative_speed = 0;
+		tick();
+		assert (pots == (speed == 1 ? {4{16'h748b}} : {4{16'h6698}}))
+			else $fatal(1, "Speed change preserves position");
+		relative_speed = 2'(speed);
+		left_sticks = {4{16'h7f80}};
+		repeat (100) frame();
+		assert (pots == {4{16'h00ff}}) else $fatal(1, "Higher speed saturation");
+		left_sticks = {4{16'h807f}};
+		frame();
+		assert (pots == (speed == 1 ? {4{16'h0bf3}} : {4{16'h18e5}}))
+			else $fatal(1, "Higher speed immediate reversal");
+	end
 	$display("Joystick routing, presets, calibration and relative movement passed");
 	$finish;
 end

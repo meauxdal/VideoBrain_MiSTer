@@ -167,6 +167,10 @@ initial begin
     status[38] = 1;
     #1;
     if (dut.joysticks.relative_mode !== 1) $fatal(1, "Relative mode OSD connection");
+    if (dut.joysticks.relative_speed !== 0) $fatal(1, "Relative speed default");
+    status[40:39] = 2;
+    #1;
+    if (dut.joysticks.relative_speed !== 2) $fatal(1, "Relative speed OSD connection");
     status[5] = 1;
     #1;
     if (dut.joystick_connected !== 0) $fatal(1, "Joystick did not disconnect");
