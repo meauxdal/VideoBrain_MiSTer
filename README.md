@@ -4,7 +4,7 @@ An FPGA implementation of the 1978 Umtech VideoBrain Family Computer.
 
 ## Installing
 
-Place the latest .rbf from releases in /media/fat/_Computers.
+Place the latest .rbf from [releases](releases) in /media/fat/_Computers.
 
 The core folder is /media/fat/games/VideoBrain. A BIOS is required. Verified BIOS ROMs are circulated split:
 
@@ -34,6 +34,7 @@ The OSD provides these file actions:
 | Load Cartridge | Load .bin cartridge |
 | Mount Playback Tape | Mount read-only .vbt |
 | Mount Record Tape | Mount writable .vbt |
+| Printer > Mount Capture Image | Mount .vbp printer capture image |
 | Keyboard > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
 ### Cartridges (BIN)
@@ -57,6 +58,10 @@ Note that [Information Manager](docs/INFOMAN-MANUAL.md)'s EDIT mode uniquely req
 The converter accepts text files containing supported inputs and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries. The loader is configured to wait just long enough for the software to signal it is ready to accept each new keypress, preventing dropped inputs. Pressing any key or opening the OSD aborts entry. Keyboard > Menu Aborts VBK can be optionally disabled to allow .vbk playback to continue while in the menu.
 
 Music Macro Language (.mml) files can also be converted. MML files must use a simplified subset of the QB64 PLAY format. The converter generates unique musical .vbk files (with VBK2 header for differentiation from text entry files) for automatic playback in the free play mode in Music Teacher 1. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
+
+### Printer capture (VBP)
+
+The Expander 1 printer stream can be saved to a mounted `.vbp` image while Timeshare uses the UART for modem communication. Mount a copy of [blank-printer.vbp](examples/blank-printer.vbp), select the baud rate, and choose **Start Capture**. When finished, choose **Stop and Flush**, wait for Ready, and unmount before exporting. See [printer capture](docs/PRINTER.md) for Information Manager corrections, export commands and hardware validation still required.
 
 ### Options
 
@@ -111,6 +116,20 @@ For printer output, select **System > UART Output > Printer** and use the [Linux
 ## Tools
 
 See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard file conversion, and tape utilities.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `VideoBrain.*`, `files.qip` | MiSTer top level and Quartus project. |
+| `rtl/` | VideoBrain hardware implementation. |
+| `sys/` | Upstream MiSTer framework. |
+| `cfg/` | MAME reference configuration. |
+| [docs](docs/README.md) | User guides, implementation reports and source audits. |
+| [examples](examples/README.md) | Keyboard programs, music, tape saves and blank images. |
+| [tools](tools/README.md) | Conversion and image utilities. |
+| [verilator](verilator/README.md) | Simulator and regression harness. |
+| [releases](releases) | Published RBF files. |
 
 ## Building
 
