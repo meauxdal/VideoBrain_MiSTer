@@ -27,8 +27,8 @@ The FPGA can select a linear range and offset for each recognized cartridge, pro
 
 | Cartridge | Base | Step | Status |
 | --- | --- | --- | --- |
-| Tennis, CRC 1942F852, 4096 bytes | 2644 | 24 | Positive hardware gameplay feedback; measured full-court verification pending. |
-| Other cartridges, including unknown images | 2580 | 7 | Positive hardware gameplay feedback; Gladiator aiming acceptance pending. |
+| Tennis, CRC 1942F852, 4096 bytes | 2644 | 24 | Working well in MiSTer gameplay; original-machine timing measurements pending. |
+| Other cartridges, including unknown images | 2580 | 7 | Working well in MiSTer gameplay; original-machine timing measurements pending. |
 
 Auto's detected preset persists through machine reset and is cleared when a new cartridge starts loading or is unloaded. Manual preset selection stays in the OSD. System > Mapper Fallback does not select joystick presets. Physical pot resistance and UV201 counter phase remain unmeasured.
 
@@ -36,10 +36,12 @@ The timer follows EJOY/HBLANK reset and release. Falling joystick interrupt edge
 
 ## Verification
 
+No joystick malfunction is currently known in regular use. Remaining accuracy work is to measure original pot ranges, pulse widths, trim effects and freeze-counter phase. The current model is plausible and provides good playability; reproducing physical control quirks could reduce convenience. Relative analog movement for Tennis and spinner support are optional future features.
+
 Run the input-routing, preset-selection and calibration regressions from WSL in `verilator/`:
 
 ```sh
 make test-joystick test-cartridges
 ```
 
-The checks cover routing, presets, calibration duration, reset/disconnect cancellation and live input restoration. On MiSTer, verify Tennis court travel, Gladiator horizontal aim, both Pinball flippers and four-controller routing. `make -C verilator test-joystick test-joystick-timing` runs the controller and integrated timing regressions. Historical calibration measurements and sweep utilities have been archived separately.
+The checks cover routing, presets, calibration duration, reset/disconnect cancellation and live input restoration. For changes to the input path, MiSTer regression checks include Tennis court travel, Gladiator horizontal aim, both Pinball flippers and four-controller routing. `make -C verilator test-joystick test-joystick-timing` runs the controller and integrated timing regressions.

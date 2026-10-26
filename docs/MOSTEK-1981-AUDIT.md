@@ -1,7 +1,7 @@
 # Mostek 1981 F8/3870 source audit
 
 Checked 2026-10-24 against
-`refs/datasheets-databooks-fairchild-mostek-manuals/1981_3870_F8_Microcomputer_Data_Book.pdf`
+[Mostek 1981 3870/F8 Microcomputer Data Book](https://bitsavers.trailing-edge.com/components/mostek/f8/1981_3870_F8_Microcomputer_Data_Book.pdf)
 (586 PDF pages), the corresponding 1978 volume and current RTL. Printed page
 numbers below are followed by one-based PDF page numbers.
 

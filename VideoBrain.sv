@@ -71,6 +71,7 @@ localparam CONF_STR = {
 	"P3-;",
 	"P3O[5],Joysticks,Connected,Disconnected;",
 	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
+	"D4P3O[38],Analog Mode,Absolute,Relative;",
 	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3R[20],Calibrate Sticks;",
     // === VIDEO SUBMENU ===
@@ -88,7 +89,8 @@ localparam CONF_STR = {
 	"d7P5T[34],Start Capture;",
 	"P5T[35],Stop and Flush;",
 	"P5T[36],Capture Status;",
-	"P5O[37],InfoMan Fix (Reload),Off,On;",
+	"P5-;",
+	"P5O[37],Info. Manager Fix,Off,On;",
 	"P5-;",
 	"h9P5-,Printer Active;",
 	"h11P5-,Printer Busy;",
@@ -399,11 +401,12 @@ wire joy_calibrating;
 
 videobrain_joystick joysticks (
 	.clk(clk_sys),
-	.reset(reset),
+	.reset(reset | cart_dl | status[28]),
 	.frame_tick(vid_vs && !source_vs_d),
 	.calibrate(status[20]),
 	.calibrating(joy_calibrating),
 	.enabled(joystick_connected),
+	.relative_mode(status[38]),
 	.paired(status[17:16]),
 	.preset(status[15:14]),
 	.buttons({joystick_3, joystick_2, joystick_1, joystick_0}),
@@ -689,28 +692,11 @@ video_mixer #(.GAMMA(0)) video_mixer
 
 
 wire [15:0] audio_sample;
-/*
-wire [2:0] audio_test = status[26:24];
-wire [31:0] audio_test_hz = audio_test == 1 ? 32'd500 :
-                            audio_test == 2 ? 32'd1000 :
-                            audio_test == 3 ? 32'd2000 :
-                            audio_test == 4 ? 32'd4000 : 32'd0;
-wire [1:0] audio_test_code;
-videobrain_audio_tone audio_tone
-(
-	.clk(clk_sys),
-	.reset(reset),
-	.frequency_hz(audio_test_hz),
-	.code(audio_test_code)
-);
-*/
 
 videobrain_audio audio
 (
 	.clk(clk_sys),
 	.reset(reset),
-	//.code(audio_test_hz != 0 ? audio_test_code : audio_code),
-	//.stb(audio_test_hz != 0 ? 1'b1 : audio_stb),
 	.code(audio_code),
 	.stb(audio_stb),
 	.sample(audio_sample)

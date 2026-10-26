@@ -7,7 +7,55 @@ Verilator reads Verilog only, so every build first runs the VHDL through `ghdl s
     make netlist    # just the Verilog netlist      -> gen/videobrain.v
     make lint
 
-Requires ghdl (VHDL-2008), verilator, zlib, and sdl2 for the graphical target. Run from this directory; the default ROM paths are relative to it.
+Requires ghdl (VHDL-2008), verilator, zlib, and sdl2 for the graphical target. Run from this directory. Supply ROM paths explicitly; see [contributing](../CONTRIBUTING.md).
+
+## Regression suite
+
+From the repository root in WSL, Linux or macOS:
+
+```sh
+python3 -B verilator/tests/run_regressions.py
+```
+
+This runs the focused CPU, interrupt, bus, video, audio, input, cartridge,
+tape, printer, tool and analyzer checks, followed by simulator lint. It does
+not build Quartus or the graphical simulator. It requires GNU make, GHDL,
+Verilator, Icarus Verilog (`iverilog` and `vvp`), g++, Python 3.9 or newer,
+and NumPy. Missing prerequisites stop the run before testing. The suite may
+take several minutes, particularly when generated models need rebuilding.
+
+`--list` prints the selected targets and exclusions without running anything.
+Tests run serially to protect shared GHDL work directories; make continues
+independent targets after a failure and the runner returns nonzero if any
+target fails. Each run prints its log path under `verilator/out/regressions/`
+and a final PASS/FAIL summary. Logs include the source revision, working-tree
+state, tool versions, selected targets, exclusions and final result. Inspect that log for assertion failures and
+explicit optional-fixture skips; a successful run does not imply hardware
+validation or exhaustive software coverage.
+
+Bus-wait checks use measurement-only mode in this suite. The strict
+documented-range assertion remains available with
+`make -C verilator test-cpu-bus-wait`; the recorded 6..7-half-clock RAM/cart
+wait falls below its 7..9 expectation. The runner labels this exclusion and
+does not treat an arbitrary failure as expected. See the
+[clock-gate audit](../docs/CPU-CLOCK-GATE.md).
+
+Add `--roms` to include the shorter APL/S and Music Teacher recognition,
+Expander serial/record/playback/edit, printer-ROM and tape-contention checks.
+Supply the Expander, APL/S and Music Teacher ROM files;
+missing files fail preflight. Paths can be supplied with repeatable
+`--make-arg NAME=VALUE` options using `EXPANDER1_ROM`, `APL_ROM` and `MT1_ROM`.
+or an untracked local configuration as described in [contributing](../CONTRIBUTING.md).
+ROMs are not bundled or downloaded by the runner. Generated printer outputs
+are checked immediately after their producer target; the ROM-free tool suite
+uses only self-contained printer-image fixtures.
+
+Long full-machine checks remain separate: `test-apl-reload`,
+`test-printer-cartridge`, `test-printer-infoman`,
+`test-printer-infoman-apple`, `capture-apl-save`, `replay-apl-tape` and
+`replay-clock-source`. They need original ROMs and, for some targets, a
+separately supplied recording. The master suite lists these exclusions.
+Original-machine measurements and MiSTer acceptance tests remain separate.
 
 `make test-cpu-branches` runs ROM-free GHDL checks for BR7 across all 64 ISAR values and every BT/BF mask across all 32 status-register values, including directly loaded zero/sign combinations. The 4,160 cases use signed displacement boundaries, check branch destinations and operand/fetch cycle lengths, and verify that ISAR or status flags remain unchanged.
 
@@ -19,15 +67,15 @@ Requires ghdl (VHDL-2008), verilator, zlib, and sdl2 for the graphical target. R
 
 `make test-smi-clock` runs a ROM through the full core and checks repeated timer IRQs at the DAC against 255 * 31 nominal 2 MHz PHI periods. Board records connect U16.2 to U17.1 (CPU PHI), and saved traces show this clock stopping during waits. The core derives one timer enable per two accepted CPU half-period enables. This regression checks the integrated rate without buffered-bus contention; it does not establish exact PHI edge phase or measured original-machine timer intervals.
 
-    ./obj_dir/Vtop --run
-    ./obj_dir_headless/Vtop --cart /path/to/cartridge.bin --frames 300 --shot-last
+    ./obj_dir/Vtop --res1 /path/to/res1.bin --res2 /path/to/res2.bin --run
+    ./obj_dir_headless/Vtop --res1 /path/to/res1.bin --res2 /path/to/res2.bin --cart /path/to/cartridge.bin --frames 300 --shot-last
     ./obj_dir_headless/Vtop --help
 
 Known cartridge ROMs are identified by CRC-32. `--cart-type` selects the slot profile only for unrecognized images.
 
 `--expander1 <file>` loads the separate 2K Expander 1 firmware. See [Expander 1](../docs/EXPANDER1.md) for firmware and peripheral details. `make test-expander1` tests its ROM loading, host wiring, 3870 timer and interrupt execution. `make test-expander1-record` exercises original-ROM recording, decodes its digital capture and checks good/bad checksum status. It requires the firmware.
 
-`make replay-apl-tape` boots APL/S and LOADs `refs/tape-observations/apls-test.vbt`, with a final screenshot and host signal trace in `out/expander1/apl-load`. Override `APL_TAPE` for another image. This is a long run. The headless `--playback FILE` option replays the VBT1 waveform directly at the Expander input, bypassing SD service; remote stops pause playback without rewinding. `--expander-trace FILE` logs host signals, interrupt acknowledgements and VideoBrain receive-register writes, including counters and interrupt sources.
+`make replay-apl-tape` boots APL/S and LOADs the user-supplied `APL_TAPE`, with a final screenshot and host signal trace in `out/expander1/apl-load`. This is a long run. The headless `--playback FILE` option replays the VBT1 waveform directly at the Expander input, bypassing SD service; remote stops pause playback without rewinding. `--expander-trace FILE` logs host signals, interrupt acknowledgements and VideoBrain receive-register writes, including counters and interrupt sources.
 
 ## Keyboard input
 
@@ -66,18 +114,19 @@ The netlist is the reference. Write `rtl_v/<entity>.v`, add the entity name to `
 Check equivalence by frame hash, before and after:
 
     ./obj_dir_headless/Vtop --res1 selftest.rom --frames 8 --frame-log
-    ./obj_dir_headless/Vtop --frames 60 --frame-log
+    ./obj_dir_headless/Vtop --res1 /path/to/res1.bin --res2 /path/to/res2.bin --frames 60 --frame-log
 
 `CONVERTED` is currently empty. The F8 CPU and packages derive from the Channel F core; preserve attribution when changing them.
 
 ## Development utilities
 
-Run these from `verilator/`. ROM-based captures need local BIOS and cartridge files under `software/0 BIOS` and `software/1 Cartridges`; ROMs are not bundled.
+Run these from `verilator/`. ROM-based captures require user-supplied BIOS, firmware and cartridges. Configure their paths as described in [contributing](../CONTRIBUTING.md); ROMs are not bundled.
 
 | Utilities | Purpose |
 | --- | --- |
 | `tests/tb_*` | Run CPU, bus, video, audio, cartridge, keyboard, joystick and tape regressions. |
-| `tests/run_tools.py` | Check the current APL/S, keyboard/music and tape converters. |
+| `tests/run_regressions.py` | Run the focused regression suite with logs and explicit exclusions. |
+| `tests/run_tools.py` | Check APL/S, keyboard/music, tape, printer-image and printer-capture tools. |
 | `tests/test_examples.py` | Check bundled source/VBK pairs, checksums, tape structure and blank images; included in `test-tools`. |
 | `tests/audio_filter_design.py`, `tests/test_audio_alias.py` | Check filter coefficients and alias rejection with `make test-audio`. |
 | `tests/check_audio_path.py` | Check the MiSTer I2S output path with `make test-audio-path` (requires NumPy). |
@@ -86,10 +135,10 @@ Run these from `verilator/`. ROM-based captures need local BIOS and cartridge fi
 
 Historical joystick sweeps, APL/S NEXT probes, Music Teacher IRQ/phase captures, and Pinball snapshot comparisons have been archived outside the repository with their saved outputs and original paths. They are not part of the current regression harness.
 
-Run all converter checks without building the simulator (Python 3.9 or newer, standard library only):
+Run all tool checks without building the simulator (Python 3.9 or newer, standard library only):
 
 ```sh
 python3 -B tests/run_tools.py
 ```
 
-The same checks are available as `make test-tools`, and are included in `make test-apl-source`. From the repository root, use `python3 -B verilator/tests/run_tools.py`. Use `python` if that is how Python is installed on your system. Optional tape-reference checks use local recordings under `refs/`; unavailable fixtures are skipped.
+The same checks are available as `make test-tools`, and are included in `make test-apl-source`. From the repository root, use `python3 -B verilator/tests/run_tools.py`. Use `python` if that is how Python is installed on your system. Optional tape-reference checks use separately supplied recordings; unavailable fixtures are reported as skipped. Printer file-capture checks require POSIX tty support and are explicitly skipped on Windows; use WSL to include them.

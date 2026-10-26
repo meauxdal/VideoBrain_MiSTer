@@ -1,6 +1,6 @@
 # Expander 1
 
-Preliminary processor and host interface support. With Expander 1 firmware, Information Manager reaches its first menu without I/O ERR:
+Processor, host interface, digital tape and serial support are implemented. MiSTer testing covers Information Manager tape operations, APL/S and Timeshare communication. See [current accuracy status](ACCURACY.md) for remaining work; the detailed checks below retain their individual evidence limits. With Expander 1 firmware, Information Manager starts with:
 
 ```text
 PROGRAM
@@ -144,7 +144,7 @@ Keep the raw capture when investigating another cartridge's encoding. The utilit
 
 Serial command `04` consumes a timing selector and routing flags. Original-ROM tests cover timing selectors `01` (110 baud) and `02` (300 baud), with one start bit, eight LSB-first data bits and a stop mark. The Expander 1 manual advertises ASCII RS232-C at 110/300/1200 baud, but 1200 baud is not verified here. The firmware samples a host command bit after releasing its interrupt strobe; the test host holds the final routing bit for 2 ms before driving serial idle, rather than changing it immediately on strobe release.
 
-Information Manager's ROM listing (`VideoBrain-ASM/infoman/infoman.lst`, 3716-377F) sends `04 02 02`: 300 baud, host to printer port 4. Its serial-byte routine at 3E2D-3E5C supplies a start, eight data bits and two mark intervals. Each formatted line contains NUL, five spaces, sixteen screen glyphs converted through table 3782, and CR/LF. The printer-only regression reproduces this command and framing with NUL, space, high-bit data, CR, LF and FF bytes at both rates and after reset. Printer RX stays high throughout; transmission requires no printer ACK, status byte or echo. This establishes a passive sink for this route, not a general model of every physical printer protocol. The unused modem TX does not carry the printer payload.
+Information Manager's ROM at 3716-377F sends `04 02 02`: 300 baud, host to printer port 4. Its serial-byte routine at 3E2D-3E5C supplies a start, eight data bits and two mark intervals. Each formatted line contains NUL, five spaces, sixteen screen glyphs converted through table 3782, and CR/LF. See [ROM identity and analysis](INFOMAN.md). The printer-only regression reproduces this command and framing with NUL, space, high-bit data, CR, LF and FF bytes at both rates and after reset. Printer RX stays high throughout; transmission requires no printer ACK, status byte or echo. This establishes a passive sink for this route, not a general model of every physical printer protocol. The unused modem TX does not carry the printer payload.
 
 Timeshare uses routing `0D`, which sends host data to modem TX and copies modem RX to printer TX as well as the host. The reverse-route test uses `32`. These routes remain firmware-controlled and unchanged by the OSD selector; the selector only chooses which physical TX connector reaches Linux. Live printer capture on MiSTer and actual cartridge report/listing completion remain to be checked on hardware.
 
@@ -176,7 +176,7 @@ The banner checks receive; typing in Timeshare checks transmit. Stop `od` with C
 FF (16 bytes), 01 CD, 00 01, A5, 7E D6, 00
 ```
 
-This proves a firmware record transaction without analog playback feedback. On October 16, 2026, hardware testing confirmed `A=7`, SAVE ending with TAPE OK, and continued arithmetic using A afterward. This validates transaction completion and continued interpreter operation. Full-machine SAVE capture and MiSTer SD SAVE/LOAD verification are still pending.
+This proves a firmware record transaction without analog playback feedback. On October 16, 2026, MiSTer testing confirmed `A=7`, SAVE ending with TAPE OK, and continued arithmetic using A afterward. Subsequent MiSTer testing exercised tape round trips; this dated check alone establishes transaction completion and continued interpreter operation, not analog cassette interoperability.
 
 `make -C verilator test-expander1-playback` records two distinct payloads through the original ROM without OSD arming, resets and remounts the SD image, then checks successive LOAD payloads, CRCs and success status. The host uses record timing 00 and receive timing 01, with receive mode 01 to return data. The controller also checks recording protection, sector transfer, buffer wrap, replay timing, interrupted saves and image limits.
 

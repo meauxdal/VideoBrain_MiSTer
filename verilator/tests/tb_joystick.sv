@@ -5,6 +5,7 @@ reg reset = 0;
 reg frame_tick = 0;
 reg calibrate = 0;
 reg enabled = 0;
+reg relative_mode = 0;
 reg [1:0] paired = 0;
 reg [1:0] preset = 0;
 reg [127:0] buttons = 0;

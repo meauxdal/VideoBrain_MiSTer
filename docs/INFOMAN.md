@@ -2,6 +2,8 @@
 
 For database concepts and operating instructions, see the [user manual](INFOMAN-MANUAL.md), including planning fields, entering records, reading saved data and making an edited copy. These notes retain the ROM analysis and hardware evidence.
 
+The remaining MiSTer pass is primarily manual research: exercise the full command set, confirm the operating instructions and identify any further prototype software bugs. No core defect is currently known from this testing; the observed defect described below is in the original ROM. Command-specific checks below remain outstanding where marked. Here, hardware tests refer to MiSTer unless explicitly identified as original VideoBrain tests. See [current accuracy status](ACCURACY.md) for planned original-machine verification.
+
 ## Using the cartridge
 
 Load the cartridge and [Expander 1 firmware](EXPANDER1.md). The initial menu shows PROGRAM / ENTER / REVIEW / EDIT. NEXT is F3 or Enter; SPECIAL is F4.
@@ -396,4 +398,4 @@ Predicted procedure: enter EDIT with source A and a fresh output, submit M, moun
 
 Strings include field names/lengths, sorting, totals, tape rewind/end, and I/O errors. The glyph mapping comes from the BIOS font at 2010 and decimal table at 245E, corroborated by Sean's BIOS listing in `vbasm.zip`.
 
-The annotated listing and its generator are maintained in the separate **VideoBrain-ASM** repository, at `infoman/infoman.lst` and `tools/disassemble_infoman.py`. The generator checks chip hashes, instruction overlap and complete byte coverage. Its address-based notes preserve comments on command grammar and handlers when the listing is regenerated. In that repository, run it with `--unidasm <path-to-unidasm> --rom <path-to-infoman.zip>`; the output defaults to `infoman/infoman.lst`. It follows direct calls/branches and seeds the known computed dispatch, continuation and interrupt entries. Two additional instruction sequences at 39E5 and 3C9F have no identified direct caller. Static coverage does not prove that every path executes or establish full peripheral behavior.
+The ROM analysis uses an annotated disassembly checked against the chip hashes above, instruction overlap and complete byte coverage. It follows direct calls/branches and seeds the known computed dispatch, continuation and interrupt entries. Two additional instruction sequences at 39E5 and 3C9F have no identified direct caller. Static coverage does not prove that every path executes or establish full peripheral behavior.

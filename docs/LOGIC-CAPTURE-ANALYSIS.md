@@ -5,7 +5,8 @@ extraction/comparison pass made no production RTL or wait-constant changes.
 The subsequent [UV201 phase audit](UV201-PHASE-AUDIT.md) records a supported
 request-phase correction and a separate Expander vector-selection repair.
 Results below describe the initial baseline and sampled signals from Sean
-Riddle's captures, with the provenance limits below.
+Riddle's [VideoBrain archive](https://www.seanriddle.com/vbinfo.html), with the
+provenance limits below.
 
 ## Inputs and measurement definitions
 
@@ -114,7 +115,7 @@ pins. Another 229 LM and 229 ST cycles precede known DC0 values; 570 LM cycles
 address the expansion region and are kept separately. There is no DMA channel
 in this recording, so its paused samples cannot be labeled contention-free.
 
-The user identifies the source as `https://www.seanriddle.com/vb/timeshare/`.
+The capture source is [Sean Riddle's Timeshare archive](https://www.seanriddle.com/vb/timeshare/).
 Its machine/clock modifications and the physical `xtl` probe point remain
 unknown. The dominant `xtl` same-edge interval is 250 ns, versus 500 ns on the
 reset captures' channel labeled `3850-38 xtal`. Do not equate those nets or infer
@@ -123,10 +124,9 @@ The PHI/WRITE/ROMC measurements above do not require that equivalence.
 
 ## Paired diagnostic ROM
 
-The user confirms `vbdiag.bin` and `vbdiagwreset.sal` are paired source files.
-MAME unidasm's F8 backend produces the disassembly; a DASM source is saved
-locally as `refs/seanriddle.com/vbdiag.asm`. Its rebuilt raw 1,024-byte image is
-byte-identical, SHA256:
+The audit identifies `vbdiag.bin` and `vbdiagwreset.sal` as paired source files.
+MAME unidasm's F8 backend produces the disassembly. A DASM reconstruction of
+that disassembly produces a byte-identical raw 1,024-byte image, SHA256:
 
 `db263679a219f0b8bb3051a478c08de81e4a79ad96e726d3592b2646c27eda83`
 
@@ -163,32 +163,32 @@ transition or after the last one is assumed.
 Removing high intervals >=100 ms and classifying the remaining high intervals
 at 1.35 ms gives seven groups of 2,627/2,627/2,627/6,929/6,929/6,929/317 symbols.
 The first three groups match each other, as do the next three. All 28,985 tone
-symbols match `refs/tape-observations/moneymindersave.vbt`, with zero length or
-symbol differences. This confirms a digital counterpart to that tested data;
+symbols match the VBT conversion used for the Money Minder round-trip test,
+with zero length or symbol differences. This confirms a digital counterpart to that tested data;
 it is not a fresh record/checksum decode or proof that pulse timings match.
 The original CSV timing is retained without rescaling or polarity changes.
 
 ## Reproduction and next work
 
-From `verilator`, build and self-check the streaming extractor:
+From `verilator`, build and self-check the streaming extractor. Supply CSV
+exports from the original captures at the indicated input paths:
 
 ```sh
 make test-logic-csv
-out/logic_captures/analyze_logic_csv ../refs/seanriddle.com/vbnormalwreset.csv out/logic_captures/vbnormalwreset
-out/logic_captures/analyze_logic_csv ../refs/seanriddle.com/vbdiagwreset.csv out/logic_captures/vbdiagwreset
-out/logic_captures/analyze_logic_csv ../refs/seanriddle.com/vbnobios1wreset.csv out/logic_captures/vbnobios1wreset
-out/logic_captures/analyze_logic_csv ../refs/seanriddle.com/timeshare.logicdata.csv out/logic_captures/timeshare
+out/logic_captures/analyze_logic_csv /path/to/vbnormalwreset.csv out/logic_captures/vbnormalwreset
+out/logic_captures/analyze_logic_csv /path/to/vbdiagwreset.csv out/logic_captures/vbdiagwreset
+out/logic_captures/analyze_logic_csv /path/to/vbnobios1wreset.csv out/logic_captures/vbnobios1wreset
+out/logic_captures/analyze_logic_csv /path/to/timeshare.logicdata.csv out/logic_captures/timeshare
 make test-cpu-bus-wait BUS_WAIT_ARGS="-gcheck_documented=false -ggap_csv=out/logic_captures/simulation.csv"
 make test-sean-diag
 python3 -B tests/summarize_logic_captures.py out/logic_captures
-python3 -B tests/analyze_tape_capture.py ../refs/seanriddle.com/moneymindersave.csv ../refs/tape-observations/moneymindersave.vbt out/logic_captures/moneyminder-summary.json
 ```
 
 The summary script needs NumPy/pandas. The extractor tests need only C++17 and
 Python's standard library. They check exact fractional timestamps, reset gap
 exclusion, known request classification, cycle edge counting and invalid time
-order. Large intermediate tables stay in ignored `verilator/out/logic_captures`;
-raw CSVs stay in ignored `refs`. The normal default bus-wait assertion remains
+order. Generated intermediate tables are written to `out/logic_captures`;
+the raw CSV inputs are not bundled. The normal default bus-wait assertion remains
 unchanged; `check_documented=false` above is explicitly measurement-only mode.
 
 Next investigate UV201 read/write service and CPU request-generation phase

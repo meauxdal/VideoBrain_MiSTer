@@ -4,6 +4,8 @@ Information Manager is a tape-based database tool for keeping structured lists, 
 
 This guide describes the September 1978 VB-1200 prototype on the VideoBrain MiSTer core. It is a reconstructed guide, not an original VideoBrain manual. See [research notes](INFOMAN.md) for the ROM analysis and hardware test evidence behind it.
 
+The manual is still being completed through MiSTer testing of the cartridge's capabilities and software quirks. Instructions derived only from ROM analysis remain identified below; they do not indicate known core faults. Hardware checks in this guide refer to MiSTer unless explicitly stated otherwise.
+
 ## How a database is organized
 
 A **database** is a collection of entries that all use the same structure. Information Manager asks you to define that structure before you enter the data.

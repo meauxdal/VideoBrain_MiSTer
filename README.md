@@ -2,6 +2,12 @@
 
 An FPGA implementation of the 1978 Umtech VideoBrain Family Computer.
 
+## Status
+
+The core is approaching 1.0. Daily use and testing of difficult software and peripheral paths have revealed no further known core bugs. The principal remaining accuracy work requires original-machine measurements, particularly for UV201, UV202, audio and joystick timing, and can continue after release. F8 instruction timing has been extensively cross-referenced against available documentation.
+
+Information Manager testing continues primarily to complete its reconstructed manual and document software quirks. Music Teacher patch improvements and possible musical homebrew are separate from core release requirements. See the [accuracy and remaining-work report](docs/ACCURACY.md) for current scope and evidence limits.
+
 ## Installing
 
 Place the latest .rbf from [releases](releases) in /media/fat/_Computers.
@@ -103,7 +109,7 @@ Joysticks > Paired Sticks lets a controller's right stick and Fire (Paired) oper
 
 ## Video
 
-VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary. It seems to work fine, but please try with this setting disabled if you have issues.
+VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary; no issue has been observed in use. Native interlaced output remains the accuracy baseline. A 1080p 5x crop is deferred for later consideration.
 
 ## Timeshare online over UART
 
@@ -134,6 +140,10 @@ See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard
 ## Building
 
 Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/README.md](verilator/README.md).
+
+Run the routine simulation regressions from WSL or Linux with `python3 -B verilator/tests/run_regressions.py`. Add `--roms` for the short original-ROM checks; `--list` shows the plan and exclusions. Long captures and MiSTer hardware checks are separate.
+
+See [contributing](CONTRIBUTING.md) for user-supplied ROM paths and validation requirements.
 
 ## Sources
 

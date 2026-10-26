@@ -1,5 +1,7 @@
 # Experimental Music Teacher static-staff patch
 
+Further patch improvements are separate from core 1.0 requirements. A possible musical homebrew would explore every audible frequency the machine can produce, beyond Music Teacher's keyboard banks. MIDI input is an optional future consideration. Original-machine audio comparison remains part of the [core accuracy work](ACCURACY.md).
+
 `tools/patch_music_teacher.py` accepts only the original 2048-byte ED01 ROM
 (SHA256 `6f68d96533795159a18d757629a0fb5d5fa5d228c43361d8565b84cb1ee3d198`).
 It creates a new image and refuses to overwrite an existing file:
@@ -15,12 +17,9 @@ retaining pitch decoding, audio setup and recording. It modifies shared drawing
 code, so the glyph suppression also applies to Program 2; that program has not
 been validated for this use. Entry, erase and replay startup still draw the staff.
 
-The original static-staff patch only reset counters at wrap, allowing old note
-names to accumulate through the ROM's OR blitter. This revision clears exactly
-`$0EC4..$0EFF` (60 bytes), stopping before recorder memory at `$0F00`. It leaves
-the shared OR blitter intact and suppresses the rest glyph as the first patch
-did. Claude's attached attempt instead changes the shared blitter and removes
-rest slots from replay; neither change is needed to fix accumulated names.
+At wrap, the patch clears exactly `$0EC4..$0EFF` (60 bytes), stopping before
+recorder memory at `$0F00`. This prevents old note names from accumulating
+through the ROM's OR blitter. The shared blitter and rest slots remain intact.
 
 The helper occupies now-unused note positioning code at `$1388`. The entry at
 `$1368` jumps to the existing POPK/PK epilogue; `$136B` jumps to the new wrap

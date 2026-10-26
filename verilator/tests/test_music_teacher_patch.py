@@ -1,5 +1,6 @@
 """Check patch write bounds and ROM invariants; no full-machine emulation."""
 import hashlib
+import os
 from pathlib import Path
 import sys
 import unittest
@@ -65,15 +66,14 @@ class PageWrapTests(unittest.TestCase):
 class OriginalRomTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # Original cartridge is deliberately not distributed with the tests.
-        paths = (ROOT / "software" / "1 Cartridges").glob("*ED01*.bin")
-        for path in paths:
-            data = path.read_bytes()
-            if hashlib.sha256(data).hexdigest() == patch.ED01_SHA256:
-                cls.original = data
-                cls.patched = patch.patch_rom(data)
-                return
-        raise unittest.SkipTest("original ED01 cartridge not installed")
+        filename = os.environ.get("MT1_ROM")
+        if not filename:
+            raise unittest.SkipTest("set MT1_ROM to the original ED01 cartridge")
+        data = Path(filename).read_bytes()
+        if hashlib.sha256(data).hexdigest() != patch.ED01_SHA256:
+            raise ValueError("MT1_ROM is not the original ED01 cartridge")
+        cls.original = data
+        cls.patched = patch.patch_rom(data)
 
     def test_changes_are_confined_to_declared_ranges(self):
         expected = bytearray(self.original)

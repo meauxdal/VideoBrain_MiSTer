@@ -19,6 +19,7 @@ verilator/out/
 verilator/*.vcd
 verilator/imgui.ini
 verilator/rtl_v/
+verilator/roms.local.mk
 
 # quartus build products
 /db

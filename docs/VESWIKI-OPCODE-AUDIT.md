@@ -1,7 +1,7 @@
 # Veswiki Opcode revision 786 comparison
 
 Reviewed 2026-10-24 using the [Opcode page](https://channelf.se/veswiki/index.php?title=Opcode),
-the user-supplied wikitext and the existing manufacturer-based expectations.
+its wikitext and the existing manufacturer-based expectations.
 The public MediaWiki revision API identifies the latest revision as **786**,
 edited by **E5frog on 2026-08-07 at 17:02:44 UTC**. Its parent is 785, edited
 by the same account five minutes earlier. The dated reference is the

@@ -1,7 +1,7 @@
 # Mostek 1979 F8/3870 source comparison
 
 Checked 2026-10-24. Source:
-`refs/datasheets-databooks-fairchild-mostek-manuals/1979_Mostek_Microcomputer_Products_Data_Book.pdf`.
+[Mostek 1979 Microcomputer Products Data Book](https://bitsavers.trailing-edge.com/components/mostek/_dataBooks/1979_Mostek_Microcomputer_Products_Data_Book.pdf).
 The title/copyright pages identify June 1979, publication MK79707. The PDF has
 848 pages. Locations below give printed pages and one-based PDF pages.
 

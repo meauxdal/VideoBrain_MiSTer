@@ -21,7 +21,7 @@ Start with [installation and core controls](../README.md).
 ## Implementation and evidence
 
 Reports describe the revisions and evidence identified within each document.
-See [accuracy](ACCURACY.md) for scope and limitations, and the
+See [accuracy and remaining work](ACCURACY.md) for the current pre-1.0 status, hardware measurement priorities and optional future work, and the
 [simulation harness](../verilator/README.md) for regression commands.
 
 | Area | Reports |
@@ -33,5 +33,8 @@ See [accuracy](ACCURACY.md) for scope and limitations, and the
 
 ## Release notes
 
+- [Unreleased source changes](VideoBrain_UNRELEASED.md)
+- [October 20, 2026](VideoBrain_20261020.md)
+- [October 11, 2026](VideoBrain_20261011.md)
 - [October 7, 2026](VideoBrain_20261007.md)
 - [Release binaries](../releases)

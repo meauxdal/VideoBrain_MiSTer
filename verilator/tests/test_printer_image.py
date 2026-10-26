@@ -58,8 +58,7 @@ class PrinterImageTests(unittest.TestCase):
     def test_rtl_capture(self):
         root = Path(__file__).resolve().parents[1] / 'out/expander1'
         image = root / 'printer.vbp'
-        if not image.exists():
-            self.skipTest('run RTL capture first')
+        self.assertTrue(image.exists(), f'missing RTL capture: {image}')
         sessions, fault = vbp.inspect(image)
         self.assertIsNone(fault)
         self.assertEqual([s['reason'] for s in sessions], ['clean', 'clean'])
@@ -81,8 +80,7 @@ class PrinterImageTests(unittest.TestCase):
 
     def test_hps_capture(self):
         image = Path(__file__).resolve().parents[1] / 'out/expander1/printer-hps.vbp'
-        if not image.exists():
-            self.skipTest('run stock-HPS capture first')
+        self.assertTrue(image.exists(), f'missing stock-HPS capture: {image}')
         sessions, fault = vbp.inspect(image)
         self.assertIsNone(fault)
         self.assertEqual(sessions[0]['data'], bytes(i % 256 for i in range(5000)))
@@ -93,18 +91,18 @@ class PrinterImageTests(unittest.TestCase):
         for rate in range(2):
             for route in range(2):
                 rom = root / f'printer-rom-{rate}-{route}.vbp'
-                if rom.exists():
-                    decoded, fault = vbp.inspect(rom)
-                    self.assertIsNone(fault)
-                    self.assertEqual(decoded[0]['reason'], 'clean')
-                    self.assertEqual(decoded[0]['data'], b'\x3c' if route else b'\0\x20\xa5\r\n\xff')
+                self.assertTrue(rom.exists(), f'missing original-ROM capture: {rom}')
+                decoded, fault = vbp.inspect(rom)
+                self.assertIsNone(fault)
+                self.assertEqual(decoded[0]['reason'], 'clean')
+                self.assertEqual(decoded[0]['data'], b'\x3c' if route else b'\0\x20\xa5\r\n\xff')
 
     def test_timeshare(self):
         root = Path(__file__).resolve().parents[1] / 'out/expander1'
         images = [root / f'printer-timeshare-{rate}-{mode}.vbp'
                   for rate in range(2) for mode in range(4)]
-        if not all(p.exists() for p in images):
-            self.skipTest('run original Timeshare cartridge test first')
+        for image in images:
+            self.assertTrue(image.exists(), f'missing Timeshare capture: {image}')
         for i, image in enumerate(images):
             sessions, fault = vbp.inspect(image)
             self.assertIsNone(fault)
@@ -115,8 +113,7 @@ class PrinterImageTests(unittest.TestCase):
 
     def test_tape_contention(self):
         image = Path(__file__).resolve().parents[1] / 'out/expander1/printer-tapes.vbp'
-        if not image.exists():
-            self.skipTest('run printer/tape contention test first')
+        self.assertTrue(image.exists(), f'missing printer/tape capture: {image}')
         sessions, fault = vbp.inspect(image)
         self.assertIsNone(fault)
         self.assertEqual(sessions[0]['reason'], 'clean')
@@ -127,8 +124,9 @@ class PrinterImageTests(unittest.TestCase):
     def test_infoman(self):
         root = Path(__file__).resolve().parents[1] / 'out/expander1'
         labels = ['desc', 'records', 'total']
-        if not all((root / f'printer-infoman-{label}.vbp').exists() for label in labels):
-            self.skipTest('run original Information Manager report test first')
+        for label in labels:
+            image = root / f'printer-infoman-{label}.vbp'
+            self.assertTrue(image.exists(), f'missing Information Manager capture: {image}')
         reports = []
         for i, label in enumerate(labels):
             sessions, fault = vbp.inspect(root / f'printer-infoman-{label}.vbp')

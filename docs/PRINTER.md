@@ -168,9 +168,12 @@ With the asynchronous board activity LED explicitly excluded in both timing
 audits, the baseline and candidate have identical unconstrained-path counts.
 The current candidate includes the committed OSD and Music Teacher changes.
 
-Hardware validation remains required. Test both rates with a running modem
-bridge, export known printer bytes, and confirm communication continues after
+For changes to the capture path, test both rates on MiSTer with a running
+modem bridge, export known printer bytes, and confirm communication continues after
 Stop. Run actual Information Manager PTR reports with playback and EDIT/SAVE/
 reload with separate tape images. Check absent/read-only/full printer images
 and a controlled storage-service stall. Record Main/RBF versions, byte
 comparisons and cartridge results; a simulation pass is not a hardware pass.
+Live capture cases without recorded results remain unverified. The remaining
+Information Manager pass primarily supports the reconstructed manual; it is
+not tracking a known core defect. See [current status](ACCURACY.md).
