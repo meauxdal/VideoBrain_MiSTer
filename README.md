@@ -51,7 +51,7 @@ Information Manager and APL/S: The Computational Language need assembled ROM ima
 
 ### Tapes (VBT)
 
-Tapes are used to save and restore user data on the VideoBrain, not to load software directly. To enable tape save/load in most software, loading a single cassette into the Record deck is sufficient. Software can load from either deck, so the Playback deck can be used to prevent accidental overwrite. 
+Tapes are used to save and restore user data on the VideoBrain, not to load software directly. To enable tape save/load in most software, loading a single cassette into the Record deck is sufficient. Data can be loaded from either deck, so the Playback deck can be used to prevent accidental overwrite. 
 
 You may encounter an I/O error when tape data is invalid, or if the tape had advanced and was not rewound before operation. Re-mounting a tape also rewinds it to the beginning. See [tape setup and recording behavior](docs/TAPE.md) for more info on loading from/saving to tape.
 
@@ -61,13 +61,13 @@ Note that [Information Manager](docs/INFOMAN-MANUAL.md)'s EDIT mode uniquely req
 
 .vbk files are effectively macros. The principal use case is to have the core automatically input APL/S programs for you, though they have other uses (including playback of monophonic music files in Music Teacher 1). They can be loaded in any software, including the BIOS. [Example](/examples) files and a [converter](tools/README.md#keyboard-files) to create new files are provided.
 
-The converter accepts text files containing supported inputs and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries. The loader is configured to wait just long enough for the software to signal it is ready to accept each new keypress, preventing dropped inputs. Pressing any key or opening the OSD aborts entry. Keyboard > Menu Aborts VBK can be optionally disabled to allow .vbk playback to continue while in the menu.
+The converter accepts text files containing supported inputs and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries. The loader is configured to wait just long enough for the software to signal it is ready to accept each new keypress, preventing dropped inputs. Pressing any key or opening the OSD aborts entry. Keyboard > OSD Aborts VBK can be optionally disabled to allow .vbk playback to continue while in the menu.
 
 Music Macro Language (.mml) files can also be converted. MML files must use a simplified subset of the QB64 PLAY format. The converter generates unique musical .vbk files (with VBK2 header for differentiation from text entry files) for automatic playback in the free play mode in Music Teacher 1. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
 
 ### Printer capture (VBP)
 
-The Expander 1 printer stream can be saved to a mounted `.vbp` image while Timeshare uses the UART for modem communication. Mount a copy of [blank-printer.vbp](examples/blank-printer.vbp), select the baud rate, and choose **Start Capture**. When finished, choose **Stop and Save**, wait for Ready, and unmount before exporting. See [printer capture](docs/PRINTER.md) for Information Manager corrections, export commands and hardware validation still required.
+The Expander 1 printer stream can be saved to a mounted .vbp image while Timeshare uses the UART for modem communication. Mount a copy of [blank-printer.vbp](examples/blank-printer.vbp), select the baud rate, and choose Start Capture. When finished, choose Stop Capture and Save, wait for Ready, and unmount before exporting. See [printer capture](docs/PRINTER.md).
 
 ### Options
 
@@ -99,7 +99,7 @@ The PC number row and numeric keypad also map `1234567890` to the VideoBrain key
 
 ## Joysticks
 
-VideoBrain supports 4 analog joysticks with one fire button each, though only one game (Tennis) supports 4 players. The VideoBrain joystick does not self-center; this can make things bit awkward in Tennis, which relies on that behavior. Modern self-centering sticks will snap your player back to a neutral position when you let go.
+VideoBrain supports 4 analog joysticks with one fire button each, though only one game (Tennis) supports 4 players. The VideoBrain joystick does not self-center. This can make things bit awkward in Tennis. Relative analog mode allows you to move around in Tennis without snapping back to the center; 3 speeds are provided.
 
 Use Calibrate Sticks when joysticks are active in-game to fully calibrate all joysticks for use. Joysticks drift diagonally until calibrated.
 
@@ -117,25 +117,11 @@ The Timeshare cartridge can connect to remote text services through MiSTer's HPS
 
 Expander 1 firmware (boot1.rom) is required. See the [Timeshare setup and Telehack example](docs/EXPANDER1.md#timeshare-over-uart) for connection commands, keyboard controls, and display setup.
 
-For printer output, select **System > UART Output > Printer** and use the [Linux file-capture utility](docs/EXPANDER1.md#printer-file-capture). It captures the actual printer stream, including Information Manager's PTR output. **Modem** is the default for Timeshare; the UART serves one port at a time. Printer capture is simulation-tested; live MiSTer capture remains unverified.
+For printer output, select System > UART Output > Printer and use the [Linux file-capture utility](docs/EXPANDER1.md#printer-file-capture). It captures the actual printer stream, including Information Manager's PTR output. Modem is the default for Timeshare; the UART serves one port at a time. Printer capture is simulation-tested; live MiSTer capture remains unverified.
 
 ## Tools
 
 See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard file conversion, and tape utilities.
-
-## Repository layout
-
-| Path | Contents |
-| --- | --- |
-| `VideoBrain.*`, `files.qip` | MiSTer top level and Quartus project. |
-| `rtl/` | VideoBrain hardware implementation. |
-| `sys/` | Upstream MiSTer framework. |
-| `cfg/` | MAME reference configuration. |
-| [docs](docs/README.md) | User guides, implementation reports and source audits. |
-| [examples](examples/README.md) | Keyboard programs, music, tape saves and blank images. |
-| [tools](tools/README.md) | Conversion and image utilities. |
-| [verilator](verilator/README.md) | Simulator and regression harness. |
-| [releases](releases) | Published RBF files. |
 
 ## Building
 
