@@ -78,6 +78,7 @@ Run these from `verilator/`. ROM-based captures need local BIOS and cartridge fi
 | --- | --- |
 | `tests/tb_*` | Run CPU, bus, video, audio, cartridge, keyboard, joystick and tape regressions. |
 | `tests/run_tools.py` | Check the current APL/S, keyboard/music and tape converters. |
+| `tests/test_examples.py` | Check bundled source/VBK pairs, checksums, tape structure and blank images; included in `test-tools`. |
 | `tests/audio_filter_design.py`, `tests/test_audio_alias.py` | Check filter coefficients and alias rejection with `make test-audio`. |
 | `tests/check_audio_path.py` | Check the MiSTer I2S output path with `make test-audio-path` (requires NumPy). |
 | `tests/analyze_logic_csv.cpp`, `tests/check_logic_csv.py`, `tests/summarize_logic_captures.py` | Analyze logic captures and check the analyzer with `make test-logic-csv`. |

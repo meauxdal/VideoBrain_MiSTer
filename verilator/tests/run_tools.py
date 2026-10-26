@@ -13,6 +13,7 @@ def main():
         for pattern in (
             "test_apl_source.py",
             "test_keyboard_input.py",
+            "test_examples.py",
             "test_music_teacher_patch.py",
             "test_tape_convert.py",
             "test_trim_tape.py",
