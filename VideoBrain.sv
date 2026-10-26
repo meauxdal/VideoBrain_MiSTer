@@ -96,7 +96,7 @@ localparam CONF_STR = {
 	"P5T[35],Stop and Flush;",
 	"P5T[36],Capture Status;",
 	"P5-;",
-	"P5O[37],Info. Manager Fix,Off,On;",
+	"P5O[37],InfoMan Print Fix (Reset),Off,On;",
 	"P5-;",
 	"h9P5-,Printer Active;",
 	"h11P5-,Printer Busy;",
