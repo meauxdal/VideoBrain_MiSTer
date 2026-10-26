@@ -4,6 +4,8 @@ Information Manager is a tape-based database tool for keeping structured lists, 
 
 This guide describes the September 1978 VB-1200 prototype on the VideoBrain MiSTer core. It is a reconstructed guide, not an original VideoBrain manual. See [research notes](INFOMAN.md) for the ROM analysis and hardware test evidence behind it.
 
+The manual is still being completed through MiSTer testing of the cartridge's capabilities and software quirks. Instructions derived only from ROM analysis remain identified below; they do not indicate known core faults. Hardware checks in this guide refer to MiSTer unless explicitly stated otherwise.
+
 ## How a database is organized
 
 A **database** is a collection of entries that all use the same structure. Information Manager asks you to define that structure before you enter the data.
@@ -204,18 +206,18 @@ These instructions are derived from the ROM. Multi-record grouped reports, capac
 
 ### Inspect the database definition with DESC
 
-At the `/` prompt in either REVIEW or EDIT, submit `DESC`. It displays the database's structure:
+At the `/` prompt in either REVIEW or EDIT, submit `P DESC`. It displays the database's structure:
 
 - The database name (`DB`).
 - Each field's name (`NAME`), length (`LENGTH`) and type (`TYPE`), in definition order.
 
 Use this to find out which fields a saved database contains and how they were defined. For the STOCK example, the information is DB = STOCK, NAME = ITEM, LENGTH = 8 and TYPE = A. The length display uses three character positions and may show leading zeroes.
 
-The grammar accepts `DESC`, `PRINT DESC` and `P DESC` for the same operation. No record number, field name or ALL argument is needed. Spell DESC in full: `D` is DELETE.
+Use `PRINT DESC` or `P DESC`; the PRINT/P prefix is required. Bare `DESC` is rejected. No record number, field name or ALL argument is needed. Spell DESC in full: `D` is DELETE.
 
 DESC displays the definition without advancing the current record or writing tape data. It is read-only in EDIT as well as REVIEW; it does not rename fields or change their lengths or types. It describes the database, not an individual record's values.
 
-For example, enter REVIEW, use DESC to inspect the fields, then use PRINT ALL to list the records. DESC leaves the first loaded record available for that listing. These behaviors are traced from the ROM; the screen presentation and complete interaction still need a hardware check.
+For example, enter REVIEW, use P DESC to inspect the fields, then use PRINT ALL to list the records. DESC leaves the first loaded record available for that listing. Hardware REVIEW displayed the database definition with P DESC. The ROM shows that it leaves the current record available; EDIT behavior still needs a hardware check.
 
 ### Printer output with PTR
 
@@ -224,7 +226,7 @@ In REVIEW, add `PTR` at the end of an output command to request printer output a
 | Command | Printer output requested |
 |---|---|
 | `PRINT ALL PTR` or `P ALL PTR` | All remaining records, starting with the loaded record. |
-| `DESC PTR` or `P DESC PTR` | The database definition. |
+| `PRINT DESC PTR` or `P DESC PTR` | The database definition. |
 | `TOTAL PTR` or `T PTR` | The accumulated numeric report; requires a TOT field as described above. |
 
 PTR follows the record selection: use `PRINT ALL PTR`. Spell PTR in full; `P` is PRINT. The optional PTR suffix is in REVIEW's grammar, not EDIT's, and is not accepted after FLD, SORT or TOT configuration commands.
@@ -233,7 +235,7 @@ The printer flag applies to that output operation. An output command without PTR
 
 The ROM sends formatted screen text through the Expander 1 printer serial connection, converting VideoBrain glyphs to ASCII and terminating lines with carriage return and line feed. It selects the 300-baud timing setting and printer routing. The exact printer requirements and hard-copy formatting have not been verified in operation.
 
-For file capture, select **System > UART Output > Printer** and start the Linux capture utility before issuing the PTR command. See [printer file capture](EXPANDER1.md#printer-file-capture) for setup and raw file handling. Printer input stays idle; the original-ROM tests require no response characters. The shared UART handles modem or printer output one at a time. Live report capture and physical printing remain unverified. Commands without PTR continue to use normal screen review.
+For independent file capture, mount a printer image, select 300 baud, and Start Capture before issuing the PTR command. See [printer capture images](PRINTER.md) for setup, stopping/flushing and export. The shared UART diagnostic under **System > UART Output > Printer** remains available. Printer input stays idle; the original-ROM tests require no response characters. The shared UART handles modem or printer output one at a time. Live report capture and physical printing remain unverified. Commands without PTR continue to use normal screen review.
 
 ## Change a database
 
@@ -325,11 +327,11 @@ The ROM also contains commands for more advanced database work. These terms desc
 |---|---|
 | Record selection | Choosing which records a command acts on, potentially by a record number or a comparison with a field value. Exact selection expressions are not documented here. |
 | `ADD`, `DELETE`, `REPLACE` | See the EDIT syntax and current-record rules above. Hardware output/reload checks, ADD termination and further selection forms remain outstanding. |
-| `DESC` | Displays the database name and field names, lengths and types in REVIEW or EDIT; see the instructions above. Screen interaction still needs a hardware check. |
+| `P DESC` | Displays the database name and field names, lengths and types. REVIEW display is hardware-verified; EDIT still needs a hardware check. |
 | `FLD` | In REVIEW, `FLD=fieldname` selects one field for subsequent record display. See the instructions above; multi-field hardware checks remain outstanding. |
 | `SORT` | REVIEW's `SORT=fieldname` groups numeric reports by an A/text field; see the instructions above. It preserves tape order. Grouped hardware reports remain to be checked. |
 | `TOT`, `TOTAL` | In REVIEW, TOT=numericfield chooses the I/M field to sum; TOTAL (T) displays the accumulated report. See SORT above for grouped counts, sums and the grand total. Numeric hardware reports remain unverified. |
 | `MERGE` | EDIT's MERGE/M copies the remaining input, pauses for another tape and continues the same output. Use matching layouts; see the procedure above. Hardware tape-change/output checks remain outstanding. |
-| `PTR` | REVIEW's trailing printer modifier, as in P ALL PTR, DESC PTR or TOTAL PTR. See the file-capture instructions above; physical printing remains unverified. |
+| `PTR` | REVIEW's trailing printer modifier, as in P ALL PTR, P DESC PTR or TOTAL PTR. See the file-capture instructions above; physical printing remains unverified. |
 
 Use the [research notes](INFOMAN.md) for command-table details and open questions. They distinguish recognized command words from complete, tested operating instructions.

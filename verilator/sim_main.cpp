@@ -113,10 +113,8 @@ int verilate() {
     return 0;
 }
 
-static const char* opt_res1 =
-    "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
-static const char* opt_res2 =
-    "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
+static const char* opt_res1 = nullptr;
+static const char* opt_res2 = nullptr;
 static const char* opt_cart = nullptr;
 static bool        opt_run  = false;
 static int         opt_cart_type = 0;
@@ -125,8 +123,8 @@ static void usage(const char* a0) {
     fprintf(stderr,
 "Graphical VideoBrain simulator\n"
 "Usage: %s [options]\n"
-"  --res1 FILE   RES1 ROM (ioctl index 0)\n"
-"  --res2 FILE   RES2 ROM (ioctl index 1)\n"
+"  --res1 FILE   required RES1 ROM (ioctl index 0)\n"
+"  --res2 FILE   optional RES2 ROM (ioctl index 1)\n"
 "  --cart FILE   cartridge image (ioctl index 2)\n"
 "  --run         start running immediately\n"
 "  --cart-type N fallback profile for unknown dumps: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman\n", a0);
@@ -147,6 +145,11 @@ int main(int argc, char** argv, char** env) {
         else if (a == "--run")  opt_run = true;
         else if (a == "--cart-type") opt_cart_type = atoi(need("--cart-type"));
         else { fprintf(stderr, "error: unknown option %s\n", a.c_str()); usage(argv[0]); return 1; }
+    }
+
+    if (!opt_res1 || !*opt_res1) {
+        fprintf(stderr, "error: --res1 FILE is required; supply --res2 FILE for the full BIOS\n");
+        return 1;
     }
 
     top = new Vtop();
@@ -184,13 +187,13 @@ int main(int argc, char** argv, char** env) {
     // QueueDownload only logs failures; reject missing files before starting.
     auto check = [](const char* p, const char* what) {
         if (FILE* f = fopen(p, "rb")) { fclose(f); return true; }
-        fprintf(stderr, "error: cannot open %s '%s' (cwd must be verilator/)\n", what, p);
+        fprintf(stderr, "error: cannot open %s '%s'\n", what, p);
         return false;
     };
     if (!check(opt_res1, "RES1")) return 1;
-    if (!check(opt_res2, "RES2")) return 1;
+    if (opt_res2 && !check(opt_res2, "RES2")) return 1;
     bus.QueueDownload(opt_res1, 0, true);
-    bus.QueueDownload(opt_res2, 1, false);
+    if (opt_res2) bus.QueueDownload(opt_res2, 1, false);
     if (opt_cart) {
         if (!check(opt_cart, "cart")) return 1;
         bus.QueueDownload(opt_cart, 2, false);
@@ -285,7 +288,7 @@ int main(int argc, char** argv, char** env) {
         }
         if (ImGui::Button("Load cartridge...")) {
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Cartridge",
-                                                    ".bin,.*", "../software/");
+                                                    ".bin,.*", ".");
         }
         ImGui::End();
 

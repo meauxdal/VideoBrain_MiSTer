@@ -5,6 +5,8 @@ reg reset = 0;
 reg frame_tick = 0;
 reg calibrate = 0;
 reg enabled = 0;
+reg relative_mode = 0;
+reg [1:0] relative_speed = 0;
 reg [1:0] paired = 0;
 reg [1:0] preset = 0;
 reg [127:0] buttons = 0;
@@ -24,6 +26,14 @@ task tick;
 	#1 clk = 1;
 	#1 clk = 0;
 	#1;
+endtask
+
+task center_relative;
+	reset = 1;
+	tick();
+	reset = 0;
+	tick();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Relative reset center");
 endtask
 
 task frame;
@@ -186,7 +196,159 @@ initial begin
 	enabled = 1;
 	tick();
 	assert (pots == {8{8'h90}}) else $fatal(1, "Reconnect leaves calibration idle");
-	$display("Joystick routing, presets and calibration passed");
+	calibrate = 0;
+	buttons = 0;
+	left_sticks = 0;
+	right_sticks = 0;
+	paired = 0;
+	relative_mode = 1;
+	tick();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Relative mode starts centered");
+	left_sticks = {4{16'h7f80}};
+	repeat (100) tick();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Movement requires frame tick");
+	frame();
+	assert (pots == {4{16'h7c83}}) else $fatal(1, "Independent signed axes");
+	left_sticks = 0;
+	repeat (100) frame();
+	assert (pots == {4{16'h7c83}}) else $fatal(1, "Release holds position");
+	left_sticks = {4{16'h807f}};
+	frame();
+	assert (pots == {4{16'h7f7f}}) else $fatal(1, "Movement reverses");
+
+	center_relative();
+	left_sticks = {4{16'h08f8}};
+	repeat (100) frame();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Relative deadband edges");
+	left_sticks = {4{16'h0009}};
+	repeat (31) frame();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Fine movement fraction");
+	frame();
+	assert (pots == {4{16'h8180}}) else $fatal(1, "Fine movement accumulates");
+
+	left_sticks = {4{16'h7f80}};
+	repeat (200) frame();
+	assert (pots == {4{16'h00ff}}) else $fatal(1, "Both endpoints saturate");
+	left_sticks = {4{16'h807f}};
+	frame();
+	assert (pots == {4{16'h03fb}}) else $fatal(1, "Endpoint reversal without windup");
+	repeat (200) frame();
+	assert (pots == {4{16'hff00}}) else $fatal(1, "Opposite endpoints saturate");
+	left_sticks = {4{16'h7f80}};
+	frame();
+	assert (pots == {4{16'hfb03}}) else $fatal(1, "Opposite endpoint reversal");
+
+	for (int mode = 1; mode <= 2; mode++) begin
+		paired = 2'(mode);
+		for (int i = 0; i < 4; i++) begin
+			int partner;
+			partner = partners[mode][i];
+			left_sticks = 0;
+			right_sticks = 0;
+			center_relative();
+			right_sticks[i*16 +: 16] = 16'h0040;
+			left_sticks[partner*16 +: 16] = 16'h4000;
+			frame();
+			assert (pots == ((64'h8080808080808080 & ~(64'hffff << (partner*16))) |
+				(64'h8081 << (partner*16)))) else $fatal(1, "Relative own priority and port isolation");
+			left_sticks = 0;
+			frame();
+			assert (pots[partner*16 +: 16] == 16'h8181) else $fatal(1, "Paired input resumes at held position");
+			buttons[i*32 + 5] = 1;
+			#1;
+			assert (fire == (4'b0001 << partner)) else $fatal(1, "Relative paired fire");
+			buttons = 0;
+		end
+	end
+	// Digital directions drive the same accumulator.
+	paired = 0;
+	left_sticks = 0;
+	right_sticks = 0;
+	center_relative();
+	buttons[3:0] = 4'b0101;
+	frame();
+	assert (pots[15:0] == 16'h8383) else $fatal(1, "Relative D-pad movement");
+	buttons = 0;
+	frame();
+	assert (pots[15:0] == 16'h8383) else $fatal(1, "Relative D-pad release");
+	enabled = 0;
+	tick();
+	enabled = 1;
+	tick();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Reconnect centers relative state");
+	left_sticks = {8{8'h7f}};
+	frame();
+	paired = 1;
+	tick();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Pairing change centers relative state");
+	frame();
+	preset = 1;
+	tick();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Preset change centers relative state");
+	frame();
+	calibrate = 1;
+	tick();
+	for (int phase = 1; phase <= 5; phase++) begin
+		for (int f = 0; f < 30; f++) begin
+			assert (calibrating && pots == calibration_position(phase))
+				else $fatal(1, "Relative calibration phase %0d frame %0d", phase, f);
+			frame();
+		end
+	end
+	assert (!calibrating && pots == {8{8'h80}}) else $fatal(1, "Relative calibration finishes centered");
+	frame();
+	assert (pots == {8{8'h83}}) else $fatal(1, "Relative motion resumes after calibration");
+	relative_mode = 0;
+	tick();
+	assert (pots == {8{8'hff}}) else $fatal(1, "Absolute mode restores live input");
+	relative_mode = 1;
+	tick();
+	assert (pots == {8{8'h80}}) else $fatal(1, "Relative reentry centers state");
+	calibrate = 0;
+	paired = 0;
+	for (int speed = 0; speed < 4; speed++) begin
+		reg [15:0] previous_position;
+		previous_position = 16'h8000;
+		for (int axis = 0; axis < 128; axis++) begin
+			reg [15:0] position;
+			position = dut.advance_pot(16'h8000, 8'(128 + axis), 2'(speed));
+			assert (position >= previous_position) else $fatal(1, "Speed curve must be monotonic");
+			assert (axis > 8 || position == 16'h8000) else $fatal(1, "Speed curve deadband");
+			assert (axis > 40 || position == dut.advance_pot(16'h8000, 8'(128 + axis), 0))
+				else $fatal(1, "Speed curve preserves fine movement");
+			assert (int'(position) + int'(dut.advance_pot(16'h8000, 8'(128 - axis), 2'(speed))) == 65536)
+				else $fatal(1, "Speed curve direction symmetry");
+			if (speed == 3)
+				assert (position == dut.advance_pot(16'h8000, 8'(128 + axis), 0))
+					else $fatal(1, "Reserved speed uses Slow");
+			previous_position = position;
+		end
+	end
+	for (int speed = 1; speed <= 2; speed++) begin
+		relative_speed = 2'(speed);
+		center_relative();
+		left_sticks = {4{16'h7f80}};
+		frame();
+		assert (pots == (speed == 1 ? {4{16'h748b}} : {4{16'h6698}}))
+			else $fatal(1, "Higher speed full deflection");
+		left_sticks = 0;
+		repeat (10) frame();
+		assert (pots == (speed == 1 ? {4{16'h748b}} : {4{16'h6698}}))
+			else $fatal(1, "Higher speed release holds");
+		relative_speed = 0;
+		tick();
+		assert (pots == (speed == 1 ? {4{16'h748b}} : {4{16'h6698}}))
+			else $fatal(1, "Speed change preserves position");
+		relative_speed = 2'(speed);
+		left_sticks = {4{16'h7f80}};
+		repeat (100) frame();
+		assert (pots == {4{16'h00ff}}) else $fatal(1, "Higher speed saturation");
+		left_sticks = {4{16'h807f}};
+		frame();
+		assert (pots == (speed == 1 ? {4{16'h0bf3}} : {4{16'h18e5}}))
+			else $fatal(1, "Higher speed immediate reversal");
+	end
+	$display("Joystick routing, presets, calibration and relative movement passed");
 	$finish;
 end
 

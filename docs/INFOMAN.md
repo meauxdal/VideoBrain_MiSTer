@@ -2,6 +2,8 @@
 
 For database concepts and operating instructions, see the [user manual](INFOMAN-MANUAL.md), including planning fields, entering records, reading saved data and making an edited copy. These notes retain the ROM analysis and hardware evidence.
 
+The remaining MiSTer pass is primarily manual research: exercise the full command set, confirm the operating instructions and identify any further prototype software bugs. No core defect is currently known from this testing; the observed defect described below is in the original ROM. Command-specific checks below remain outstanding where marked. Here, hardware tests refer to MiSTer unless explicitly identified as original VideoBrain tests. See [current accuracy status](ACCURACY.md) for planned original-machine verification.
+
 ## Using the cartridge
 
 Load the cartridge and [Expander 1 firmware](EXPANDER1.md). The initial menu shows PROGRAM / ENTER / REVIEW / EDIT. NEXT is F3 or Enter; SPECIAL is F4.
@@ -52,17 +54,17 @@ The following capabilities are inferred from the ROM, not hardware-verified oper
 | Deleting and replacing | See the EDIT command analysis below for current-record targeting and DELETE selectors. Hardware output/reload checks remain outstanding. |
 | Record selection | Grammar and handlers support numbers, field names, value comparisons and wildcard handling. Establish exact syntax and matching rules. |
 | Field selection | REVIEW accepts FLD=fieldname to display one field; EDIT excludes it. See the analysis below; check a multi-field database on hardware. |
-| Database description | DESC displays the database name and field names, lengths and types in both REVIEW and EDIT. See the analysis below; check screen presentation on hardware. |
+| Database description | P DESC displays the database name and field names, lengths and types. REVIEW display is hardware-verified; EDIT still needs a hardware check. |
 | Counts and totals | REVIEW's TOT=numericfield selects an I/M field for accumulation; TOTAL (T) invokes the report. See SORT and PTR below. Hardware numeric reports remain unverified. |
 | Grouped summaries | SORT=fieldname selects a text key for grouped numeric reports in REVIEW. Groups retain first-encounter order; nine named groups plus OTHER. See the analysis below; hardware reports remain unverified. |
 | Tape merging | EDIT's MERGE/M concatenates inputs through a REWIND / KEY NEXT pause. No schema comparison, field mapping or later-header write. See the analysis below; hardware tape-change/output checks remain outstanding. |
-| Printer reports | REVIEW accepts trailing PTR on PRINT, DESC and TOTAL output. Select System > UART Output > Printer for raw file capture through Linux. See the analysis below; live report capture and physical printing remain unverified. |
+| Printer reports | REVIEW accepts trailing PTR on PRINT, DESC and TOTAL output. Use Printer > Mount Capture Image and 300 baud for independent file capture; see [printer capture](PRINTER.md). See the analysis below; live report capture and physical printing remain unverified. |
 
 Single-deck append or editing remains unverified. EDIT with only the record deck populated produced I/O ERR; ENTER starts by defining a database. REVIEW's grammar and write-suppression path do not suggest a persistent ADD workflow.
 
 ## ROM identity
 
-The three chips in MAME's `infoman.zip` are identical to Sean Riddle's corresponding ROM dumps. The assembled cartridge contains the same bytes plus a 2 KB zero-filled gap.
+The three chips in MAME's `infoman.zip` are identical to Sean Riddle's corresponding ROM dumps. The assembled cartridge contains the same bytes plus a 2 KB zero-filled gap. Public chip identities and hashes are listed in [MAME's VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml#L226). These identify the prototype dump; they do not establish its behavior on original hardware.
 
 | CPU addresses | MAME chip | SHA-1 |
 |---|---|---|
@@ -153,9 +155,9 @@ Important limits from the code: keys always use eight bytes even if the declared
 
 REVIEW grammar entry 04 (TOTAL) and entry 05 (shared PRINT/DESC/selection grammar) continue at entry 0E, address 1772: `0F 0A 07`. PTR token 0F invokes operation 0A (1411), then entry 07 requires end of command. If PTR is absent, entry 0F at 1775 (`00 07 87`) invokes operation 07 (1415). These handlers set 1B1A to FF or 00 respectively, then enter processing at 3267.
 
-Thus the explicit forms include PRINT ALL PTR / P ALL PTR, PRINT PTR / P PTR, DESC PTR / PRINT DESC PTR / P DESC PTR, and TOTAL PTR / T PTR. PTR follows any record-selection argument. FLD/SORT/TOT configuration branches go directly to the end-of-command entry, so they have no PTR suffix. EDIT uses its own continuation at entry 15: the shared grammar is followed by operation 07 and entry 16, omitting the optional PTR branch. PTR has no shorter dictionary spelling.
+Thus the explicit forms include PRINT ALL PTR / P ALL PTR, PRINT PTR / P PTR, PRINT DESC PTR / P DESC PTR, and TOTAL PTR / T PTR. PTR follows any record-selection argument. FLD/SORT/TOT configuration branches go directly to the end-of-command entry, so they have no PTR suffix. EDIT uses its own continuation at entry 15: the shared grammar is followed by operation 07 and entry 16, omitting the optional PTR branch. PTR has no shorter dictionary spelling.
 
-The flag is not a persistent printer-configuration toggle: a subsequent output operation without PTR executes 1415 and clears it. The selection grammar has an unconditional default, so a bare PTR can reach processing without an explicit PRINT/DESC/TOTAL token; it does not initialize processing mode 1B0F. Do not document that parser side effect as an independent, well-defined printer setup command.
+The flag is not a persistent printer-configuration toggle: a subsequent output operation without PTR executes 1415 and clears it. Use PTR only as a suffix to an output command.
 
 The display routine formats screen text first. At 3615-3626 it calls 3716 only when display mode 1B0B is 3 and printer flag 1B1A is nonzero. Otherwise it follows the normal display/pacing path. This adds hard-copy transmission to formatted display rather than selecting a different record set.
 
@@ -163,11 +165,162 @@ The display routine formats screen text first. At 3615-3626 it calls 3716 only w
 
 At 3732-3777, the cartridge transmits a leading zero byte, five ASCII spaces, sixteen converted screen glyphs, then CR (0D) and LF (0A) for each buffered line. Glyph conversion uses the table at 3782, indexed at 3755. It iterates the buffered display lines using the count at 0C28, then waits for completion and returns through 3B19. This is a short-line screen-text dump; exact hard-copy layout, framing and physical-printer compatibility need operating checks.
 
-The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Select System > UART Output > Printer to capture this stream to a file through Linux; see [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Original-ROM tests verify printer-only transmission without responses at 110/300 baud; complete cartridge reports and physical printing still need hardware validation.
+The core holds Expander printer RX idle and exposes printer TX to the MiSTer wrapper. Use Printer > Mount Capture Image at 300 baud to capture this stream independently; see [printer capture images](PRINTER.md). The shared-UART diagnostic remains available in [printer file capture](EXPANDER1.md#printer-file-capture). Modem remains the default UART source. Expander ROM tests verify printer-only transmission without responses at 110/300 baud. P DESC PTR and P ALL PTR passed hardware tests with the cartridge corrections below; totals and physical printing remain unverified.
+
+### Printer execution and failure boundary
+
+P DESC PTR displays the database name before printing that buffered line.
+The NAME/LENGTH/TYPE loop follows only after that printer call returns.
+The relevant cartridge paths are:
+
+| Address | Operation |
+|---|---|
+| 1411, 1422, 3267, 31C5 | Select PTR and definition display, then display DB before iterating fields. |
+| 3615-3626, 3716-3730 | Enter printer output and send Expander command 04 02 02. |
+| 3DEC, 3E2D, 3E17 | Send command bits MSB first; send framed data LSB first through the timed port-1 callback. |
+| 3E76-3EE5 | Exchange foreground/transfer contexts using 1BD3-1BD9 and external interrupt vector 3EB5. |
+| 3EE6-3F29 | Run BIOS video housekeeping while waiting; count down a timeout, cancel through port 1 value 60, and resume with an error flag. |
+
+The Expander command-04 descriptor at 0095 points to timer handler 041A and
+rate table 009F. Selector 02 loads 49 from 00A3. Control AA selects /40;
+the handler advances serial output every third timer interrupt. This agrees
+with nominal 300 baud. Routing 02 copies host data to printer TX at 04C4-04CE;
+it does not require printer RX acknowledgements.
+
+Hardware remained at DB: TEST with and without a mounted printer image.
+The synchronized original-ROM reproduction enters 3716 with line counter
+0C28 equal to 00. The first glyph reads span 0FAF-0FBE, including BIOS workspace
+rather than the intended text. Values outside the glyph table select unrelated
+ROM bytes through signed ADC. At 3774, the counter underflows from 00 to FF,
+then FE after the next line. The loop therefore attempts 256 lines, roughly
+four minutes at 300 baud. No initializer for 0C28 was found on this path.
+The cartridge chip hashes match the documented prototype ROMs above.
+
+A separate startup framing fault precedes that output. The Expander copies
+the last setup bit before the host's start bit, producing ten low bit periods
+for the initial NUL. The strict receiver reports framing and stops capture;
+serial transfer and interrupt acknowledgements continue afterward. This does
+not establish how a physical printer tolerates startup or justify changing
+the original ROM or silently discarding malformed bytes.
+
+The later hardware display corruption/blanking also occurred without a
+printer image. Its cause remains unresolved; the counter underflow explains
+the prolonged first printer call, but the observed reads alone do not explain
+a change to display state.
+
+### Expected effects on original hardware
+
+The observations above come from MiSTer hardware and simulation. There is no
+original-VideoBrain printer trace confirming these failures. The row-count
+finding follows the cartridge instructions; the serial-startup finding also
+depends on modeled host/Expander timing. A timing discrepancy in emulation
+has not been ruled out by the successful patch.
+
+If an original machine enters 3716 with 0C28=00, the same instructions should
+attempt 256 lines, reading unintended memory and taking roughly four minutes
+per printer invocation at 300 baud. A physical printer could print garbage
+and excess lines while the screen appears stalled. Different initial RAM
+contents could change the count and selected rows; original-machine RAM
+initialization on this path has not been verified. These reads do not by
+themselves explain display corruption or blanking.
+
+If the serial startup waveform is also reproduced, its initial NUL stays low
+for about ten bit periods. A receiver checking the stop bit at the usual
+position can report a framing error. A physical printer might discard that
+NUL, substitute a character, or indicate an error; recovery depends on the
+printer. The core's capture controller stops on framing error, so capture
+failure does not prove that a physical printer would stop or reject the rest
+of the report.
+
+For a bounded printer trace, run from `verilator`:
+
+```
+make test-printer-infoman-apple INFOMAN_APPLE_ARGS=+diagnose_printer
+```
+
+This observes six simulated seconds after printer entry, records rejected
+frames, and writes system-RAM/video-register writes with the executing PC to
+`out/expander1/printer-infoman-apple-diagnostic-writes.csv`. Diagnostic
+completion is not a passing printer test. The default test still rejects
+framing errors.
+
+The six-second APPLE diagnostic decoded 164 valid frames and rejected the
+initial NUL. The line count reached FA and video remained enabled. BIOS
+routine 427F repeatedly wrote the same object-register values throughout
+this window. The delayed hardware display failure was not reproduced.
+
+### Printer corrections
+
+Printer > InfoMan Fix (Reload) is Off by default. Off preserves the original
+cartridge bytes and execution. On opts into a software correction rather than
+a change to CPU or Expander emulation. Set the option before loading the
+original cartridge; reload after changing it in either direction. A soft
+reset alone does not replace the loaded bytes.
+
+When On, the core patches its loaded RAM copy only for an 8192-byte image
+with the original InfoMan CRC B5CB57CE. The option is sampled at download
+completion, and cartridge availability stays low until the writes finish.
+The ROM file and Expander firmware remain unchanged. Other images, including
+those using the Info. Manager mapper fallback, are not modified. The same
+correction is available through the standalone patcher for independent tests;
+users do not need a separately patched ROM for the core option.
+
+The cartridge test compares all ROM bytes with the original when Off and
+with the hardware-tested patched image when On. It checks CPU/DMA reads,
+soft-reset retention, reload in both directions, and rejection of an altered
+CRC even with the mapper fallback selected. The toggle integration still
+needs a hardware build and test using the original cartridge image.
+
+`tools/patch_infoman_printer.py` accepts only the original 8192-byte image
+(SHA256 `9b580726ad5d899a316901ad4513622a9e66e8131da3d6ac3de40180a2200d8f`)
+and creates a separate output without overwriting an existing file:
+
+```
+python3 tools/patch_infoman_printer.py original.bin infoman-printer-count.bin
+```
+
+The patch copies the formatter's scroll count R0 at 36C6 into printer counter
+0C28. A hook at 36CA calls padding at 17F8 and 3FF9, preserving the original
+cursor clear and return. It does not change serial startup. This experiment
+requires the Information Manager cartridge profile because its checksum
+differs from the original. Simulation uses `+cart_profile=4`.
+
+The APPLE test accepts `INFOMAN_APPLE_CART` to select an experimental image
+and `INFOMAN_APPLE_ARGS` for diagnostic options. Use a distinct `+report_label`
+to preserve earlier traces; `+check_printer_rows` asserts counts of 1-7 and
+glyph reads within 0F3F-0FAE with valid glyph indices. The APPLE count-only
+experiment printed DB: TEST, NAME: ITEM, LENGTH: 008 and TYPE: A, then returned
+to the prompt. All row/glyph assertions passed. Its 92 decoded bytes match
+those four lines exactly; the four leading NUL frames were rejected.
+
+Add `--serial-idle` to create a combined experiment. At 3E31 it replaces the
+redundant callback-vector setup with a delay and an idle-high port write.
+The preceding command sender already selects callback 3E17 and leaves R2=0
+after routing byte 02. A 256-iteration DS/BNZ loop allows that bit to be
+sampled before driving mark ahead of the first 300-baud printer timer copy.
+Later bytes enter with R2=1 and wait one iteration. Data and stop bits are
+unchanged. This timing correction is specific to this ROM's 300-baud setup.
+
+```
+python3 tools/patch_infoman_printer.py original.bin infoman-printer-idle.bin --serial-idle
+```
+
+Hardware testing of the combined image confirmed P DESC PTR displayed the
+APPLE database definition, returned to the prompt, and captured without a
+reported framing error. P ALL PTR record printing also passed hardware
+testing with the combined image. Select System > Mapper Fallback > Info. Manager
+before loading the patched cartridge. The original cartridge and Expander
+firmware remain unchanged. Exported-byte comparison, totals, multi-line
+fields and prolonged display stability remain unverified.
+
+The strict APPLE test's `+check_apple_report` option checks all 96 expected
+bytes, rejects framing errors, and checks the callback/loop-register entry
+state. Use it with `+check_printer_rows` and `+cart_profile=4`, without
+`+diagnose_printer`, to test the combined image.
 
 ### DESC: database definition display
 
-DESC is a standalone command in the shared REVIEW/EDIT grammar. Entry 18 at 1790 is `11 14 99`: an optional PRINT token whose successful path continues at entry 19. Entry 19 at 1793 is `17 0F 00`: DESC invokes operation 0F and returns from the shared grammar. Consequently DESC, PRINT DESC and P DESC all select the same operation. The outer grammar requires end of command; there is no DESC record/field selector. DESC has no separate short dictionary spelling; D is DELETE.
+The shared REVIEW/EDIT grammar requires PRINT or P before DESC. Entry 18 at 1790 is `11 14 99`: PRINT invokes operation 14 and continues at entry 19. Entry 19 at 1793 is `17 0F 00`: DESC invokes operation 0F and returns from the shared grammar. Use PRINT DESC or P DESC, with an optional trailing PTR in REVIEW. Hardware REVIEW accepted P DESC and rejected bare DESC and DESC PTR. There is no DESC record/field selector. DESC has no separate short dictionary spelling; D is DELETE.
 
 Operation 0F at 1422 clears processing mode 1B0F. The shared processing action at 3267 sees zero, sets input/display mode 1B0B to 3, and calls 31C5. This applies in EDIT too: it overrides EDIT's interactive field-input mode for this operation.
 
@@ -181,7 +334,7 @@ Operation 0F at 1422 clears processing mode 1B0F. The shared processing action a
 
 The shared routine at 3444-344B checks mode 3 and bypasses keyboard editing through the display-only path at 3544. The definition-display loop contains no tape read/write calls and does not call the record-advance routine 3B40. It therefore leaves the current record and tape position unchanged. Although the existing definition validation code is reused, DESC does not offer interactive schema changes. It describes database fields rather than sorting records or displaying their values.
 
-The ROM establishes the fields displayed, command spellings, mode availability and lack of record advance. Exact screen layout, pacing and any printer routing remain to be checked in operation.
+Hardware REVIEW displayed the database definition with P DESC. The ROM establishes mode availability and lack of record advance; EDIT interaction and printer output still need hardware checks.
 
 ### EDIT mutation commands
 
@@ -245,4 +398,4 @@ Predicted procedure: enter EDIT with source A and a fresh output, submit M, moun
 
 Strings include field names/lengths, sorting, totals, tape rewind/end, and I/O errors. The glyph mapping comes from the BIOS font at 2010 and decimal table at 245E, corroborated by Sean's BIOS listing in `vbasm.zip`.
 
-The annotated listing and its generator are maintained in the separate **VideoBrain-ASM** repository, at `infoman/infoman.lst` and `tools/disassemble_infoman.py`. The generator checks chip hashes, instruction overlap and complete byte coverage. Its address-based notes preserve comments on command grammar and handlers when the listing is regenerated. In that repository, run it with `--unidasm <path-to-unidasm> --rom <path-to-infoman.zip>`; the output defaults to `infoman/infoman.lst`. It follows direct calls/branches and seeds the known computed dispatch, continuation and interrupt entries. Two additional instruction sequences at 39E5 and 3C9F have no identified direct caller. Static coverage does not prove that every path executes or establish full peripheral behavior.
+The ROM analysis uses an annotated disassembly checked against the chip hashes above, instruction overlap and complete byte coverage. It follows direct calls/branches and seeds the known computed dispatch, continuation and interrupt entries. Two additional instruction sequences at 39E5 and 3C9F have no identified direct caller. Static coverage does not prove that every path executes or establish full peripheral behavior.

@@ -4,6 +4,8 @@ module videobrain_joystick (
 	input          frame_tick,
 	input          calibrate,
 	input          enabled,
+	input          relative_mode,
+	input    [1:0] relative_speed,
 	input    [1:0] paired,
 	input    [1:0] preset,
 	input  [127:0] buttons,
@@ -25,7 +27,48 @@ function automatic [7:0] stick_pot(input neg, input pos, input [7:0] axis);
 	stick_pot = (neg == pos) ? axis_to_pot(axis) : (neg ? 8'd0 : 8'd255);
 endfunction
 
+function automatic [15:0] advance_pot(input [15:0] position, input [7:0] pot, input [1:0] speed);
+	reg signed [17:0] movement;
+	reg signed [17:0] magnitude;
+	reg signed [17:0] rate;
+	reg signed [17:0] next_position;
+	begin
+		movement = $signed({10'd0, pot}) - 18'sd128;
+		magnitude = movement < 0 ? -movement : movement;
+		magnitude = magnitude > 18'sd8 ? magnitude - 18'sd8 : 18'sd0;
+		rate = magnitude <<< 3;
+		// Higher speeds retain fine control, then steepen at two deflections.
+		if (speed == 2'd1 || speed == 2'd2) begin
+			if (magnitude > 18'sd32)
+				rate = rate + ((magnitude - 18'sd32) <<< 4);
+			if (magnitude > 18'sd80)
+				rate = rate + ((magnitude - 18'sd80) <<< 4);
+		end
+		if (speed == 2'd2) begin
+			if (magnitude > 18'sd32)
+				rate = rate + ((magnitude - 18'sd32) <<< 5);
+			if (magnitude > 18'sd80)
+				rate = rate + ((magnitude - 18'sd80) <<< 4);
+		end
+		movement = movement < 0 ? -rate : rate;
+		next_position = $signed({2'b00, position}) + movement;
+		if (next_position < 0) advance_pot = 16'h0000;
+		else if (next_position > 18'sd65280) advance_pot = 16'hff00;
+		else advance_pot = next_position[15:0];
+	end
+endfunction
+
 wire paired_enabled = (paired == 2'd1 || paired == 2'd2);
+reg relative_d = 0;
+reg [1:0] paired_d = 0;
+reg [1:0] preset_d = 0;
+wire controls_changed = relative_mode != relative_d || paired != paired_d || preset != preset_d;
+
+always @(posedge clk) begin
+	relative_d <= relative_mode;
+	paired_d <= paired;
+	preset_d <= preset;
+end
 
 reg calibrate_d = 0;
 reg [2:0] calibration_phase = 0;
@@ -80,9 +123,23 @@ for (i = 0; i < 4; i = i + 1) begin : sticks
 		axis_to_pot(paired_stick[7:0]), axis_to_pot(paired_stick[15:8])
 	};
 	// An active own stick takes priority over both paired axes.
+	wire [15:0] selected_pots = (paired_enabled && own_pots == 16'h8080) ? paired_pots : own_pots;
+	reg [15:0] vertical_position = 16'h8000;
+	reg [15:0] horizontal_position = 16'h8000;
+	always @(posedge clk) begin
+		if (reset || !enabled || !relative_mode || controls_changed ||
+			calibrating || (calibrate && !calibrate_d)) begin
+			vertical_position <= 16'h8000;
+			horizontal_position <= 16'h8000;
+		end else if (frame_tick) begin
+			// Keep eight fractional bits; clamp the entire state to avoid windup.
+			vertical_position <= advance_pot(vertical_position, selected_pots[7:0], relative_speed);
+			horizontal_position <= advance_pot(horizontal_position, selected_pots[15:8], relative_speed);
+		end
+	end
 	assign pots[i*16 +: 16] = !enabled ? 16'h8080 :
 		(calibration_phase != 0) ? calibration_pots :
-		(paired_enabled && own_pots == 16'h8080) ? paired_pots : own_pots;
+		relative_mode ? {horizontal_position[15:8], vertical_position[15:8]} : selected_pots;
 	assign fire[i] = enabled && (own_buttons[4] || (paired_enabled && paired_fire));
 end
 endgenerate

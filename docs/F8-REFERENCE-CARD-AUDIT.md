@@ -1,8 +1,6 @@
 # Fairchild F8/F3870 reference-card comparison
 
-Checked 2026-10-24 against
-`refs/datasheets-databooks-fairchild-mostek-manuals/2033-249-A-75-020_F8_User_Reference_Card.pdf`.
-The two-page PDF scans a Fairchild **F8 and F3870 Microprocessor User Reference
+Checked 2026-10-24 against a two-page scan of Fairchild's **F8 and F3870 Microprocessor User Reference
 Card**. The printed identifier is `2033-249-A-75-020/5M/500526`.
 No publication year is assigned here solely from the identifier or filename.
 

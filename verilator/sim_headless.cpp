@@ -387,8 +387,8 @@ static void usage(const char* argv0) {
 "Headless VideoBrain simulator\n"
 "Usage: %s [options]\n"
 "\n"
-"  --res1 FILE          RES1 ROM, ioctl index 0\n"
-"  --res2 FILE          RES2 ROM, ioctl index 1\n"
+"  --res1 FILE          required RES1 ROM, ioctl index 0\n"
+"  --res2 FILE          optional RES2 ROM, ioctl index 1\n"
 "  --expander1 FILE     Expander 1 firmware, ioctl index 3 (experimental)\n"
 "  --record FILE        diagnostic cassette edges (MCLK cycle, level, remote)\n"
 "  --playback FILE      replay VBT1 waveform at the Expander cassette input\n"
@@ -467,8 +467,7 @@ static std::string basename_noext(const std::string& p) {
 }
 
 int main(int argc, char** argv) {
-    std::string res1 = "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[uvres-1n-2129-7802].bin";
-    std::string res2 = "../software/0 BIOS/VideoBrain BIOS (1977)(VideoBrain Computer Company)(VideoBrain)(ROM)[7802G0-RESN2-KOREA].bin";
+    std::string res1, res2;
     std::string cart, expander1, outdir = "out", prefix, dump_path, audio_path;
     std::string audio_trace_path;
     std::string record_path, playback_path, expander_trace_path;
@@ -649,6 +648,11 @@ int main(int argc, char** argv) {
         else { fprintf(stderr, "error: unknown option %s\n", a.c_str()); usage(argv[0]); return 1; }
     }
 
+    if (res1.empty()) {
+        fprintf(stderr, "error: --res1 FILE is required; supply --res2 FILE for the full BIOS\n");
+        return 1;
+    }
+
     if (joy_timer_curve && !joy_timer_sweep.empty()) {
         fprintf(stderr, "error: curve and sweep are mutually exclusive\n");
         return 1;
@@ -726,7 +730,7 @@ int main(int argc, char** argv) {
     IoctlDriver io;
     io.quiet = quiet;
     io.add(res1, 0);
-    io.add(res2, 1);
+    if (!res2.empty()) io.add(res2, 1);
     if (!expander1.empty()) io.add(expander1, 3);
     if (!cart.empty()) io.add(cart, 2);
 

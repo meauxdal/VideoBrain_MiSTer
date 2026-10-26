@@ -1,6 +1,6 @@
 # Cartridge status
 
-All eighteen cartridges reach their correct first screen. The sixteen single-image cartridges also have headless simulator screen coverage. First-screen results do not establish full gameplay or peripheral coverage.
+All eighteen known cartridges are supported. Current MiSTer coverage includes gameplay, APL/S programs, tape round trips and peripheral operations, with no further known core bugs. The table below records the narrower first-screen checks and selected follow-up evidence; it is not the complete current test inventory. Information Manager exploration continues primarily to complete its manual. See [current accuracy and remaining work](ACCURACY.md).
 
     verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
@@ -8,7 +8,7 @@ Known raw dumps are identified by CRC-32 and use the matching slot behavior. `--
 
 **Unload Cartridge** on the main menu removes the cartridge and resets to the built-in BIOS. Reset and Master Control retain the cartridge and its RAM.
 
-**System > Hot Cartridge Insert** defaults to Off, preserving reset-on-load behavior. When On, loading a cartridge does not reset the running machine; press Master Control afterward to refresh the game layout from the new cartridge. Other reset sources and other ROM downloads continue to reset the machine.
+**System > Reset on Cartridge Load** defaults to On. When Off, loading a cartridge does not reset the running machine; press Master Control afterward to refresh the game layout from the new cartridge. Other reset sources and other ROM downloads continue to reset the machine.
 
 Fingerprints for all sixteen released single-image cartridges come from MAME's [VideoBrain software list](https://github.com/mamedev/mame/blob/master/hash/vidbrain.xml).
 
@@ -23,7 +23,7 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's [
 | Gladiator | 4K | standard | correct | Game-number prompt; advances on RUN/STOP. |
 | Lemonade Stand | 4K | standard | correct | Slow to boot: blank at frame 150, full menu by 280. |
 | Math Tutor 1 | 4K | standard | correct | "CHOOSE / TUTOR 1 / PROBLEM 2" on olive. |
-| Money Minder | 4K | money_minder | correct | "MONEY MANAGER" title. RAM at 3800-3FFF is reachable; deeper functions untested. |
+| Money Minder | 4K | money_minder | correct | Original-machine cassette data loaded, edited, saved and reloaded across a core restart. |
 | Music Teacher 1 | 2K | standard | correct | "PLAY/RECORD 1 / LEARN A SONG 2". |
 | Pinball | 2K | standard | correct | Background fix validated. |
 | Tennis | 4K | standard | **plays** | RUN/STOP starts the game: court, net, scoreboard, player sprites. |
@@ -32,7 +32,7 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's [
 | VideoArtist | 2K | standard | correct | Design selection menu. |
 | Wordwise 1 | 2K | standard | correct | Multi-colour skill menu. |
 | Wordwise 2 | 2K | standard | correct | Four-entry multi-colour menu. |
-| APL/S: The Computational Language | 16K | comp_language | correct | Assembled MAME image; full program execution coverage pending. |
+| APL/S: The Computational Language | 16K | comp_language | correct | Assembled image; source entry, program execution and tape operations exercised. |
 | Information Manager | 8K | info_manager | correct | Prototype; requires Expander 1 firmware. One-record entry, save, REVIEW / PRINT ALL and EDIT with changed-text reload verified on hardware. See [usage notes](INFOMAN.md). |
 
 ## Split cartridge conversion
@@ -83,11 +83,11 @@ Use `--frame-log` to locate screen changes. Timeshare's title disappears before 
 
 With Expander 1 firmware loaded, Timeshare supports interactive Telehack sessions through MiSTer's HPS UART and a Linux Telnet bridge at 300 baud. Command pagination, Zork's opening screen, weather, and date output have been verified on MiSTer with the server set to 24 columns and 15 lines. See [Timeshare setup and keys](EXPANDER1.md#timeshare-over-uart). Earlier captures without a working peripheral path blanked after the title. Expander 2 acoustic modem behavior and live 110-baud operation remain unverified.
 
-## Open questions
+## Software behavior
 
 ### Financier after an invalid key
 
-Holding SPACE leaves Financier drawing striped colour bands. This appears to most likely be accurate behavior based on available references. Additional investigation is warranted.
+Holding SPACE leaves Financier drawing striped colour bands. Available references suggest this is original-software behavior; it is not an established core defect. Original-machine comparison could confirm it.
 
 ## Slot device reference
 

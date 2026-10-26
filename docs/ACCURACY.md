@@ -1,14 +1,14 @@
 # Accuracy report
 
-Working draft, October 19, 2026. Describes source revision `a3510278f226c33dc22b07dcbe1acc32cb8148c9`, rather than a particular released RBF.
+Current source status, October 26, 2026. This describes the core approaching 1.0, rather than a particular released RBF. Linked audits retain their own revision and test scope.
 
 ## What this core represents
 
-The aim is to recreate the VideoBrain's hardware behavior as faithfully as the available evidence allows. The implementation includes the Fairchild F8 processor, UV201 video system, UV202 clock and bus control, memory and cartridge interfaces, keyboard, joystick timing, sound output, and preliminary Expander 1 support.
+The aim is to recreate the VideoBrain's hardware behavior as faithfully as the available evidence allows. The implementation includes the Fairchild F8 processor, UV201 video system, UV202 clock and bus control, memory and cartridge interfaces, keyboard, joystick timing, sound output, and Expander 1 support.
 
-We have never had access to an original VideoBrain. Our evidence consists of preserved documentation, reverse engineering, board connection records, original software and cassette data, photographs, screenshots, and videos, together with MAME and our own implementation tests. Tests on MiSTer establish behavior of this core. They are not direct measurements of an original VideoBrain.
+The implementation has been developed without direct access to an original VideoBrain. Its evidence consists of preserved documentation, reverse engineering, board connection records, original software and cassette data, photographs, screenshots, and videos, together with MAME and our own implementation tests. Further original-machine testing is planned. Tests on MiSTer establish behavior of this core; they are not direct measurements of an original VideoBrain.
 
-The core is a working hardware reconstruction with specific unresolved accuracy questions. We do not currently claim complete cycle accuracy or electrical equivalence to the original machine.
+Daily MiSTer use and testing of the difficult software and peripheral paths have revealed no further known core bugs. The observed Information Manager defect is in the original software. The core is close to meeting its 1.0 goals; the principal remaining accuracy work depends on original-machine measurements and can continue after release. Complete cycle accuracy and electrical equivalence remain unverified.
 
 ## Evidence and confidence
 
@@ -24,12 +24,13 @@ The main references are Kevtris's *VideoBrain Unwrapped*, Sean Riddle's preserve
 
 | Area | What is implemented and supported | Remaining limits |
 | --- | --- | --- |
-| CPU and bus | F8 execution and ROMC bus cycles, memory decoding, buffered accesses, CPU clock gating, video DMA arbitration, and interrupts. Focused tests cover instruction timing and several interrupt and contention paths. | Documented wait costs are not fully reconciled. CPU oscillator edges are quantized to the FPGA master clock. Comprehensive original-machine timing comparison is unavailable. |
-| Video | UV201 registers, object fetching, FIFO, rendering, modifiers, zoom, blanking, and alternating 262/263-line fields. | Composite sync uses a whole-line approximation; exact half-line seams and some sync widths remain unresolved. Original analog color and composite output have not been comprehensively characterized. |
-| Cartridges and software | All eighteen documented cartridges reach their expected first screen. Cartridge banking and RAM arrangements are implemented, with focused mapper tests. Tennis has gameplay coverage; APL/S has source-entry and execution checks beyond startup. Money Minder has loaded, edited, saved, and reloaded original-machine cassette data across a core restart. | First-screen coverage is not full application coverage. Broader financial functions, longer programs, gameplay, and peripheral use need further testing. |
-| Keyboard and joysticks | Keyboard matrix input, four joystick channels with two axes each, fire buttons, timer-driven interrupts, and paired X/Y freeze capture. | Joystick delay ranges are calibrated approximations. Physical pot limits and UV201 counter phase remain unmeasured. |
-| Audio | Firmware-generated DAC writes, sound-clock latching, filtering, and MiSTer output. Controlled CPU-to-DAC and digital output tests provide useful timing checks. | High-note grit and periodic timing modulation remain under investigation. Filtering is an effective recording-based approximation; original analog response and phase are not established. |
-| Expander 1 and tape | Separate 3870 firmware execution, host signaling, timer and interrupt support, and digital tape recording/playback through SD images. Timeshare supports interactive Telehack sessions through MiSTer's HPS UART and a Linux Telnet bridge at 300 baud, including pagination, Zork's opening screen, weather, and date output. | Analog cassette circuitry, physical printer behavior, and some parallel/external interrupt wiring remain unimplemented or unverified. Expander 2 acoustic modem behavior is unsupported; Linux console login and live 110-baud operation are unverified. |
+| F8 CPU and bus | Instruction cycle timings have been cross-referenced against the available manufacturer documentation and secondary references. Execution, ROMC cycles, interrupts, clock gating and contention have extensive focused coverage. | Further progress chiefly needs test ROMs, diagnostics and oscilloscope or logic-analyzer measurements. Board wait costs and oscillator phase need direct comparison. No comparative accuracy ranking against MAME is established. |
+| UV201 | Registers, object fetching, FIFO, rendering, modifiers, zoom and freeze capture work across tested software. No current visible discrepancy has been identified. | Highest priority for exhaustive original-machine tests, including access timing, counter phase and edge cases that ordinary software may not expose. |
+| UV202 | Clock and bus control, DMA arbitration and native interlaced output work across tested software. | Lower-priority hardware verification of clock/bus timing, field transitions, half-line seams and sync widths. |
+| Cartridges and software | All eighteen known cartridges are supported. Coverage extends beyond startup to gameplay, APL/S programs, tape round trips, Timeshare sessions and Information Manager operations. | Information Manager exploration is primarily work to complete its reconstructed manual and identify original-software quirks. It is not tracking a known core defect. |
+| Keyboard and joysticks | Keyboard matrix, calibration, four analog sticks, fire buttons and paired controls work well in MiSTer use. Games are fully playable with the current timing model. | Physical pot ranges, pulse widths, trim effects and UV201 freeze-counter phase need measurements. Current presets provide practical travel and centering; exact hardware behavior may be less convenient. |
+| Audio | DAC writes, sound-clock latching, filtering and output work. Filtering appears suitable in listening tests, particularly through a CRT. | Original-machine samples are needed to determine whether the remaining grit is inherent to the machine. It is more apparent over clear HDMI audio; this is a listening observation, not proof of its source. |
+| Expander 1 and tape | Firmware execution, host signaling, digital tape save/load, Timeshare UART and independent printer capture are implemented. Difficult tape and peripheral paths have been exercised. | Detailed guides retain the evidence limits for individual workflows. Analog cassette circuitry, physical printing and Expander 2 acoustic modem behavior are outside the implemented digital interfaces. |
 
 The [cartridge status](CARTRIDGES.md), [joystick notes](JOYSTICK.md), [audio investigation](AUDIO-DIAGNOSTIC.md), and [Expander 1 notes](EXPANDER1.md) describe the boundaries in more detail.
 
@@ -55,7 +56,7 @@ Music Teacher exposed timing variation that filtering alone could not explain. C
 
 Board connection records revealed missing request-latch, WACK sampling, and request-synchronization behavior in the external clock gate. The corrected model passed a circuit-derived edge test. In the recorded full-ROM comparison, DAC period RMS deviation fell from 20.315 to 8.875 us, and the approximately 60 Hz sidebands fell by about 9.5 dB. Those are improvements within the simulation, not measurements of agreement with an original VideoBrain.
 
-RAM/cartridge reads still lose 6..7 CPU half-clocks in the tested conditions, below the documented expectation of 7..9 used by the regression. That assertion still fails. See [CPU clock gate](CPU-CLOCK-GATE.md).
+The recorded CPU clock-gate audit measured 6..7 lost half-clocks for RAM/cartridge reads against a 7..9 expectation derived from a secondary description. That audit's assertion failed. This remains a hardware measurement question, not an established explanation for an audible defect. See [CPU clock gate](CPU-CLOCK-GATE.md).
 
 ### APL/S and Expander 1 extended the test surface
 
@@ -69,9 +70,9 @@ MAME is an important preserved implementation and a practical reference where ha
 
 This creates shared assumptions that software compatibility cannot resolve. The F3853 timer now uses the documented feedback shift-register sequence, with all 255 running seeds checked against the Mostek 1978 data book's conversion table (printed p.170). Tests also cover repeat periods, masked pending interrupts, reloads, stopping, and external-interrupt isolation. The initial timer clock follows the two-input-period delay shown in the F3852/F3853 timer block diagram (Figure 6).
 
-The timer input uses CPU PHI periods, including CPU wait gating. Sean Riddle's board connection workbook (`refs/seanriddle.com/videobrain.xlsx`, `unique connections!A463:D463`) connects F3853 U16 pin 2 to F3850 U17 pin 1. The `all connections` sheet identifies both as PHI and connects TP4 to the same net. His `vbxtalyphicrystal.jpg` and `vbclocksandromcx.jpg` captures show PHI stopping with XTALY during waits. The core advances the CPU twice per PHI period, so the timer advances on every second accepted CPU enable. A full-core regression checks repeated timer interrupts against the nominal 2 MHz PHI rate. Exact edge phase and timer intervals under board-level contention remain unmeasured. The implemented single-device subset also omits memory addressing and priority daisy chaining.
+The timer input uses CPU PHI periods, including CPU wait gating. [Sean Riddle's board connection workbook and captures](https://www.seanriddle.com/vbinfo.html) connect F3853 U16 pin 2 to F3850 U17 pin 1 and TP4 on the PHI net, and show PHI stopping with XTALY during waits. The core advances the CPU twice per PHI period, so the timer advances on every second accepted CPU enable. A full-core regression checks repeated timer interrupts against the nominal 2 MHz PHI rate. Exact edge phase and timer intervals under board-level contention remain unmeasured. The implemented single-device subset also omits memory addressing and priority daisy chaining.
 
-The feedback-register timer implementation passed MiSTer hardware checks for APL/S entry, tape save/load, and basic inputs while still connected to BRCLK. The subsequent PHI connection correction requires a new hardware check.
+The timer audit records MiSTer checks and the subsequent PHI connection correction. Its revision-specific results are preserved as evidence; original-machine edge phase and contention timing still need measurement.
 
 ## Approximations and conveniences
 
@@ -83,13 +84,22 @@ Keyboard files supply timed matrix inputs. Tape images preserve digital recordin
 
 A separate, optional Music Teacher ROM patch reduces display redraw work for live playback. Results obtained with that modified ROM must be identified separately from original-software accuracy checks. The audio timing comparison above uses the unmodified cartridge.
 
-## Most useful future evidence
+## Remaining accuracy work
 
-Original-machine measurements would be especially valuable for:
+Original-machine testing is the principal next step, with UV201 the highest priority and UV202 next. Useful evidence includes:
 
+- Exhaustive UV201 test ROMs covering register access, fetching, modifiers, zoom, counter/freeze behavior and boundary conditions.
 - CPU oscillator, request, WACK, and CPU clock traces during buffered reads, writes, and DMA contention, to reconcile total wait costs and restart phase.
 - UV202 field transitions, equalization and sync pulses, with a clear counter origin, to resolve the current half-line and pulse-width uncertainties.
 - F3853 PHI and timer interrupt traces, including wait gating, reload phase, and interrupt timing.
 - Joystick pot ranges and pulse widths at known positions, together with UV201 freeze-counter phase and the effect of trim adjustments.
 - Matched audio captures at the DAC and receiver output, with the cartridge, key sequence, and recording path identified.
 - Expander cassette and serial signal captures, plus broader application and gameplay comparisons against original machines.
+
+## Documentation and optional future work
+
+The remaining Information Manager pass is intended to complete the [manual](INFOMAN-MANUAL.md): exercise its commands, document supported workflows and distinguish prototype software bugs from hardware behavior. Existing command-specific verification limits remain in the [research notes](INFOMAN.md).
+
+Core quality-of-life features meet the current release goals. Relative analog movement for Tennis, spinner support and MIDI input for Music Teacher or homebrew are optional future work. A 1080p 5x crop is deferred because native interlacing needs separate handling.
+
+Further [Music Teacher patch](MUSIC-TEACHER-PATCH.md) improvements and a possible musical homebrew exploring the machine's full audible frequency range are software projects, separate from core release requirements.

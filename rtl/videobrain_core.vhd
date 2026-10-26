@@ -82,6 +82,7 @@ ENTITY videobrain_core IS
     cart_unload : IN std_logic := '0';
     cart_loaded : OUT std_logic := '0';
     unknown_cart_profile: IN uv8;
+    infoman_printer_fix : IN std_logic := '0';
     apl_available : OUT std_logic;
     apl_load_error : OUT std_logic;
     apl_symbols : OUT std_logic := '0';
@@ -355,7 +356,8 @@ BEGIN
       apl_key_accepted => apl_key_accepted,
       joy_linear_base => joy_linear_base,
       joy_linear_step => joy_linear_step,
-      unknown_cart_profile => unknown_cart_profile
+      unknown_cart_profile => unknown_cart_profile,
+      infoman_printer_fix => infoman_printer_fix
       );
 
   u_io : ENTITY work.videobrain_io

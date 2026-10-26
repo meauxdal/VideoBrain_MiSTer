@@ -7,15 +7,15 @@ can still finish too early if buffered accesses pause the clock too briefly.
 
 | Source | Establishes | Limits |
 | --- | --- | --- |
-| Fairchild F3850 Table 3, printed pp. 3-21 through 3-25 (`refs/orphanedgames.com/fairchild-3850.pdf`, PDF pages 15-19) | Instruction ROMC order, short/long cycles, data-bus timing classes, interrupt restrictions | Does not specify VideoBrain arbitration or external clock stopping |
-| Fairchild F8/F3870 User Reference Card, `2033-249-A-75-020` (`refs/datasheets-databooks-fairchild-mostek-manuals/2033-249-A-75-020_F8_User_Reference_Card.pdf`) | Manufacturer summary corroborates PK=4, DI/EI=2, BR7=2/2.5, register mappings and arithmetic flag effects | Internal BR7/DC-update errors and F387X scope conflicts; no ROMC phases; see the [card comparison](F8-REFERENCE-CARD-AUDIT.md) |
-| Fairchild 1975 F8 brochure (`refs/Fairchild_Semiconductor_-_F8_Microprocessor_brochure_-_1975.pdf`), printed pp. 9-11 (PDF pages 11-13) | Manufacturer summary corroborating BR7 totals, branch masks, IN timing and CPU-port timing exceptions | Summary totals do not specify bus phases or VideoBrain waits |
-| Osborne, *An Introduction to Microcomputers*, Vol. 2, September 1978 (`refs/Osborne_An_Introduction_to_Microcomputers_Volume_2_Sep78.pdf`), Chapter 2 | Detailed explanation of cycle overlap, WRITE/ROMC boundaries, F8 I/O and timer behavior | Covers both 3870 and F8 devices; some tables disagree internally; device manuals take precedence |
-| Terry Dollhoff, 1979 F8 chapter, [Sean Riddle's scan](https://www.seanriddle.com/f8_info.pdf) (`refs/orphanedgames.com/f8_info.pdf`), printed pp. 70-79 | Separately authored explanation and instruction byte lengths/totals; explicitly defines a short cycle as four clock periods | PK and DI/EI totals conflict with detailed MK3850 sequences; excerpt does not establish table derivation or independent timing measurements |
+| [Fairchild F3850](https://datasheets.chipdb.org/Fairchild/F8/fairchild-3850.pdf), Table 3, printed pp. 3-21 through 3-25 (PDF pages 15-19) | Instruction ROMC order, short/long cycles, data-bus timing classes, interrupt restrictions | Does not specify VideoBrain arbitration or external clock stopping |
+| Fairchild F8/F3870 User Reference Card, `2033-249-A-75-020` | Manufacturer summary corroborates PK=4, DI/EI=2, BR7=2/2.5, register mappings and arithmetic flag effects | Internal BR7/DC-update errors and F387X scope conflicts; no ROMC phases; see the [card comparison](F8-REFERENCE-CARD-AUDIT.md) |
+| [Fairchild 1975 F8 brochure](https://bitsavers.trailing-edge.com/components/fairchild/f8/Fairchild_Semiconductor_-_F8_Microprocessor_brochure_-_1975.pdf), printed pp. 9-11 (PDF pages 11-13) | Manufacturer summary corroborating BR7 totals, branch masks, IN timing and CPU-port timing exceptions | Summary totals do not specify bus phases or VideoBrain waits |
+| Osborne, [*An Introduction to Microcomputers*, Vol. 2, September 1978](https://bitsavers.computerhistory.org/pdf/osborne/books/Osborne_An_Introduction_to_Microcomputers_Volume_2_Sep78.pdf), Chapter 2 | Detailed explanation of cycle overlap, WRITE/ROMC boundaries, F8 I/O and timer behavior | Covers both 3870 and F8 devices; some tables disagree internally; device manuals take precedence |
+| Terry Dollhoff, 1979 F8 chapter, [Sean Riddle's scan](https://www.seanriddle.com/f8_info.pdf), printed pp. 70-79 | Separately authored explanation and instruction byte lengths/totals; explicitly defines a short cycle as four clock periods | PK and DI/EI totals conflict with detailed MK3850 sequences; excerpt does not establish table derivation or independent timing measurements |
 | Fairchild F3852/F3853 manual and Mostek 1978 data book | Timer sequence, division, reload and interrupts | Input frequency and gating depend on the board |
-| Mostek June 1979 Microcomputer Products Data Book (`refs/datasheets-databooks-fairchild-mostek-manuals/1979_Mostek_Microcomputer_Products_Data_Book.pdf`) | Detailed MK3850/MK3853 timing chapters corroborate the 1978 sequences and completion boundary | Repeated material is not a new hardware measurement; 3870 summary conflicts and decimal-flag annotations remain visible in the [1979 comparison](MOSTEK-1979-AUDIT.md) |
-| Mostek 1981 3870/F8 data book (`refs/datasheets-databooks-fairchild-mostek-manuals/1981_3870_F8_Microcomputer_Data_Book.pdf`) | Later 3870 technical manual, instruction tables and timer/interrupt timing bounds | F8 device pages are brief summaries; inherited conflicts and 3870 distinctions need separate treatment; see the [1981 audit](MOSTEK-1981-AUDIT.md) |
-| Fairchild F8 User's Guide, May 1976 (`refs/67095665B_F8_Users_Guide_May76.pdf`) | ROMC 13 resets interrupt circuitry; event G and the explicit 3851-to-3853 interrupt-logic link corroborate the completion boundary | PSU sections need the SMI differences in section 5.1.2 applied |
+| [Mostek June 1979 Microcomputer Products Data Book](https://bitsavers.trailing-edge.com/components/mostek/_dataBooks/1979_Mostek_Microcomputer_Products_Data_Book.pdf) | Detailed MK3850/MK3853 timing chapters corroborate the 1978 sequences and completion boundary | Repeated material is not a new hardware measurement; 3870 summary conflicts and decimal-flag annotations remain visible in the [1979 comparison](MOSTEK-1979-AUDIT.md) |
+| [Mostek 1981 3870/F8 data book](https://bitsavers.trailing-edge.com/components/mostek/f8/1981_3870_F8_Microcomputer_Data_Book.pdf) | Later 3870 technical manual, instruction tables and timer/interrupt timing bounds | F8 device pages are brief summaries; inherited conflicts and 3870 distinctions need separate treatment; see the [1981 audit](MOSTEK-1981-AUDIT.md) |
+| [Fairchild F8 User's Guide, May 1976](https://bitsavers.trailing-edge.com/components/fairchild/f8/67095665B_F8_Users_Guide_May76.pdf) | ROMC 13 resets interrupt circuitry; event G and the explicit 3851-to-3853 interrupt-logic link corroborate the completion boundary | PSU sections need the SMI differences in section 5.1.2 applied |
 | Sean Riddle's connection records and photographs | Net connections and external gate topology | Do not establish propagation delays or internal ASIC behavior |
 | Sean's original-machine captures | Observed clocks and requests | Depend on recorded channels, sample resolution, reset and software state |
 | Kevtris, *VideoBrain Unwrapped*, Wait States section | UV202 service timing and full-speed CPU halt measurements | Separates a slowed, clock-modified machine from full-speed operation; interval endpoints differ |
@@ -30,8 +30,7 @@ than adjusting constants to average them together.
 
 ## Excluded namesake: Krause's 2024 `f8 Manual`
 
-`refs/datasheets-databooks-fairchild-mostek-manuals/f8 Manual.pdf` is a 23-page
-draft by Philipp Klaus Krause dated July 29, 2024. Reviewed on 2026-10-24;
+The *f8 Manual* is a 23-page draft by Philipp Klaus Krause dated July 29, 2024. Reviewed on 2026-10-24;
 its `f8` describes a different instruction-set architecture. Pages 3-4 specify
 reset PC=4000, a memory stack with SP, register pairs X/Y/Z, an H/C/N/Z/O flag
 layout and prefix bytes. Page 21 assigns opcode 00 to a trap. These are not
@@ -135,7 +134,7 @@ that observation describes the implementation, not an exhaustive flag-value
 validation from these summary tables.
 
 The issue provides a useful correction trail for the published table. Its
-claims above are supported by the manufacturer documents already in `refs/`;
+claims above are supported by the manufacturer documents cited above;
 the cited Dollhoff book and veswiki were not needed to establish them here.
 No RTL change follows from these corrections. The 968-case timing test checks
 cycle sequences and durations, not AMD/CM flag semantics; the flag statements
@@ -259,9 +258,8 @@ ROMC 13 phase 11; the F3853 consumes it on the following MCLK, at the beginning
 of the ISR fetch. The CPU's vector/return-address updates and cycle lengths
 are unchanged. This moves the acknowledgement telemetry endpoint by 11 PHI
 periods; old IRQ-to-ack measurements must retain their original endpoint.
-The archived `audit_audio_irq.py` analyzer uses the corrected completion endpoint
-by default; its `--legacy-early-ack` option applies only to captures from the old
-ROMC 0F implementation.
+Comparisons of old ROMC 0F captures with current traces must account for that
+endpoint change.
 
 Printed p. 172 specifies separate clears: timer load or timer acknowledgement
 clears TIMER INTERRUPT; a control write or external acknowledgement clears
@@ -291,7 +289,7 @@ hardware confirmation.
 
 ## Saved capture inventory
 
-Metadata in all three `refs/seanriddle.com/*wreset.sal` archives records 12.5 MHz
+Metadata in Sean Riddle's three reset-capture archives listed below records 12.5 MHz
 digital sampling (80 ns samples) and these channel labels:
 
 | Channel | Label | Use |

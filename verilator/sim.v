@@ -73,7 +73,7 @@ module top(
       .symbols(apl_symbols), .enabled(1'b1), .cancel(|kbd_matrix),
       .input_ready(apl_input_ready), .key_accepted(apl_key_accepted),
       .music_playback(1'b0), .auto_repeat(1'b0),
-      .busy(source_busy), .started(), .complete(source_complete), .error(source_error), .keys(source_keys)
+      .busy(source_busy), .started(), .complete(source_complete), .aborted(), .error(source_error), .keys(source_keys)
    );
 
    wire [15:0] pc0 /*verilator public_flat*/;
@@ -152,6 +152,7 @@ module top(
       .cart_unload(1'b0),
       .cart_loaded(),
       .unknown_cart_profile (cart_type),
+      .infoman_printer_fix (1'b0),
       .apl_available (apl_available),
       .apl_load_error (apl_load_error),
       .apl_symbols (apl_symbols),

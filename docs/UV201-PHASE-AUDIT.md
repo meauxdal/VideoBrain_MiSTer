@@ -38,7 +38,8 @@ the observed pre-pause edge count.
 
 ## Manufacturer cross-check
 
-Fairchild F3852/F3853 manual `refs/orphanedgames.com/f3852_53.pdf`:
+Fairchild F3852/F3853 device documentation, preserved with the
+[F8 programming manuals](https://orphanedgames.com/videobrain/):
 
 - Figure 16, printed p. 3-70 / PDF page 16: the SMI's long read from DC0 has
   later address selection than a PC0 read. Its illustrated worst-case address
@@ -136,14 +137,14 @@ Reproduce the new comparisons with:
 
 ```sh
 make test-logic-csv test-uv201-wait
-out/logic_captures/analyze_logic_csv ../refs/seanriddle.com/timeshare.logicdata.csv out/logic_captures/timeshare
+out/logic_captures/analyze_logic_csv /path/to/timeshare.logicdata.csv out/logic_captures/timeshare
 python3 -B tests/summarize_logic_captures.py out/logic_captures
 ```
 
-The extraction/summary also uses the other saved capture outputs from the
-initial report. Detailed read/write CSVs are in `out/uv201_wait`; the raw
-hardware measurements stay in `out/logic_captures`. The baseline phase8 files
-used for the negative controls are kept in ignored `out/uv201_old`.
+The extraction/summary also uses the other capture outputs from the initial
+report. Detailed read/write CSVs are generated in `out/uv201_wait`; extracted
+hardware measurements are written to `out/logic_captures`. The negative-control
+results above used the baseline revision identified at the start of this audit.
 
 MiSTer validation of these new DC0 and Expander-strobe changes is still needed.
 Check APL/S entry/execution, cassette save/load, video updates and Music Teacher.

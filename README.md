@@ -2,9 +2,15 @@
 
 An FPGA implementation of the 1978 Umtech VideoBrain Family Computer.
 
+## Status
+
+No observed issues across all known software titles. All VideoBrain peripherals supported and working. 4x joystick support. Expander 1 support. 2x virtual tape support with save/load function. Timeshare networking support using UART to simulate Expander 2 acoustic modem. Printer support via image file mounting as well as via UART. 
+
+F8 instruction cycle timing has been thoroughly referenced against all available hardware measurements and documentation. See [accuracy and remaining-work report](docs/ACCURACY.md) for current scope and evidence limits.
+
 ## Installing
 
-Place the latest .rbf from releases in /media/fat/_Computers.
+Place the latest .rbf from [releases](releases) in /media/fat/_Computers.
 
 The core folder is /media/fat/games/VideoBrain. A BIOS is required. Verified BIOS ROMs are circulated split:
 
@@ -34,6 +40,7 @@ The OSD provides these file actions:
 | Load Cartridge | Load .bin cartridge |
 | Mount Playback Tape | Mount read-only .vbt |
 | Mount Record Tape | Mount writable .vbt |
+| Printer > Mount Capture Image | Mount .vbp printer capture image |
 | Keyboard > Load Keyboard File | Load .vbk automatic keyboard entry file |
 
 ### Cartridges (BIN)
@@ -57,6 +64,10 @@ Note that [Information Manager](docs/INFOMAN-MANUAL.md)'s EDIT mode uniquely req
 The converter accepts text files containing supported inputs and converts them to .vbk files which will replay the input sequence. SHIFT state is observed to avoid flipped-state entries. The loader is configured to wait just long enough for the software to signal it is ready to accept each new keypress, preventing dropped inputs. Pressing any key or opening the OSD aborts entry. Keyboard > Menu Aborts VBK can be optionally disabled to allow .vbk playback to continue while in the menu.
 
 Music Macro Language (.mml) files can also be converted. MML files must use a simplified subset of the QB64 PLAY format. The converter generates unique musical .vbk files (with VBK2 header for differentiation from text entry files) for automatic playback in the free play mode in Music Teacher 1. Press Z (for 1) in Music Teacher 1 to get to the play/record screen before loading a .vbk. In other software, make sure you're at a text entry prompt.
+
+### Printer capture (VBP)
+
+The Expander 1 printer stream can be saved to a mounted `.vbp` image while Timeshare uses the UART for modem communication. Mount a copy of [blank-printer.vbp](examples/blank-printer.vbp), select the baud rate, and choose **Start Capture**. When finished, choose **Stop and Save**, wait for Ready, and unmount before exporting. See [printer capture](docs/PRINTER.md) for Information Manager corrections, export commands and hardware validation still required.
 
 ### Options
 
@@ -98,7 +109,7 @@ Joysticks > Paired Sticks lets a controller's right stick and Fire (Paired) oper
 
 ## Video
 
-VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary. It seems to work fine, but please try with this setting disabled if you have issues.
+VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary; no issue has been observed in use. Native interlaced output remains the accuracy baseline. A 1080p 5x crop is deferred for later consideration.
 
 ## Timeshare online over UART
 
@@ -112,22 +123,40 @@ For printer output, select **System > UART Output > Printer** and use the [Linux
 
 See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard file conversion, and tape utilities.
 
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `VideoBrain.*`, `files.qip` | MiSTer top level and Quartus project. |
+| `rtl/` | VideoBrain hardware implementation. |
+| `sys/` | Upstream MiSTer framework. |
+| `cfg/` | MAME reference configuration. |
+| [docs](docs/README.md) | User guides, implementation reports and source audits. |
+| [examples](examples/README.md) | Keyboard programs, music, tape saves and blank images. |
+| [tools](tools/README.md) | Conversion and image utilities. |
+| [verilator](verilator/README.md) | Simulator and regression harness. |
+| [releases](releases) | Published RBF files. |
+
 ## Building
 
 Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/README.md](verilator/README.md).
 
+Run the routine simulation regressions from WSL or Linux with `python3 -B verilator/tests/run_regressions.py`. Add `--roms` for the short original-ROM checks; `--list` shows the plan and exclusions. Long captures and MiSTer hardware checks are separate.
+
+See [contributing](CONTRIBUTING.md) for user-supplied ROM paths and validation requirements.
+
 ## Sources
 
-- [Sean Riddle](https://www.seanriddle.com/vbinfo.html)
-- [kevtris](http://blog.kevtris.org/blogfiles/videobrain/videobrain_unwrapped.txt)
+- [Sean Riddle - seanriddle.com](https://www.seanriddle.com/vbinfo.html)
+- [Kevin Horton - kevtris.org](http://blog.kevtris.org/blogfiles/videobrain/videobrain_unwrapped.txt)
+- [Tempest - atariprotos.com](https://www.atariprotos.com/othersystems/videobrain/videobrain.htm)
+- [orphanedgames.com](https://orphanedgames.com/videobrain/)
 - [MAME](https://github.com/mamedev/mame/tree/master/src/mame/vidbrain)
 - US patents [US4232374A](https://patents.google.com/patent/US4232374A) & [US4177462A](https://patents.google.com/patent/US4177462A)
-- [atariprotos.com](https://www.atariprotos.com/othersystems/videobrain/videobrain.htm)
-- [orphanedgames.com](https://orphanedgames.com/videobrain/)
 - [channel_f_and_videobrain Yahoo/groups.io group](https://groups.io/g/Channel-F-and-VideoBrain)
-- [Lowell O. Turner - nyx.net](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html)
-- [VESWiki](https://channelf.se/veswiki/index.php?title=Opcode)
 - [James Price - 21 APL/S Games and One-Liners for Your Umtech VideoBrain (GitHub)](https://github.com/jamescprice/21-APL-Games-and-One-Liners-For-Your-Umtech-Videobrain)
+- [E5frog - VESWiki](https://channelf.se/veswiki/index.php?title=Opcode)
+- [Lowell O. Turner - nyx.net](https://www.nyx.net/~lturner/public_html/Fairchild_F8.html)
 - [Home Computer & Video Game Museum - VideoBrain](http://hcvgm.org/VideoBrain.html)
 - [oldcomputers.net/videobrain.html](https://www.oldcomputers.net/videobrain.html)
 - [forums.atariage.com](https://forums.atariage.com/topic/71151-videobrain-anyone-have-info/)

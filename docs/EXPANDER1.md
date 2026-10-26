@@ -1,6 +1,6 @@
 # Expander 1
 
-Preliminary processor and host interface support. With Expander 1 firmware, Information Manager reaches its first menu without I/O ERR:
+Processor, host interface, digital tape and serial support are implemented. MiSTer testing covers Information Manager tape operations, APL/S and Timeshare communication. See [current accuracy status](ACCURACY.md) for remaining work; the detailed checks below retain their individual evidence limits. With Expander 1 firmware, Information Manager starts with:
 
 ```text
 PROGRAM
@@ -10,7 +10,7 @@ EDIT
 : _
 ```
 
-The 3870 timer, interrupt control ports and digital cassette SAVE/LOAD path are implemented. See [SD tape images](TAPE.md). MiSTer's HPS UART defaults to the modem serial port and can select the printer port for [file capture](#printer-file-capture). Expander 2 acoustic modem behavior and physical printing are not implemented.
+The 3870 timer, interrupt control ports and digital cassette SAVE/LOAD path are implemented. See [SD tape images](TAPE.md). MiSTer's HPS UART defaults to the modem serial port. Independent [printer capture images](PRINTER.md) save printer output while the modem remains connected; the UART can also select the printer for [diagnostic file capture](#printer-file-capture). Expander 2 acoustic modem behavior and physical printing are not implemented.
 
 The 2K firmware dump has CRC-32 `dac31abc`. Load it from the OSD's System > Load Expander 1 ROM entry, or put it in the VideoBrain games folder as `boot1.rom`. Keep the existing 4K BIOS in `boot0.rom`. Without an Expander ROM, its host outputs remain released. Reset restarts both processors and retains the ROM.
 
@@ -117,9 +117,11 @@ stty -F /dev/ttyS1 300 raw -echo -ixon -ixoff -crtscts \
 
 ## Printer file capture
 
+For independent capture alongside Timeshare, use the **Printer > Mount Capture Image** workflow in [Printer capture images](PRINTER.md). It saves actual printer TX through a third virtual drive and exports to raw bytes. The shared-UART diagnostic below remains available.
+
 The first capture path shares MiSTer's existing HPS UART. Select **System > UART Output > Printer** before starting printer output, then capture `/dev/ttyS1` from Linux to a normal file. This carries the actual Expander printer TX signal, including host-to-printer output and any firmware-directed modem-to-printer copies. It does not substitute modem TX for printer TX. Selecting **Modem** restores Timeshare's existing bidirectional connection. The single UART cannot service a Timeshare network bridge and printer capture simultaneously; stop the bridge before switching. Switching during a character can corrupt it.
 
-A mounted SD image would allow simultaneous ports but would need FPGA serial decoding, buffering, capacity handling and a fixed-size image/export format. Sharing the UART provides ordinary variable-length files with Linux handling framing and storage. Independent simultaneous capture is deferred.
+Independent capture uses a mounted VBP1 image, FPGA serial decoding, buffering and readback verification; see [operation and storage limits](PRINTER.md). Sharing the UART remains useful for ordinary variable-length diagnostic files with Linux handling framing and storage.
 
 Load the Expander ROM and a cartridge with printer support. Set MiSTer's UART connection to **None**, and stop other processes using `/dev/ttyS1`. Copy `tools/capture_printer.py` to MiSTer, then run over SSH, using a new destination filename:
 
@@ -128,7 +130,7 @@ python3 /media/fat/Scripts/capture_printer.py \
   /media/fat/printer-report.bin --baud 300
 ```
 
-Wait for `Capturing` before requesting output. In Information Manager REVIEW, use an output command with the `PTR` suffix, for example `P ALL PTR`, `DESC PTR` or `TOTAL PTR`; the normal tape/record prerequisites still apply. Wait for output to finish, then press Ctrl+C in SSH. The utility syncs the file, reports the byte count and restores the previous UART settings. It refuses to overwrite an existing file. `--baud 110` supports firmware configured for 110 baud; `--idle-timeout 10` optionally stops after ten seconds without bytes, including before the first byte. The default waits until stopped because pauses between pages can be long.
+Wait for `Capturing` before requesting output. In Information Manager REVIEW, use an output command with the `PTR` suffix, for example `P ALL PTR`, `P DESC PTR` or `TOTAL PTR`; the normal tape/record prerequisites still apply. Wait for output to finish, then press Ctrl+C in SSH. The utility syncs the file, reports the byte count and restores the previous UART settings. It refuses to overwrite an existing file. `--baud 110` supports firmware configured for 110 baud; `--idle-timeout 10` optionally stops after ten seconds without bytes, including before the first byte. The default waits until stopped because pauses between pages can be long.
 
 The file preserves all eight bits, including leading NULs, parity-bearing bytes and CR/LF. It is a raw printer stream, not a screenshot or a Unicode conversion. For Information Manager only, a separate readable copy can remove its leading NULs:
 
@@ -142,7 +144,7 @@ Keep the raw capture when investigating another cartridge's encoding. The utilit
 
 Serial command `04` consumes a timing selector and routing flags. Original-ROM tests cover timing selectors `01` (110 baud) and `02` (300 baud), with one start bit, eight LSB-first data bits and a stop mark. The Expander 1 manual advertises ASCII RS232-C at 110/300/1200 baud, but 1200 baud is not verified here. The firmware samples a host command bit after releasing its interrupt strobe; the test host holds the final routing bit for 2 ms before driving serial idle, rather than changing it immediately on strobe release.
 
-Information Manager's ROM listing (`VideoBrain-ASM/infoman/infoman.lst`, 3716-377F) sends `04 02 02`: 300 baud, host to printer port 4. Its serial-byte routine at 3E2D-3E5C supplies a start, eight data bits and two mark intervals. Each formatted line contains NUL, five spaces, sixteen screen glyphs converted through table 3782, and CR/LF. The printer-only regression reproduces this command and framing with NUL, space, high-bit data, CR, LF and FF bytes at both rates and after reset. Printer RX stays high throughout; transmission requires no printer ACK, status byte or echo. This establishes a passive sink for this route, not a general model of every physical printer protocol. The unused modem TX does not carry the printer payload.
+Information Manager's ROM at 3716-377F sends `04 02 02`: 300 baud, host to printer port 4. Its serial-byte routine at 3E2D-3E5C supplies a start, eight data bits and two mark intervals. Each formatted line contains NUL, five spaces, sixteen screen glyphs converted through table 3782, and CR/LF. See [ROM identity and analysis](INFOMAN.md). The printer-only regression reproduces this command and framing with NUL, space, high-bit data, CR, LF and FF bytes at both rates and after reset. Printer RX stays high throughout; transmission requires no printer ACK, status byte or echo. This establishes a passive sink for this route, not a general model of every physical printer protocol. The unused modem TX does not carry the printer payload.
 
 Timeshare uses routing `0D`, which sends host data to modem TX and copies modem RX to printer TX as well as the host. The reverse-route test uses `32`. These routes remain firmware-controlled and unchanged by the OSD selector; the selector only chooses which physical TX connector reaches Linux. Live printer capture on MiSTer and actual cartridge report/listing completion remain to be checked on hardware.
 
@@ -174,7 +176,7 @@ The banner checks receive; typing in Timeshare checks transmit. Stop `od` with C
 FF (16 bytes), 01 CD, 00 01, A5, 7E D6, 00
 ```
 
-This proves a firmware record transaction without analog playback feedback. On October 16, 2026, hardware testing confirmed `A=7`, SAVE ending with TAPE OK, and continued arithmetic using A afterward. This validates transaction completion and continued interpreter operation. Full-machine SAVE capture and MiSTer SD SAVE/LOAD verification are still pending.
+This proves a firmware record transaction without analog playback feedback. On October 16, 2026, MiSTer testing confirmed `A=7`, SAVE ending with TAPE OK, and continued arithmetic using A afterward. Subsequent MiSTer testing exercised tape round trips; this dated check alone establishes transaction completion and continued interpreter operation, not analog cassette interoperability.
 
 `make -C verilator test-expander1-playback` records two distinct payloads through the original ROM without OSD arming, resets and remounts the SD image, then checks successive LOAD payloads, CRCs and success status. The host uses record timing 00 and receive timing 01, with receive mode 01 to return data. The controller also checks recording protection, sector transfer, buffer wrap, replay timing, interrupted saves and image limits.
 

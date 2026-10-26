@@ -8,6 +8,8 @@ reg started = 0, complete = 0, source_error = 0;
 reg aborted = 0, calibrating = 0;
 reg busy = 0, tape_error = 0, rewound = 0, ended = 0, cart_loaded = 0;
 integer messages = 0, before_count;
+reg [3:0] printer_state=0, printer_fault=0;
+reg printer_busy=0,printer_active=0;
 reg [7:0] last_info = 0;
 emu dut ();
 
@@ -45,6 +47,10 @@ task expect_message(input [7:0] code);
 endtask
 
 initial begin
+    force dut.printer_status = printer_state;
+    force dut.printer_error = printer_fault;
+    force dut.printer_busy = printer_busy;
+    force dut.printer_active = printer_active;
     force dut.clk_sys = clk;
     force dut.reset = reset;
     force dut.status = status;
@@ -154,6 +160,21 @@ initial begin
     status[22] = 0; frame;
     if (messages != before_count) $fatal(1, "Enabling messages replayed an old event");
     rewound = 1; tick; rewound = 0; expect_message(4);
+    osd=1; printer_state=2;tick();
+    if(!dut.menu_mask[6] || !dut.menu_mask[7]) $fatal(1,"Ready printer actions unavailable");
+    printer_state=4;printer_busy=1;printer_active=1;tick();
+    if(dut.menu_mask[6] || dut.menu_mask[7] || !dut.menu_mask[9])
+        $fatal(1,"Active printer mount/start guard failed");
+    printer_state=8;printer_fault=6;printer_active=0;tick();
+    printer_state=1;printer_fault=0;tick();
+    if(dut.printer_notice!=24) $fatal(1,"Printer error overwritten by status");
+    osd=0;expect_message(24);
+    osd=1;printer_state=2;printer_busy=0;tick();
+    status[36]=1;tick();status[36]=0;tick();
+    osd=0;expect_message(13);
+    status[22]=1;printer_fault=5;printer_state=8;tick();frame;
+    if(dut.printer_notice!=0) $fatal(1,"Disabled printer notice queued");
+    status[22]=0;tick();frame;
     $display("Status popup and tape menu guard tests passed");
     $finish;
 end

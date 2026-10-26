@@ -48,51 +48,80 @@ wire [1:0] ar = status[122:121];
 `include "build_id.v"
 localparam CONF_STR = {
 	"VideoBrain;UART300:110;",
+	// === CARTRIDGE AND TAPES ===
 	"F1,BIN,Load Cartridge;",
 	"-;",
 	"d8S0,VBT,Mount Playback Tape;",
-	"d8S1,VBT,Mount Record Tape;",
 	"T[23],Rewind Playback Tape;",
+	"d8S1,VBT,Mount Record Tape;",
 	"T[30],Rewind Record Tape;",
 	"-;",
+	// === KEYBOARD SUBMENU ===
 	"P4,Keyboard;",
 	"P4-;",
 	"P4F4,VBK,Load Keyboard File;",
-	"P4O[31],Menu Aborts VBK,On,Off;",
+	"P4-;",
+	"P4O[31],OSD Aborts VBK,On,Off;",
 	"H5P4O[18],Music Mode,Playback,Record;",
 	"h5D5P4O[18],Music Mode,Playback;",
 	"P4O[19],Music Repeat,Off,On;",
 	"P4-;",
 	"P4O[29],Esc Soft Reset,On,Off;",
+	// === JOYSTICKS SUBMENU ===
 	"P3,Joysticks;",
 	"P3-;",
 	"P3O[5],Joysticks,Connected,Disconnected;",
-	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
-	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
 	"D4P3R[20],Calibrate Sticks;",
+	"P3-;",
+	"D4P3O[15:14],Stick Preset,Auto,Tennis,Gladiator;",
+	"D4P3O[38],Analog Mode,Absolute,Relative;",
+	"DDP3O[40:39],Relative Speed,Slow,Normal,Fast;",
+	"P3-;",
+	"D4P3O[17:16],Paired Sticks,Off,1+2 / 3+4,1+3 / 2+4 (Doubles);",
+    // === VIDEO SUBMENU ===
 	"P1,Video;",
 	"P1-;",
 	"P1O[21],240p,Off,On;",
+	"P1-;",
 	"P1O[122:121],Aspect Ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"P1O[125:123],Scale,Normal,V-Integer,HV-Integer-,HV-Integer+,HV-Integer;",
 	"P1O[4:3],Scandoubler FX,None,HQ2x,CRT 25%,CRT 50%;",
+    // === PRINTER SUBMENU ===
+	"P5,Printer;",
+	"P5-;",
+	"d6P5S2,VBP,Mount Capture Image;",
+	"P5O[33],Capture Baud,300,110;",
+	"P5-;",
+	"d7P5T[34],Start Capture;",
+	"DEP5T[35],Stop Capture and Save;",
+	"DEP5T[36],Show Capture Status;",
+	"P5-;",
+	"P5O[37],Info. Manager Fix,Off,On;",
+	"P5-;",
+	"h9P5-,Printer Active;",
+	"h11P5-,Printer Busy;",
+	"h12P5-,Printer Error;",
+	// === SYSTEM SUBMENU ===
 	"P2,System;",
 	"P2-;",
 	"P2F0,BIN,Load BIOS;",
 	"P2F2,BIN,Load Expander 1 ROM;",
-	"P2O[32],UART Output,Modem,Printer;",
 	"P2-;",
+	"P2O[32],UART Output,Modem,Printer;",
 	"P2O[11:9],Mapper Fallback,Standard,Timeshare,Money Minder,APL/S,Info. Manager;",
 	"P2O[24],Reset on Cartridge Load,On,Off;",
 	"P2O[22],Info Messages,On,Off;",
 	"P2-;",
 	"P2T[27],Master Control (Soft Reset);",
 	"-;",
+	// === UNLOAD AND RESET ===
 	"DAR[28],Unload Cartridge;",
 	"R[0],Reset;",
+	// === JOYSTICK BUTTONS ===
 	"J,Fire,Fire (Paired);",
 	"jn,A,B;",
-	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks,End of tape;",
+	// === INFO MESSAGES ===
+	"I,Keyboard entry started,Bad keyboard file,Tape error,Tape rewound,Tape busy,Tape idle,Keyboard entry finished,Keyboard entry aborted,Calibrating sticks,End of tape,Printer no image,Printer scanning,Printer ready,Printer starting,Printer active,Printer flushing,Printer stalled,Printer full,Printer error,Printer read only,Printer bad image,Printer incomplete image,Printer storage error,Printer framing error,Printer overflow,Printer media changed,Printer reset interrupted;",
 	"v,1;",
 	"V,v",`BUILD_DATE
 };
@@ -114,7 +143,20 @@ wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
 wire [15:0] ioctl_index;
-wire [31:0] tape_lba[2];
+wire [31:0] tape_lba[2], disk_lba[3];
+wire [2:0] disk_rd, disk_wr, disk_ack, disk_mounted;
+wire [7:0] disk_buff_din[3];
+wire printer_busy, printer_active, printer_stalled, printer_mounted;
+wire [3:0] printer_error, printer_status;
+assign tape_mounted = disk_mounted[1:0];
+assign tape_ack = disk_ack[1:0];
+assign disk_rd[1:0] = tape_rd;
+assign disk_wr[1:0] = tape_wr;
+genvar drive;
+generate for (drive=0; drive<2; drive=drive+1) begin : tape_bus
+    assign disk_lba[drive] = tape_lba[drive];
+    assign disk_buff_din[drive] = tape_buff_din[drive];
+end endgenerate
 wire [1:0] tape_rd, tape_wr, tape_ack;
 wire [13:0] tape_buff_addr;
 wire [7:0] tape_buff_dout, tape_buff_din[2];
@@ -128,15 +170,17 @@ wire tape_ended = |tape_deck_ended;
 wire tape_busy = |tape_deck_busy;
 wire tape_error = |tape_deck_error;
 wire tape_rewound = |tape_deck_rewound;
-wire [15:0] menu_mask = {5'd0, ~cart_loaded, 1'b0, ~tape_busy, 2'b00, status[19],
+wire [15:0] menu_mask = {1'b0, !printer_mounted, !joystick_connected || !status[38], printer_error != 0, printer_busy && !printer_active, ~cart_loaded, printer_active, ~tape_busy,
+                         !printer_busy && printer_error == 0 && printer_status == 2, !printer_busy, status[19],
                          !joystick_connected, 4'b0011};
 reg info_req = 0;
 reg [7:0] info = 0, pending_info = 0;
-wire [5:0] sd_blk_cnt[2];
+wire [5:0] sd_blk_cnt[3];
 assign sd_blk_cnt[0] = 0;
 assign sd_blk_cnt[1] = 0;
+assign sd_blk_cnt[2] = 0;
 
-hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
+hps_io #(.CONF_STR(CONF_STR), .CONF_STR_BRAM(1), .VDNUM(3)) hps_io
 (
 	.clk_sys(clk_sys),
 	.HPS_BUS(HPS_BUS),
@@ -153,17 +197,17 @@ hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
 	.info_req(info_req),
 	.info(info),
 
-	.img_mounted(tape_mounted),
+	.img_mounted(disk_mounted),
 	.img_readonly(tape_readonly),
 	.img_size(tape_size),
-	.sd_lba(tape_lba),
+	.sd_lba(disk_lba),
 	.sd_blk_cnt(sd_blk_cnt),
-	.sd_rd(tape_rd),
-	.sd_wr(tape_wr),
-	.sd_ack(tape_ack),
+	.sd_rd(disk_rd),
+	.sd_wr(disk_wr),
+	.sd_ack(disk_ack),
 	.sd_buff_addr(tape_buff_addr),
 	.sd_buff_dout(tape_buff_dout),
-	.sd_buff_din(tape_buff_din),
+	.sd_buff_din(disk_buff_din),
 	.sd_buff_wr(tape_buff_wr),
 
 	.ioctl_download(ioctl_download),
@@ -363,11 +407,13 @@ wire joy_calibrating;
 
 videobrain_joystick joysticks (
 	.clk(clk_sys),
-	.reset(reset),
+	.reset(reset | cart_dl | status[28]),
 	.frame_tick(vid_vs && !source_vs_d),
 	.calibrate(status[20]),
 	.calibrating(joy_calibrating),
 	.enabled(joystick_connected),
+	.relative_mode(status[38]),
+	.relative_speed(status[40:39]),
 	.paired(status[17:16]),
 	.preset(status[15:14]),
 	.buttons({joystick_3, joystick_2, joystick_1, joystick_0}),
@@ -394,8 +440,29 @@ always @(posedge clk_sys) source_vs_d <= vid_vs;
 reg source_started_d = 0, source_complete_d = 0, source_error_d = 0;
 reg source_aborted_d = 0, joy_calibrating_d = 0;
 reg tape_busy_d = 0, tape_error_d = 0;
+reg [3:0] printer_status_d = 0, printer_error_d = 0;
+reg printer_notice_error = 0;
+reg [7:0] printer_notice = 0;
+reg printer_query_d = 0;
+wire [7:0] printer_message = printer_error == 2 ? 8'd20 :
+    printer_error == 3 ? 8'd21 : printer_error == 4 ? 8'd22 :
+    printer_error == 5 ? 8'd23 : printer_error == 6 ? 8'd24 :
+    printer_error == 7 ? 8'd25 : printer_error == 9 ? 8'd26 :
+    printer_error == 10 ? 8'd27 : 8'd11 + {4'd0,printer_status};
 reg [5:0] tape_info_frames = 0;
 always @(posedge clk_sys) begin
+    printer_status_d <= printer_status;
+    printer_error_d <= printer_error;
+    printer_query_d <= status[36];
+    if (reset || status[22]) begin
+        printer_notice <= 0;
+        printer_notice_error <= 0;
+    end else if ((printer_status != printer_status_d || printer_error != printer_error_d ||
+                 status[36] && !printer_query_d) &&
+                (!printer_notice_error || status[36] && !printer_query_d)) begin
+        printer_notice <= printer_message;
+        printer_notice_error <= printer_error != 0;
+    end
 	source_started_d <= source_started;
 	source_complete_d <= source_complete;
 	source_error_d <= source_error;
@@ -410,7 +477,12 @@ always @(posedge clk_sys) begin
 	end else begin
 		// Defer until menu close
 		if (!OSD_STATUS && vid_vs && !source_vs_d) begin
-			if (pending_info != 0) begin
+			if (printer_notice != 0) begin
+                info <= printer_notice;
+                info_req <= 1;
+                printer_notice <= 0;
+                printer_notice_error <= 0;
+            end else if (pending_info != 0) begin
 				if (pending_info != 9 || joy_calibrating) begin
 					info <= pending_info;
 					info_req <= 1;
@@ -470,6 +542,17 @@ apl_source_loader source_loader (
 	.aborted(source_aborted),
 	.error(source_error),
 	.keys(source_keys)
+);
+
+videobrain_printer_capture printer_capture (
+    .clk(clk_sys), .reset(reset), .serial_in(expander_printer_txd),
+    .baud110(status[33]), .start(status[34]), .stop(status[35]),
+    .img_mounted(disk_mounted[2]), .img_readonly(tape_readonly), .img_size(tape_size),
+    .busy(printer_busy), .active(printer_active), .stalled(printer_stalled), .mounted(printer_mounted),
+    .error(printer_error), .status_code(printer_status),
+    .sd_lba(disk_lba[2]), .sd_rd(disk_rd[2]), .sd_wr(disk_wr[2]), .sd_ack(disk_ack[2]),
+    .sd_buff_addr(tape_buff_addr[8:0]), .sd_buff_dout(tape_buff_dout),
+    .sd_buff_din(disk_buff_din[2]), .sd_buff_wr(tape_buff_wr)
 );
 
 videobrain_tapes tapes (
@@ -549,6 +632,7 @@ videobrain_core core
 	.cart_unload(status[28]),
 	.cart_loaded(cart_loaded),
 	.unknown_cart_profile ({5'd0, status[11:9]}),
+	.infoman_printer_fix(status[37]),
 	.apl_available (apl_available),
 	.apl_load_error (apl_load_error),
 	.apl_symbols (apl_symbols),
@@ -615,28 +699,11 @@ video_mixer #(.GAMMA(0)) video_mixer
 
 
 wire [15:0] audio_sample;
-/*
-wire [2:0] audio_test = status[26:24];
-wire [31:0] audio_test_hz = audio_test == 1 ? 32'd500 :
-                            audio_test == 2 ? 32'd1000 :
-                            audio_test == 3 ? 32'd2000 :
-                            audio_test == 4 ? 32'd4000 : 32'd0;
-wire [1:0] audio_test_code;
-videobrain_audio_tone audio_tone
-(
-	.clk(clk_sys),
-	.reset(reset),
-	.frequency_hz(audio_test_hz),
-	.code(audio_test_code)
-);
-*/
 
 videobrain_audio audio
 (
 	.clk(clk_sys),
 	.reset(reset),
-	//.code(audio_test_hz != 0 ? audio_test_code : audio_code),
-	//.stb(audio_test_hz != 0 ? 1'b1 : audio_stb),
 	.code(audio_code),
 	.stb(audio_stb),
 	.sample(audio_sample)
@@ -645,6 +712,6 @@ videobrain_audio audio
 assign AUDIO_L = audio_sample;
 assign AUDIO_R = audio_sample;
 
-assign LED_USER = ioctl_download | source_busy | tape_busy;
+assign LED_USER = ioctl_download | source_busy | tape_busy | printer_busy;
 
 endmodule

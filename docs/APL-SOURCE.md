@@ -4,6 +4,8 @@ Boot the Computational Language cartridge and wait for its input prompt. Choose 
 
 The bundled [Price games and listings](../examples/21-apl_s-games-james-price) come with `.txt` sources and ready-to-load `.vbk` files.
 
+The [APL/S manual chapter 6 listings](../examples/apl-s-manual-chapter-6) include numerical utilities, inverse trig functions, bar-graph demos and games from printed pages 49-59.
+
 ## Starting a program
 
 Load a definition and wait for entry to finish. Type its launch name in letter mode, then press NEXT (PC F3 or Enter). No RUN command is needed. SHIFT toggles letter/symbol mode; use symbol mode for numbers and NEXT after each answer.

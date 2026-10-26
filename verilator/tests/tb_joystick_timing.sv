@@ -17,7 +17,7 @@ videobrain_core native(
     .joy_timer_curve(curve), .joy_timer_auto(1'b0),
     .dl_addr(16'd0), .dl_data(8'd0), .dl_wr(1'b0), .dl_index(8'd0),
     .cart_unload(1'b0), .cart_loaded(),
-    .unknown_cart_profile(8'd0)
+    .unknown_cart_profile(8'd0), .infoman_printer_fix(1'b0)
 );
 videobrain_core progressive(
     .clk(clk), .reset_na(~reset), .progressive(1'b1),
@@ -27,7 +27,7 @@ videobrain_core progressive(
     .joy_timer_curve(curve), .joy_timer_auto(1'b0),
     .dl_addr(16'd0), .dl_data(8'd0), .dl_wr(1'b0), .dl_index(8'd0),
     .cart_unload(1'b0), .cart_loaded(),
-    .unknown_cart_profile(8'd0)
+    .unknown_cart_profile(8'd0), .infoman_printer_fix(1'b0)
 );
 
 integer ticks = 0, checked = 0, rollover_differences = 0;

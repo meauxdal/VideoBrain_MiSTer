@@ -35,3 +35,6 @@ set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_joystick.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/apl_source_loader.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_tape.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_tapes.sv
+
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_printer_rx.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_printer_capture.sv

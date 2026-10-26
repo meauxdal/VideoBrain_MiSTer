@@ -6,7 +6,8 @@ USE work.uv202_pack.ALL;
 
 ENTITY tb_cartridges IS
   GENERIC (apl_image : string := ""; info_image : string := "";
-           apl_dump : string := ""; music_image : string := "");
+           apl_dump : string := ""; music_image : string := "";
+           info_patched_image : string := "");
 END ENTITY;
 
 ARCHITECTURE test OF tb_cartridges IS
@@ -22,6 +23,7 @@ ARCHITECTURE test OF tb_cartridges IS
   SIGNAL dl_index, fallback : uv8 := (OTHERS => '0');
   SIGNAL cart_unload : std_logic := '0';
   SIGNAL cart_loaded : std_logic;
+  SIGNAL infoman_printer_fix : std_logic := '0';
   SIGNAL apl_hold, apl_error, apl_available : std_logic;
   SIGNAL apl_symbols : std_logic;
   SIGNAL fetch : std_logic := '0';
@@ -51,6 +53,7 @@ BEGIN
       uv_obj_addr => (OTHERS => '0'), uv_obj_rdata => OPEN,
       dl_addr => dl_addr, dl_data => dl_data, dl_wr => dl_wr,
       dl_index => dl_index, unknown_cart_profile => fallback,
+      infoman_printer_fix => infoman_printer_fix,
       cart_unload => cart_unload, cart_loaded => cart_loaded,
       apl_hold => apl_hold, apl_paused => apl_paused,
       apl_available => apl_available, apl_load_error => apl_error,
@@ -102,7 +105,7 @@ BEGIN
         REPORT "DMA read mismatch at " & integer'image(a) SEVERITY failure;
     END PROCEDURE;
 
-    PROCEDURE load_file(path : string) IS
+    PROCEDURE load_file(path : string; corrupt_first : boolean := false) IS
     BEGIN
       file_open(image, path, read_mode);
       dl_index <= to_unsigned(2, 8);
@@ -111,7 +114,11 @@ BEGIN
       WHILE NOT endfile(image) LOOP
         read(image, byte);
         dl_addr <= to_unsigned(n, 16);
-        dl_data <= to_unsigned(character'pos(byte), 8);
+        IF corrupt_first AND n = 0 THEN
+          dl_data <= to_unsigned(character'pos(byte), 8) XOR x"01";
+        ELSE
+          dl_data <= to_unsigned(character'pos(byte), 8);
+        END IF;
         tick;
         n := n + 1;
       END LOOP;
@@ -120,6 +127,32 @@ BEGIN
       dl_index <= (OTHERS => '0');
       tick;
       tick;
+      FOR i IN 0 TO 31 LOOP
+        EXIT WHEN cart_loaded = '1';
+        tick;
+      END LOOP;
+      ASSERT cart_loaded = '1' REPORT "Cartridge load did not complete" SEVERITY failure;
+    END PROCEDURE;
+
+    PROCEDURE compare_info_rom(path : string; corrupt_first : boolean := false) IS
+      VARIABLE expected : uv8;
+    BEGIN
+      file_open(image, path, read_mode);
+      n := 0;
+      WHILE NOT endfile(image) LOOP
+        read(image, byte);
+        expected := to_unsigned(character'pos(byte), 8);
+        IF corrupt_first AND n = 0 THEN expected := expected XOR x"01"; END IF;
+        IF n < 16#800# THEN
+          read_at(16#1000# + n, to_integer(expected));
+          dma_at(16#1000# + n, to_integer(expected));
+        ELSIF n >= 16#1000# THEN
+          read_at(16#2000# + n, to_integer(expected));
+        END IF;
+        n := n + 1;
+      END LOOP;
+      file_close(image);
+      ASSERT n = 8192 REPORT "Unexpected InfoMan image size" SEVERITY failure;
     END PROCEDURE;
 
     -- Zero-filled images with CRC-matching suffixes; no cartridge ROM needed.
@@ -231,6 +264,9 @@ BEGIN
     read_at(16#1C00#, 16#A5#);
 
     fallback <= to_unsigned(CART_INFOMAN, 8); tick;
+    read_at(16#36CA#, 18);
+    read_at(16#17F8#, 16);
+    read_at(16#3E31#, 19);
     read_at(16#1000#, 16);
     read_at(16#3000#, 18);
     read_at(16#3800#, 19);
@@ -344,10 +380,32 @@ BEGIN
       ASSERT apl_symbols = '0' REPORT "APL mirrored symbol mode not observed" SEVERITY failure;
     END IF;
     IF info_image /= "" THEN
+      ASSERT infoman_printer_fix = '0' REPORT "Printer fix must default off" SEVERITY failure;
       load_file(info_image);
+      compare_info_rom(info_image);
       write_at(16#1800#, 16#C3#);
       read_at(16#1C00#, 16#C3#);
-      read_at(16#3000#, 16#14#);
+      infoman_printer_fix <= '1'; tick;
+      read_at(16#36CA#, 16#70#);
+      load_file(info_image);
+      read_at(16#36CA#, 16#28#);
+      read_at(16#17F8#, 16#40#);
+      read_at(16#3E31#, 16#32#);
+      reset_na <= '0'; tick; reset_na <= '1'; tick;
+      read_at(16#3E31#, 16#32#);
+      IF info_patched_image /= "" THEN compare_info_rom(info_patched_image); END IF;
+      infoman_printer_fix <= '0'; tick;
+      read_at(16#3E31#, 16#32#);
+      load_file(info_image);
+      compare_info_rom(info_image);
+      infoman_printer_fix <= '1'; tick;
+      fallback <= to_unsigned(CART_INFOMAN, 8); tick;
+      load_file(info_image, true);
+      compare_info_rom(info_image, true);
+      infoman_printer_fix <= '0'; tick;
+      fallback <= to_unsigned(CART_STD, 8); tick;
+      load_file(info_image);
+      REPORT "InfoMan printer option: original, corrected, reload and CRC isolation passed";
     END IF;
     -- Replacing a recognized cartridge must clear its mapper and size.
     dl_index <= to_unsigned(2, 8);
