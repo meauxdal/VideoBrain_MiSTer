@@ -103,6 +103,8 @@ task hot_cartridge_download;
     #1;
     if (dut.reset !== 0 || dut.system_reset !== 0)
         $fatal(1, "Hot cartridge download asserted reset");
+    if (dut.joysticks.reset !== 1)
+        $fatal(1, "Hot cartridge download did not reset joystick positions");
     if (dut.dl_wr !== 1 || dut.dl_index !== 8'd2)
         $fatal(1, "Hot cartridge download did not reach cartridge ROM");
     download = 0;
@@ -161,6 +163,10 @@ initial begin
     #1;
     if (dut.reset !== 0) $fatal(1, "Reset did not release");
     if (dut.joystick_connected !== 1) $fatal(1, "Joystick did not default to connected");
+    if (dut.joysticks.relative_mode !== 0) $fatal(1, "Joystick did not default to Absolute");
+    status[38] = 1;
+    #1;
+    if (dut.joysticks.relative_mode !== 1) $fatal(1, "Relative mode OSD connection");
     status[5] = 1;
     #1;
     if (dut.joystick_connected !== 0) $fatal(1, "Joystick did not disconnect");

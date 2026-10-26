@@ -501,7 +501,7 @@ test-cpu-audio:
 test-download-reset: $(TEST_BUILD_ID)
 	@mkdir -p out/download_reset
 	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_download_reset -o out/download_reset/test \
-		tests/tb_download_reset.sv ../VideoBrain.sv
+		tests/tb_download_reset.sv ../VideoBrain.sv $(RTL)/videobrain_joystick.sv
 	vvp out/download_reset/test
 
 .PHONY: test-download-reset

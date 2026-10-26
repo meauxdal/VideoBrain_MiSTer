@@ -30,7 +30,7 @@ function automatic [15:0] advance_pot(input [15:0] position, input [7:0] pot);
 	reg signed [17:0] movement;
 	reg signed [17:0] next_position;
 	begin
-		movement = $signed({1'b0, pot}) - 18'sd128;
+		movement = $signed({10'd0, pot}) - 18'sd128;
 		if (movement > 18'sd8) movement = (movement - 18'sd8) <<< 3;
 		else if (movement < -18'sd8) movement = (movement + 18'sd8) <<< 3;
 		else movement = 0;

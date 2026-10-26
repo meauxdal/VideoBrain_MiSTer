@@ -6,6 +6,14 @@ Joysticks default to Connected. **Joysticks > Stick Preset > Auto** selects line
 
 Analog inputs have a -8..8 center deadband. Digital directions override analog: up/left select pot 0, down/right select 255. The channel order is V1,H1,V2,H2,V3,H3,V4,H4. The wrapper supports four controllers.
 
+### Relative movement
+
+**Joysticks > Analog Mode** defaults to Absolute. Select Relative for Tennis with a spring-centered controller: deflection moves a persistent virtual stick position; releasing holds that position instead of returning the player to center. Opposite deflection moves back. This adapts the release-to-hold behavior of a non-centering stick. It is a controller convenience and does not change the emulated pot timers or freeze capture.
+
+Relative applies to all four sticks and cartridges until changed in the OSD. Pairing selects the movement input before accumulation, using the same own-stick priority as Absolute. Digital directions also move the virtual position; fire behavior is unchanged. Positions update once per video frame, independently of software reads. The -8..8 deadband holds position; movement beyond it scales with deflection, retaining fractional steps for fine movement. Full deflection takes about 1.1 seconds to traverse the full pot range at 60 Hz. Endpoints clamp without accumulating excess movement.
+
+Reset, cartridge load/unload (including loading without machine reset), disconnect, and changes to Analog Mode, Paired Sticks or Stick Preset center all virtual positions. Calibration overrides movement and finishes centered; held movement resumes on the next frame. The OSD selection persists across cartridge changes. MiSTer's interface supplies no per-controller connection flag: a neutral report holds position; use Joysticks > Disconnected to clear it explicitly. Tennis gameplay feel and sensitivity require MiSTer playtesting.
+
 ## Paired controllers
 
 Paired Sticks defaults to Off, preserving four independent controllers. Each left stick/D-pad and Fire still control its own joystick. The right stick and Fire 2 control the paired joystick selected by the mode:
@@ -36,7 +44,7 @@ The timer follows EJOY/HBLANK reset and release. Falling joystick interrupt edge
 
 ## Verification
 
-No joystick malfunction is currently known in regular use. Remaining accuracy work is to measure original pot ranges, pulse widths, trim effects and freeze-counter phase. The current model is plausible and provides good playability; reproducing physical control quirks could reduce convenience. Relative analog movement for Tennis and spinner support are optional future features.
+No joystick malfunction is currently known in regular use. Remaining accuracy work is to measure original pot ranges, pulse widths, trim effects and freeze-counter phase. The current model is plausible and provides good playability; reproducing physical control quirks could reduce convenience. Spinner support remains an optional future feature.
 
 Run the input-routing, preset-selection and calibration regressions from WSL in `verilator/`:
 
@@ -44,4 +52,4 @@ Run the input-routing, preset-selection and calibration regressions from WSL in 
 make test-joystick test-cartridges
 ```
 
-The checks cover routing, presets, calibration duration, reset/disconnect cancellation and live input restoration. For changes to the input path, MiSTer regression checks include Tennis court travel, Gladiator horizontal aim, both Pinball flippers and four-controller routing. `make -C verilator test-joystick test-joystick-timing` runs the controller and integrated timing regressions.
+The checks cover routing, presets, calibration duration, reset/disconnect cancellation, live input restoration, and relative movement, release hold, reversal, saturation, deadband, fractional steps and paired ownership. For changes to the input path, MiSTer regression checks include Tennis court travel, Gladiator horizontal aim, both Pinball flippers and four-controller routing. `make -C verilator test-joystick test-joystick-timing` runs the controller and integrated timing regressions. Simulation does not validate gameplay feel or original hardware behavior.
