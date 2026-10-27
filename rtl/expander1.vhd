@@ -11,6 +11,7 @@ ENTITY expander1 IS
   PORT (
     clk      : IN std_logic;
     reset_na : IN std_logic;
+    power_cycle : IN std_logic := '0';
     host_data_n  : IN std_logic;
     host_clock_n : IN std_logic;
     data_n       : OUT std_logic;
@@ -136,7 +137,7 @@ BEGIN
       dr => dr, dw => dw, dv => OPEN, romc => romc, tick => tick,
       phase => phase, po_a_n => po_a_n, pi_a_n => pi_a_n,
       po_b_n => po_b_n, pi_b_n => pi_b_n, port1_wr => port1_wr,
-      clk => clk, ce => ce, reset_na => cpu_reset_na, intreq => int_req,
+      clk => clk, ce => ce, reset_na => cpu_reset_na, power_cycle => power_cycle, intreq => int_req,
       acco => OPEN, visaro => OPEN, iozcso => OPEN
       );
 

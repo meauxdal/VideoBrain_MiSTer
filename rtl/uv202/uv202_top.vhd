@@ -15,6 +15,7 @@ ENTITY uv202_top IS
   PORT (
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
+    timing_reset_na : IN std_logic := '0';
     progressive : IN std_logic := '0';
 
     cpu_req    : IN  std_logic;
@@ -79,7 +80,7 @@ BEGIN
       )
     PORT MAP (
       clk         => clk,
-      reset_na    => reset_na,
+      reset_na    => reset_na OR timing_reset_na,
       mclk_ena    => mclk_ena_l,
       brclk_ena   => brclk_ena_l,
       cpu_ena     => cpu_ena_l,
@@ -90,7 +91,7 @@ BEGIN
   u_timing : ENTITY work.uv202_timing
     PORT MAP (
       clk            => clk,
-      reset_na       => reset_na,
+      reset_na       => reset_na OR timing_reset_na,
       brclk_ena      => brclk_ena_l,
       progressive    => progressive,
       hblank         => hblank,

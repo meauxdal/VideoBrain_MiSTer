@@ -71,7 +71,7 @@ The Expander 1 printer stream can be saved to a mounted .vbp image while Timesha
 
 ### Options
 
-System > Master Control (Soft Reset) and Esc can both be used for Master Control, which is a physical key that acts as a soft reset on VideoBrain hardware. What this leaves in memory depends on the software. In APL/S, pressing this key will instantly wipe out any program in RAM. Keyboard > Esc Soft Reset > Off can be set to prevent accidental activation.
+System > Master Control (Soft Reset) and Esc operate the physical Master Control key: one reset pulse per press, sampled at the end of vertical blank. RAM remains powered; software decides what to retain. In APL/S, this discards the program in RAM. Keyboard > Esc Soft Reset > Off prevents accidental activation. **Reset** performs a power cycle, clearing volatile memory and restoring the cartridge's initial bank while retaining loaded ROMs. See [reset behavior](docs/RESET.md).
 
 Pop-up overlays provide status during use: keyboard file entry starting, finishing or being aborted; joystick calibration in progress; and tape activity, rewinding, end of tape or errors. Tape busy means a tape operation is in progress; Tape idle means activity has ended, but does not verify the saved data. Tape error reports a controller failure even if the software reports TAPE OK. Messages appear after the OSD closes. System > Info Messages > Off disables these notifications, including error messages.
 

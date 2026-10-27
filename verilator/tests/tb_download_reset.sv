@@ -6,15 +6,25 @@ reg external_reset = 0, download = 0, check_no_reset = 0;
 reg [15:0] index = 4;
 reg [127:0] status = 0;
 reg [1:0] buttons = 0;
-reg pll_locked = 1, osd_status = 0;
+reg pll_locked = 1, osd_status = 0, vblank = 1;
 reg [10:0] ps2_key = 0;
 
 emu dut (.RESET(external_reset));
+
+task field_edge;
+    vblank = 1;
+    repeat (2) @(posedge clk);
+    #1;
+    vblank = 0;
+    repeat (2) @(posedge clk);
+    #1;
+endtask
 
 task key_event(input [8:0] code, input pressed, input [35:0] expected);
     ps2_key = {!ps2_key[10], pressed, code};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.kbd_matrix !== expected)
         $fatal(1, "Keyboard code %h pressed %b: got %h expected %h",
                code, pressed, dut.kbd_matrix, expected);
@@ -113,10 +123,12 @@ task hot_cartridge_download;
     check_no_reset = 0;
 
     status[27] = 1;
+    field_edge;
     #1;
-    if (dut.reset !== 1 || dut.system_reset !== 0)
+    if (dut.reset !== 1 || dut.system_reset !== 0 || dut.power_cycle !== 0)
         $fatal(1, "Master Control did not refresh hot-loaded cartridge");
     status[27] = 0;
+    field_edge;
 
     rom_download(16'd2);
     status[24] = 0;
@@ -126,6 +138,7 @@ endtask
 
 initial begin
     force dut.clk_sys = clk;
+    force dut.vid_vb = vblank;
     force dut.pll_locked = pll_locked;
     force dut.buttons = buttons;
     force dut.ps2_key = ps2_key;
@@ -146,16 +159,16 @@ initial begin
     download = 1;
     status[0] = 1;
     #1;
-    if (dut.reset !== 1) $fatal(1, "Keyboard download masked OSD reset");
+    if (dut.reset !== 1 || dut.power_cycle !== 1) $fatal(1, "OSD reset did not power cycle");
     status[0] = 0;
     external_reset = 1;
     #1;
-    if (dut.reset !== 1) $fatal(1, "Keyboard download masked external reset");
+    if (dut.reset !== 1 || dut.power_cycle !== 1) $fatal(1, "External reset did not power cycle");
     external_reset = 0; download = 0;
     #1;
     buttons[1] = 1;
     #1;
-    if (dut.reset !== 1) $fatal(1, "Framework button did not reset");
+    if (dut.reset !== 1 || dut.power_cycle !== 1) $fatal(1, "Framework button did not power cycle");
     buttons = 0; pll_locked = 0;
     #1;
     if (dut.reset !== 1) $fatal(1, "PLL unlock did not reset");
@@ -176,10 +189,12 @@ initial begin
     if (dut.joystick_connected !== 0) $fatal(1, "Joystick did not disconnect");
     status = 0;
     status[27] = 1;
+    field_edge;
     #1;
-    if (dut.reset !== 1 || dut.system_reset !== 0)
+    if (dut.reset !== 1 || dut.system_reset !== 0 || dut.power_cycle !== 0)
         $fatal(1, "OSD MASTER CONTROL did not use the warm reset path");
     status = 0;
+    field_edge;
     status[28] = 1;
     #1;
     if (dut.reset !== 1 || dut.system_reset !== 1)
@@ -198,64 +213,87 @@ initial begin
     osd_status = 1;
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     ps2_key = {1'b1, 1'b1, 1'b0, 8'h76};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.reset !== 1 || dut.master_control !== 1)
         $fatal(1, "ESC did not assert MASTER CONTROL: reset=%b system=%b master=%b key=%h toggle=%b",
                dut.reset, dut.system_reset, dut.master_control, dut.ps2_key, dut.key_toggle);
     ps2_key = {1'b0, 1'b0, 1'b0, 8'h76};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.reset !== 0) $fatal(1, "ESC release did not clear MASTER CONTROL");
     for (integer code = 0; code < 512; code = code + 1) begin
         for (integer pressed = 1; pressed >= 0; pressed = pressed - 1) begin
             ps2_key = {!ps2_key[10], 1'(pressed), 9'(code)};
             repeat (2) @(posedge clk);
             #1;
+            field_edge;
             if (dut.reset !== (code == 9'h076 && pressed != 0))
                 $fatal(1, "Unexpected reset for PS/2 code %h, pressed %0d", code, pressed);
         end
     end
+    key_event(9'h015, 1, 36'd1 << 28);
+    key_event(9'h076, 1, 36'd1 << 28);
+    if (dut.reset !== 1) $fatal(1, "Held-key Master Control did not reset");
+    field_edge;
+    if (dut.reset !== 0 || dut.kbd_matrix !== (36'd1 << 28))
+        $fatal(1, "Held Master Control repeated reset or released another key");
+    key_event(9'h076, 0, 36'd1 << 28);
+    key_event(9'h015, 0, 0);
+
     status[29] = 1;
     ps2_key = {!ps2_key[10], 1'b1, 9'h076};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.reset !== 0 || dut.master_control !== 0)
         $fatal(1, "Disabled ESC asserted MASTER CONTROL");
     ps2_key = {!ps2_key[10], 1'b0, 9'h076};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     ps2_key = {!ps2_key[10], 1'b1, 9'h005};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.kbd_matrix[35] !== 1 || dut.reset !== 0)
         $fatal(1, "Disabling ESC blocked F1");
     ps2_key = {!ps2_key[10], 1'b0, 9'h005};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     status[27] = 1;
+    field_edge;
     #1;
-    if (dut.reset !== 1 || dut.system_reset !== 0)
+    if (dut.reset !== 1 || dut.system_reset !== 0 || dut.power_cycle !== 0)
         $fatal(1, "Disabling ESC blocked OSD MASTER CONTROL");
     status[27] = 0;
+    field_edge;
     status[29] = 0;
     ps2_key = {!ps2_key[10], 1'b1, 9'h076};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.master_control !== 1) $fatal(1, "Reenabled ESC did not reset");
     status[29] = 1;
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.reset !== 0 || dut.master_control !== 0)
         $fatal(1, "Disabling held ESC did not release MASTER CONTROL");
     status[29] = 0;
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.reset !== 0) $fatal(1, "Reenabling held ESC retriggered reset");
     ps2_key = {!ps2_key[10], 1'b0, 9'h076};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     number_alias(9'h016, 9'h069, 9'h01a, 33); // 1 = Z
     number_alias(9'h01e, 9'h072, 9'h022, 30); // 2 = X
     number_alias(9'h026, 9'h07a, 9'h021, 26); // 3 = C
@@ -315,15 +353,18 @@ initial begin
     ps2_key = {!ps2_key[10], 1'b1, 9'h014};
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     key_event(9'h16c, 1, dut.kbd_matrix | (36'd1 << 31));
     key_event(9'h169, 1, dut.kbd_matrix | (36'd1 << 23));
     external_reset = 1;
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.kbd_matrix !== 0) $fatal(1, "Reset did not clear held keyboard aliases");
     external_reset = 0;
     repeat (2) @(posedge clk);
     #1;
+    field_edge;
     if (dut.kbd_matrix !== 0) $fatal(1, "Keyboard aliases returned after reset");
     key_event(9'h05a, 1, 36'd1 << 27);
     key_event(9'h05a, 0, 0); // Reset also cleared the held Ctrl modifier.

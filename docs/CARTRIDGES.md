@@ -6,7 +6,7 @@ All eighteen known cartridges are recognized. Current MiSTer coverage includes g
 
 Known raw dumps are identified by CRC-32 and use the matching slot behavior. `--cart-type` and the OSD's System > Mapper Fallback setting apply only to unrecognized images: 0 standard, 1 Timeshare, 2 Money Minder, 3 CompLang, 4 Infoman. Assembled APL/S and Information Manager images are also identified automatically.
 
-**Unload Cartridge** on the main menu removes the cartridge and resets to the built-in BIOS. Reset and Master Control retain the cartridge and its RAM.
+**Unload Cartridge** on the main menu removes the cartridge and resets to the built-in BIOS. **Reset** power cycles the machine, clears system and cartridge RAM, and restores the initial cartridge bank. Loaded ROMs remain installed. **Master Control** retains RAM and the cartridge bank; the restarted software decides what to preserve.
 
 **System > Reset on Cartridge Load** defaults to On. When Off, loading a cartridge does not reset the running machine; press Master Control afterward to refresh the game layout from the new cartridge. Other reset sources and other ROM downloads continue to reset the machine.
 

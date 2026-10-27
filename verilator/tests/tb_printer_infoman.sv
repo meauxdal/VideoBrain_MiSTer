@@ -23,7 +23,7 @@ reg [1:0] tape_mount=0,tape_rewind=0;
 wire [31:0] tape_lba[2];
 wire [1:0] tape_rd,tape_wr;
 wire [7:0] tape_din[2];
-videobrain_core core(.clk(clk),.reset_na(reset_na),.progressive(1'b1),
+videobrain_core core(.clk(clk),.reset_na(reset_na),.power_cycle(1'b0), .timing_reset_na(1'b0), .progressive(1'b1),
     .kbd_matrix(keys),.joy_fire(4'd0),.joy_pots(64'h8080808080808080),
     .joy_connected(1'b1),.joy_timer_base(14'd2580),.joy_timer_step(7'd7),
     .joy_timer_curve(1'b0),.joy_timer_auto(1'b0),

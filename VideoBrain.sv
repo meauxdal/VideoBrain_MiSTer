@@ -253,7 +253,14 @@ wire cart_dl = ioctl_download && (ioctl_index[7:0] == 8'd1);
 wire system_reset = RESET | status[0] | status[28] | buttons[1] |
                     (ioctl_download && (ioctl_index[7:0] != 8'd4) &&
                      !(status[24] && cart_dl)) | ~pll_locked;
-wire reset = system_reset | master_control | status[27];
+wire power_cycle = RESET | status[0] | buttons[1] | ~pll_locked;
+wire master_reset;
+wire reset = system_reset | master_reset;
+
+videobrain_reset reset_control (
+    .clk(clk_sys), .reset(system_reset), .vblank(vid_vb),
+    .master_control(master_control | status[27]), .master_reset(master_reset)
+);
 
 // The cartridge is OSD index 1. Expander 1 is boot1.rom or OSD index 2.
 wire boot_dl = ioctl_download && (ioctl_index == 16'd0);
@@ -298,7 +305,7 @@ always @(posedge clk_sys) begin
 	if (system_reset || status[29]) master_control <= 0;
 	else if (key_toggle != ps2_key[10] && key_code == 'h076)
 		master_control <= key_pressed;  // ESC = MASTER CONTROL
-	if (reset) begin
+	if (system_reset) begin
 		kbd_keys <= 0;
 		kbd_number_row <= 0;
 		kbd_number_pad <= 0;
@@ -516,7 +523,7 @@ reg progressive = 0;
 reg field_d = 0;
 always @(posedge clk_sys) begin
 	field_d <= vid_field;
-	if (reset) progressive <= 0;
+	if (system_reset) progressive <= 0;
 	else if (vid_field != field_d) progressive <= status[21];
 end
 
@@ -572,6 +579,8 @@ videobrain_core core
 (
 	.clk        (clk_sys),
 	.reset_na   (~reset),
+	.power_cycle(power_cycle),
+	.timing_reset_na(~system_reset),
 	.progressive(progressive),
 
 	.kbd_matrix (source_busy ? source_keys : kbd_matrix),

@@ -36,6 +36,7 @@ ENTITY f8_cpu IS
     clk      : IN std_logic;
     ce       : IN std_logic;
     reset_na : IN std_logic;
+    power_cycle : IN std_logic := '0';
 
     intreq   : IN std_logic;
     acco     : OUT uv8;
@@ -69,6 +70,8 @@ ARCHITECTURE rtl OF f8_cpu IS
   SIGNAL sreg_ra,sreg_wa : uint6;
   SIGNAL sreg_rd,sreg_wd : uv8;
   SIGNAL sreg_wr : std_logic;
+  SIGNAL clear_active : std_logic := '0';
+  SIGNAL clear_addr : uint6 := 0;
   
   SIGNAL iozcs : uv5;
   
@@ -104,7 +107,17 @@ BEGIN
   PROCESS(clk) IS
   BEGIN
     IF rising_edge(clk) THEN
-      IF sreg_wr='1' THEN
+      IF power_cycle='1' THEN
+        clear_active <= '1';
+        clear_addr <= 0;
+      ELSIF clear_active='1' THEN
+        scratch_regs(clear_addr) <= (OTHERS => '0');
+        IF clear_addr=63 THEN
+          clear_active <= '0';
+        ELSE
+          clear_addr <= clear_addr + 1;
+        END IF;
+      ELSIF reset_na='1' AND sreg_wr='1' THEN
         scratch_regs(sreg_wa)<=sreg_wd;
       END IF;
     END IF;
@@ -121,6 +134,10 @@ BEGIN
       port1_wr <= '0';
       -- Reset must work while the board clock generator holds ce low.
       IF reset_na='0' THEN
+        IF power_cycle='1' THEN
+          acc <= (OTHERS => '0');
+          visar <= (OTHERS => '0');
+        END IF;
         opcode<=OP_RESET;
         txt<=OPTXT(to_integer(OP_RESET));
         madrs<=to_integer(OP_RESET)*8;

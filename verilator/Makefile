@@ -167,8 +167,9 @@ test-cpu-branches:
 .PHONY: test-cpu-reset
 test-cpu-reset:
 	mkdir -p out/cpu_reset
-	$(GHDL) -a --std=08 --workdir=out/cpu_reset $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_reset.vhd
+	$(GHDL) -a --std=08 --workdir=out/cpu_reset $(RTL)/f8/base_pack.vhd $(RTL)/f8/f8_pack.vhd $(RTL)/uv202/uv202_pack.vhd $(RTL)/uv202/uv202_clkgen.vhd $(RTL)/f8/f8_cpu.vhd $(RTL)/uv202/f8_busif.vhd tests/tb_cpu_reset.vhd tests/tb_cpu_power_cycle.vhd
 	$(GHDL) -r --std=08 --workdir=out/cpu_reset tb_cpu_reset --assert-level=error --ieee-asserts=disable
+	$(GHDL) -r --std=08 --workdir=out/cpu_reset tb_cpu_power_cycle --assert-level=error --ieee-asserts=disable
 
 .PHONY: test-cpu-interrupt
 test-cpu-interrupt:
@@ -282,7 +283,7 @@ test-printer: test-tools test-expander1-serial test-printer-uart test-printer-im
 test-printer-uart: $(TEST_BUILD_ID)
 	@mkdir -p out/expander1
 	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_printer_uart -o out/expander1/printer_uart \
-		tests/tb_printer_uart.sv ../VideoBrain.sv $(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv
+		tests/tb_printer_uart.sv ../VideoBrain.sv $(RTL)/videobrain_reset.sv $(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv
 	vvp out/expander1/printer_uart
 
 .PHONY: test-printer-uart
@@ -379,7 +380,7 @@ test-video: $(TEST_BUILD_ID)
 		$(RTL)/uv201/uv201_render.vhd tests/video_test_source.vhd
 	$(GHDL) synth --std=08 --workdir=out/video --out=verilog video_test_source > out/video/source.v
 	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_video -o out/video/test \
-		tests/tb_video.sv out/video/source.v ../VideoBrain.sv \
+		tests/tb_video.sv out/video/source.v ../VideoBrain.sv $(RTL)/videobrain_reset.sv \
 		../sys/video_freak.sv
 	vvp out/video/test
 
@@ -501,8 +502,11 @@ test-cpu-audio:
 test-download-reset: $(TEST_BUILD_ID)
 	@mkdir -p out/download_reset
 	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_download_reset -o out/download_reset/test \
-		tests/tb_download_reset.sv ../VideoBrain.sv $(RTL)/videobrain_joystick.sv
+		tests/tb_download_reset.sv ../VideoBrain.sv $(RTL)/videobrain_joystick.sv $(RTL)/videobrain_reset.sv
 	vvp out/download_reset/test
+	iverilog -g2012 -s tb_master_control -o out/download_reset/master \
+		tests/tb_master_control.sv $(RTL)/videobrain_reset.sv
+	vvp out/download_reset/master
 
 .PHONY: test-download-reset
 
@@ -521,7 +525,7 @@ test-apl-reload: check-res1-rom check-res2-rom check-apl-rom check-expander1-rom
 test-status-messages: $(TEST_BUILD_ID)
 	@mkdir -p out/status_messages
 	iverilog -g2012 -i -I$(TEST_INCLUDE) -I.. -s tb_status_messages -o out/status_messages/test \
-		tests/tb_status_messages.sv ../VideoBrain.sv $(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv
+		tests/tb_status_messages.sv ../VideoBrain.sv $(RTL)/videobrain_reset.sv $(RTL)/videobrain_printer_rx.sv $(RTL)/videobrain_printer_capture.sv
 	vvp out/status_messages/test
 
 .PHONY: test-status-messages
@@ -632,3 +636,9 @@ test-printer-tapes: check-expander1-rom test-expander1
 
 .PHONY: check-regression-roms
 check-regression-roms: check-expander1-rom check-apl-rom check-mt1-rom
+
+.PHONY: test-power-cycle
+test-power-cycle:
+	mkdir -p out/power_cycle
+	$(GHDL) -a --std=08 --workdir=out/power_cycle -Wno-hide $(VHD_SRC) tests/tb_power_cycle_core.vhd
+	$(GHDL) -r --std=08 --workdir=out/power_cycle tb_power_cycle_core --assert-level=error --ieee-asserts=disable

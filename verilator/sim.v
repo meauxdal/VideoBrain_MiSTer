@@ -93,6 +93,8 @@ module top(
    videobrain_core core(
       .clk        (clk_sys),
       .reset_na   (~reset),
+      .power_cycle(1'b0),
+      .timing_reset_na(1'b0),
       .progressive(progressive),
 
       .kbd_matrix (source_busy ? source_keys : kbd_matrix),

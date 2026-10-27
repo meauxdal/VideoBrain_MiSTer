@@ -11,6 +11,8 @@ ENTITY sys_bus IS
   PORT (
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
+    power_cycle : IN std_logic := '0';
+    power_busy : OUT std_logic := '0';
 
     ext_addr  : IN  unsigned(13 DOWNTO 0);
     ext_rd    : IN  std_logic;
@@ -148,6 +150,8 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL sys_ram_we : std_logic;
   SIGNAL sys_ram_wa, cart_ram_wa : unsigned(9 DOWNTO 0);
   SIGNAL sys_ram_wdata, cart_ram_wdata : uv8;
+  SIGNAL clear_active : std_logic := '0';
+  SIGNAL clear_addr : unsigned(9 DOWNTO 0) := (OTHERS => '0');
 
   SIGNAL uv_reg_addr  : uv8;
   SIGNAL uv_reg_we    : std_logic;
@@ -191,6 +195,24 @@ ARCHITECTURE rtl OF sys_bus IS
   SIGNAL cart_exp_rom : std_logic;
 
 BEGIN
+
+  power_busy <= power_cycle OR clear_active;
+
+  PROCESS (clk) IS
+  BEGIN
+    IF rising_edge(clk) THEN
+      IF power_cycle = '1' THEN
+        clear_active <= '1';
+        clear_addr <= (OTHERS => '0');
+      ELSIF clear_active = '1' THEN
+        IF clear_addr = 1023 THEN
+          clear_active <= '0';
+        ELSE
+          clear_addr <= clear_addr + 1;
+        END IF;
+      END IF;
+    END IF;
+  END PROCESS;
 
   cart_loaded <= cart_loaded_l;
   apl_available <= '1' WHEN cart_auto_type = to_unsigned(CART_COMPLANG, 8) ELSE '0';
@@ -287,9 +309,19 @@ BEGIN
       apl_symbols <= '0';
     ELSIF rising_edge(clk) THEN
       IF sys_ram_we = '1' THEN
-        sys_ram(to_integer(sys_ram_wa)) <= sys_ram_wdata;
         -- Observe the interpreter's letter/symbol latch without changing RAM.
         IF sys_ram_wa = 16#3E2# THEN apl_symbols <= sys_ram_wdata(0); END IF;
+      END IF;
+    END IF;
+  END PROCESS;
+
+  PROCESS (clk) IS
+  BEGIN
+    IF rising_edge(clk) THEN
+      IF clear_active = '1' THEN
+        sys_ram(to_integer(clear_addr)) <= (OTHERS => '0');
+      ELSIF reset_na = '1' AND sys_ram_we = '1' THEN
+        sys_ram(to_integer(sys_ram_wa)) <= sys_ram_wdata;
       END IF;
     END IF;
   END PROCESS;
@@ -498,7 +530,9 @@ BEGIN
   PROCESS (clk) IS
   BEGIN
     IF rising_edge(clk) THEN
-      IF cart_ram_we = '1' THEN
+      IF clear_active = '1' THEN
+        cart_ram(to_integer(clear_addr)) <= (OTHERS => '0');
+      ELSIF reset_na = '1' AND cart_ram_we = '1' THEN
         cart_ram(to_integer(cart_ram_wa)) <= cart_ram_wdata;
       END IF;
     END IF;
@@ -573,7 +607,7 @@ BEGIN
                                       (0, 2, 2, 0), (2, 2, 2, 2));
   BEGIN
     IF rising_edge(clk) THEN
-      IF cart_unload = '1' THEN
+      IF cart_unload = '1' OR power_cycle = '1' THEN
         cart_bank <= 0;
       ELSIF dl_cart = '1' AND dl_addr = x"0000" THEN
         cart_bank <= 0;

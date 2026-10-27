@@ -17,6 +17,8 @@ ENTITY videobrain_core IS
   PORT (
     clk      : IN  std_logic;
     reset_na : IN  std_logic;
+    power_cycle : IN std_logic := '0';
+    timing_reset_na : IN std_logic := '0';
     progressive : IN std_logic := '0';
 
     kbd_matrix : IN std_logic_vector(35 DOWNTO 0);
@@ -96,6 +98,7 @@ ENTITY videobrain_core IS
 END ENTITY videobrain_core;
 
 ARCHITECTURE rtl OF videobrain_core IS
+  SIGNAL machine_reset_na, power_busy : std_logic;
 
   SIGNAL cpu_dr, cpu_dw : uv8;
   SIGNAL cpu_dv : std_logic;
@@ -182,6 +185,7 @@ ARCHITECTURE rtl OF videobrain_core IS
   SIGNAL uv_yint_ho_l : std_logic;
 
 BEGIN
+  machine_reset_na <= reset_na AND NOT power_busy;
 
   apl_paused <= '0';
   cpu_ce <= cpu_ce_raw;
@@ -201,7 +205,8 @@ BEGIN
       port1_wr  => port1_wr_l,
       clk      => clk,
       ce       => cpu_ce,
-      reset_na => reset_na,
+      power_cycle => power_cycle,
+      reset_na => machine_reset_na,
       intreq   => int_req,
       acco     => OPEN,
       visaro   => OPEN,
@@ -218,7 +223,7 @@ BEGIN
       phase     => phase,
       clk       => clk,
       ce        => cpu_ce,
-      reset_na  => reset_na,
+      reset_na  => machine_reset_na,
       ext_addr  => ext_addr,
       ext_rd    => ext_rd,
       ext_wr    => ext_wr,
@@ -248,7 +253,7 @@ BEGIN
   u_smi : ENTITY work.f3853
     PORT MAP (
       clk        => clk,
-      reset_na   => reset_na,
+      reset_na   => machine_reset_na,
       ce         => smi_ce,
       io_addr    => io_addr,
       io_rd      => io_rd,
@@ -265,7 +270,7 @@ BEGIN
   u_yint : ENTITY work.uv201_yint
     PORT MAP (
       clk            => clk,
-      reset_na       => reset_na,
+      reset_na       => machine_reset_na,
       cur_vpos       => uv_current_y,
       y_int          => uv_y_int_l,
       yint_ho        => uv_yint_ho_l,
@@ -281,7 +286,8 @@ BEGIN
       )
     PORT MAP (
       clk            => clk,
-      reset_na       => reset_na,
+      reset_na       => machine_reset_na,
+      timing_reset_na => timing_reset_na,
       cpu_req        => ext_req,
       progressive    => progressive,
       cpu_class      => ext_class,
@@ -313,8 +319,9 @@ BEGIN
 
   u_sys_bus : ENTITY work.sys_bus
     PORT MAP (
+      power_cycle => power_cycle, power_busy => power_busy,
       clk            => clk,
-      reset_na       => reset_na,
+      reset_na       => machine_reset_na,
       ext_addr       => ext_addr,
       ext_rd         => ext_rd,
       ext_fetch      => to_std_logic(romc = ROMC_00),
@@ -363,7 +370,7 @@ BEGIN
   u_io : ENTITY work.videobrain_io
     PORT MAP (
       clk          => clk,
-      reset_na     => reset_na,
+      reset_na     => machine_reset_na,
       port_a_n     => po_a_n_l,
       port_b_n     => po_b_n_l,
       port_b_wr    => port1_wr_l,
@@ -387,9 +394,9 @@ BEGIN
   pi_b_n_l <= po_b_n_l AND kbd_b_in_n AND
              unsigned'('1' & expander_clock_n & expander_data_n & "11111");
 
-  PROCESS (clk, reset_na) IS
+  PROCESS (clk, machine_reset_na) IS
   BEGIN
-    IF reset_na = '0' THEN
+    IF machine_reset_na = '0' THEN
       modem_rxd_meta <= '1';
       modem_rxd_sync <= '1';
     ELSIF rising_edge(clk) THEN
@@ -401,7 +408,7 @@ BEGIN
   u_expander1 : ENTITY work.expander1
     GENERIC MAP (CLK_DIV_MCLK => CLK_DIV_MCLK)
     PORT MAP (
-      clk => clk, reset_na => reset_na,
+      clk => clk, reset_na => machine_reset_na, power_cycle => power_cycle,
       host_data_n => po_b_n_l(5), host_clock_n => po_b_n_l(6),
       data_n => expander_data_n, interrupt_n => expander_interrupt_n,
       clock_n => expander_clock_n,
@@ -420,12 +427,12 @@ BEGIN
 
   -- TODO: verify the pot timing range on hardware.
   -- The 555 is held in reset while EJOY is disabled and HBLANK is high.
-  PROCESS (clk, reset_na) IS
+  PROCESS (clk, machine_reset_na) IS
     VARIABLE pot_v  : unsigned(7 DOWNTO 0);
     VARIABLE out_v  : std_logic;
     VARIABLE line_v : std_logic;
   BEGIN
-    IF reset_na = '0' THEN
+    IF machine_reset_na = '0' THEN
       joy_timer <= (OTHERS => '0');
       joy_armed <= '1';
       joy_timer_active <= '0';
@@ -491,7 +498,7 @@ BEGIN
   u_fetcher : ENTITY work.uv201_fetcher
     PORT MAP (
       clk           => clk,
-      reset_na      => reset_na,
+      reset_na      => machine_reset_na,
       brclk_ena     => brclk_ena_l,
       line_start    => line_start_l,
       fifo_clear    => hblank_rising,
@@ -515,7 +522,7 @@ BEGIN
   u_fifo : ENTITY work.uv201_fifo
     PORT MAP (
       clk           => clk,
-      reset_na      => reset_na,
+      reset_na      => machine_reset_na,
       brclk_ena     => brclk_ena_l,
       hblank_rising => hblank_rising,
       wr_en         => fifo_wr_en,
@@ -531,7 +538,7 @@ BEGIN
   u_render : ENTITY work.uv201_render
     PORT MAP (
       clk        => clk,
-      reset_na   => reset_na,
+      reset_na   => machine_reset_na,
       brclk_ena  => brclk_ena_l,
       hblank     => hblank_l,
       vblank     => vblank_l,

@@ -13,6 +13,8 @@ END ENTITY;
 ARCHITECTURE test OF tb_cartridges IS
   SIGNAL clk : std_logic := '0';
   SIGNAL reset_na : std_logic := '0';
+  SIGNAL power_cycle : std_logic := '0';
+  SIGNAL power_busy : std_logic;
   SIGNAL addr : unsigned(13 DOWNTO 0) := (OTHERS => '0');
   SIGNAL wr : std_logic := '0';
   SIGNAL wdata, rdata, bb_rdata : uv8;
@@ -39,6 +41,7 @@ BEGIN
   dut : ENTITY work.sys_bus
     PORT MAP (
       clk => clk, reset_na => reset_na,
+      power_cycle => power_cycle, power_busy => power_busy,
       ext_addr => addr, ext_rd => '1', ext_wr => wr,
       ext_fetch => fetch,
       ext_wdata => wdata, ext_rdata => rdata,
@@ -262,6 +265,31 @@ BEGIN
     read_at(16#3000#, 20);
     read_at(16#3800#, 21);
     read_at(16#1C00#, 16#A5#);
+
+    write_at(16#0C00#, 16#3C#);
+    write_at(16#0FFF#, 16#C3#);
+    write_at(16#1FFF#, 16#5A#);
+    reset_na <= '0'; tick; reset_na <= '1'; tick;
+    read_at(16#0C00#, 16#3C#);
+    read_at(16#0FFF#, 16#C3#);
+    read_at(16#1FFF#, 16#5A#);
+    power_cycle <= '1'; reset_na <= '0'; tick;
+    ASSERT power_busy = '1' REPORT "Power cycle did not hold reset" SEVERITY failure;
+    power_cycle <= '0';
+    FOR i IN 0 TO 1022 LOOP
+      tick;
+      ASSERT power_busy = '1' REPORT "RAM clear ended early" SEVERITY failure;
+    END LOOP;
+    tick;
+    ASSERT power_busy = '0' REPORT "RAM clear did not finish" SEVERITY failure;
+    reset_na <= '1'; tick;
+    ASSERT cart_loaded = '1' REPORT "Power cycle removed cartridge" SEVERITY failure;
+    read_at(16#3000#, 18);
+    read_at(16#3800#, 19);
+    FOR i IN 0 TO 1023 LOOP
+      read_at(16#0C00# + i, 0);
+      read_at(16#1C00# + i, 0);
+    END LOOP;
 
     fallback <= to_unsigned(CART_INFOMAN, 8); tick;
     read_at(16#36CA#, 18);

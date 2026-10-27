@@ -10,7 +10,7 @@ reg [8:0] seed_y = 40;
 wire [63:0] pots = {8{pot}};
 
 videobrain_core native(
-    .clk(clk), .reset_na(~reset), .progressive(1'b0),
+    .clk(clk), .reset_na(~reset), .power_cycle(1'b0), .timing_reset_na(1'b0), .progressive(1'b0),
     .expander_modem_rxd(1'b1), .expander_modem_txd(),
     .kbd_matrix(36'd0), .joy_fire(4'd0), .joy_pots(pots),
     .joy_connected(1'b1), .joy_timer_base(delay_ticks), .joy_timer_step(7'd0),
@@ -20,7 +20,7 @@ videobrain_core native(
     .unknown_cart_profile(8'd0), .infoman_printer_fix(1'b0)
 );
 videobrain_core progressive(
-    .clk(clk), .reset_na(~reset), .progressive(1'b1),
+    .clk(clk), .reset_na(~reset), .power_cycle(1'b0), .timing_reset_na(1'b0), .progressive(1'b1),
     .expander_modem_rxd(1'b1), .expander_modem_txd(),
     .kbd_matrix(36'd0), .joy_fire(4'd0), .joy_pots(pots),
     .joy_connected(1'b1), .joy_timer_base(delay_ticks), .joy_timer_step(7'd0),

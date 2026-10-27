@@ -13,7 +13,7 @@ wire [7:0] background, port_a, port_b;
 wire [15:0] pc;
 
 videobrain_core core (
-    .clk(clk), .reset_na(!reset), .progressive(1'b1),
+    .clk(clk), .reset_na(!reset), .power_cycle(1'b0), .timing_reset_na(1'b0), .progressive(1'b1),
     .kbd_matrix(36'd0), .joy_fire(4'd0), .joy_pots(64'h8080808080808080),
     .joy_connected(1'b1), .joy_timer_base(14'd2580), .joy_timer_step(7'd7),
     .joy_timer_curve(1'b0), .joy_timer_auto(1'b0),

@@ -1,4 +1,5 @@
 # VideoBrain core sources. VHDL-2008 throughout except the PLL and the top.
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/videobrain_reset.sv
 set_global_assignment -name VHDL_FILE rtl/f8/base_pack.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/f8/f8_pack.vhd -hdl_version VHDL_2008
 set_global_assignment -name VHDL_FILE rtl/uv201/uv201_pack.vhd -hdl_version VHDL_2008
