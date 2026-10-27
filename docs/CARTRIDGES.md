@@ -87,9 +87,7 @@ With Expander 1 firmware loaded, Timeshare supports interactive Telehack session
 
 ### Financier
 
-Entering `A` and pressing NEXT reproduces the reported restart. The CPU calls `30F7` from `1C9F`, reads `FF` from the unmapped cartridge expansion window, and continues to the BIOS entry at `4000`. The published [disassembly](https://orphanedgames.com/videobrain/f8_programming/f8_source.htm) contains this call and further calls into `3000-3FFF`. A simple mirror of the 4K image would put `30F7` inside an instruction operand at `10F7`. The expected code and cartridge decoding for this region remain unverified.
-
-Holding SPACE leaves Financier drawing striped colour bands. Available references suggest this is original-software behavior; it is not an established core defect. Original-machine comparison could confirm it.
+The title resets itself after pressing NEXT or typing for a bit due to an incomplete dump. The CPU calls `30F7` from `1C9F`, reads `FF` from the unmapped cartridge expansion window, and continues to the BIOS entry at `4000`. The published [disassembly](https://orphanedgames.com/videobrain/f8_programming/f8_source.htm) contains this call and further calls into `3000-3FFF`. A simple mirror of the 4K image would put `30F7` inside an instruction operand at `10F7`. The expected code and cartridge decoding for this region remain unverified.
 
 ## Slot device reference
 
