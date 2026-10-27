@@ -1,6 +1,6 @@
 # Cartridge status
 
-All eighteen known cartridges are supported. Current MiSTer coverage includes gameplay, APL/S programs, tape round trips and peripheral operations, with no further known core bugs. The table below records the narrower first-screen checks and selected follow-up evidence; it is not the complete current test inventory. Information Manager exploration continues primarily to complete its manual. See [current accuracy and remaining work](ACCURACY.md).
+All eighteen known cartridges are recognized. Current MiSTer coverage includes gameplay, APL/S programs, tape round trips and peripheral operations. Financier entry submission currently restarts the title. The table below records the narrower first-screen checks and selected follow-up evidence; it is not the complete current test inventory. Information Manager exploration continues primarily to complete its manual. See [current accuracy and remaining work](ACCURACY.md).
 
     verilator/obj_dir_headless/Vtop --cart <file> --frames 150 --shot 149
 
@@ -19,7 +19,7 @@ Fingerprints for all sixteen released single-image cartridges come from MAME's [
 | Blackjack | 2K | standard | correct | "1 OR 2 PLAYERS?" over black and red card suits on green. |
 | Checkers | 4K | standard | correct | RUN/STOP advances to "YOU MOVE FIRST ? Y OR N". |
 | Demonstration | 4K | standard | correct | Six lines, each a different colour, seven colours on screen. |
-| Financier | 4K | standard | correct | Full function menu on green. |
+| Financier | 4K | standard | correct | Full function menu on green; NEXT submission restarts the title. See below. |
 | Gladiator | 4K | standard | correct | Game-number prompt; advances on RUN/STOP. |
 | Lemonade Stand | 4K | standard | correct | Slow to boot: blank at frame 150, full menu by 280. |
 | Math Tutor 1 | 4K | standard | correct | "CHOOSE / TUTOR 1 / PROBLEM 2" on olive. |
@@ -58,7 +58,7 @@ Concatenate A, B, C, D, E, F, G, then 2,048 zero bytes:
 
 Save as a `.bin` file: 16,384 bytes.
 
-### Information Manager (`infoman.zip`, also known as `infomgr`)
+### Information Manager (`infoman.zip`)
 
 Concatenate the 1000 chip, 2,048 zero bytes, the 3000 chip, then the 3800 chip:
 
@@ -85,7 +85,9 @@ With Expander 1 firmware loaded, Timeshare supports interactive Telehack session
 
 ## Software behavior
 
-### Financier after an invalid key
+### Financier
+
+Entering `A` and pressing NEXT reproduces the reported restart. The CPU calls `30F7` from `1C9F`, reads `FF` from the unmapped cartridge expansion window, and continues to the BIOS entry at `4000`. The published [disassembly](https://orphanedgames.com/videobrain/f8_programming/f8_source.htm) contains this call and further calls into `3000-3FFF`. A simple mirror of the 4K image would put `30F7` inside an instruction operand at `10F7`. The expected code and cartridge decoding for this region remain unverified.
 
 Holding SPACE leaves Financier drawing striped colour bands. Available references suggest this is original-software behavior; it is not an established core defect. Original-machine comparison could confirm it.
 
