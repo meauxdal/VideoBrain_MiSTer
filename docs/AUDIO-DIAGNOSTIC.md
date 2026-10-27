@@ -2,13 +2,13 @@
 
 ## Current status
 
-Audio is accepted for release after MiSTer listening tests. Filtering appears suitable, particularly through a CRT. Grittiness is more apparent over the clearer HDMI path, but whether it is inherent to the original machine remains unverified. Original-machine reference samples are the next useful comparison; no specific core audio defect is established. See [accuracy and remaining work](ACCURACY.md).
+Audio is accepted for release after MiSTer listening tests. Tempest's Music Teacher 1 recordings confirm sidebands on an original VideoBrain, supporting the audible grit as characteristic of the hardware. Filtering appears suitable, particularly through a CRT; grit is more apparent over the clearer HDMI path. Exact sideband levels, timing and analog response remain unverified, but sidebands alone do not establish a core audio defect. See [accuracy and remaining work](ACCURACY.md).
 
 ## Historical investigation
 
 The observations below describe earlier captures and diagnostic revisions, not the current release checklist. Current checks, run from `verilator/`, are `make test-audio`, `make test-cpu-audio`, and `make test-audio-path` (the last also requires NumPy).
 
-Audio is accepted for release after hardware listening with the retuned filter. The remaining high-note grit is an open accuracy question. The Happy Birthday capture predates that retune and has weak upper harmonics. Periodic timing modulation is present before filtering in the held-note capture; CPU/bus timing and analog response remain separate accuracy targets. Regular test tones establish timing cleanliness, not faithful original-machine filtering.
+At the time of this investigation, audio was accepted for release after hardware listening with the retuned filter, while the remaining high-note grit was an open accuracy question. The Happy Birthday capture predates that retune and has weak upper harmonics. Periodic timing modulation is present before filtering in the held-note capture; CPU/bus timing and analog response remain separate accuracy targets. Regular test tones establish timing cleanliness, not faithful original-machine filtering.
 
 The diagnostic revision's `System > Audio Test` selected a 500 Hz, 1 kHz, 2 kHz or 4 kHz square-wave source ahead of the audio filter. It bypassed CPU, ROM, keyboard and interrupt timing while the computer continued running. Off selected normal audio. This was an isolation test, not a sound correction; the current OSD does not expose it.
 

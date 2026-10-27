@@ -33,7 +33,7 @@ See [accuracy and remaining work](ACCURACY.md) for the current pre-1.0 status, h
 
 ## Release notes
 
-- [Unreleased source changes](VideoBrain_UNRELEASED.md)
+- [October 26, 2026 release candidate](VideoBrain_20261026.md)
 - [October 20, 2026](VideoBrain_20261020.md)
 - [October 11, 2026](VideoBrain_20261011.md)
 - [October 7, 2026](VideoBrain_20261007.md)

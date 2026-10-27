@@ -1,6 +1,6 @@
 # Accuracy report
 
-Current source status, October 26, 2026. This describes the core approaching 1.0, rather than a particular released RBF. Linked audits retain their own revision and test scope.
+Current source status, October 27, 2026. This describes the core approaching 1.0, rather than a particular released RBF. Linked audits retain their own revision and test scope.
 
 ## What this core represents
 
@@ -29,7 +29,7 @@ The main references are Kevtris's *VideoBrain Unwrapped*, Sean Riddle's preserve
 | UV202 | Clock and bus control, DMA arbitration and native interlaced output work across tested software. | Lower-priority hardware verification of clock/bus timing, field transitions, half-line seams and sync widths. |
 | Cartridges and software | All eighteen known cartridges are supported. Coverage extends beyond startup to gameplay, APL/S programs, tape round trips, Timeshare sessions and Information Manager operations. | Information Manager exploration is primarily work to complete its reconstructed manual and identify original-software quirks. It is not tracking a known core defect. |
 | Keyboard and joysticks | Keyboard matrix, calibration, four analog sticks, fire buttons and paired controls work well in MiSTer use. Games are fully playable with the current timing model. | Physical pot ranges, pulse widths, trim effects and UV201 freeze-counter phase need measurements. Current presets provide practical travel and centering; exact hardware behavior may be less convenient. |
-| Audio | DAC writes, sound-clock latching, filtering and output work. Filtering appears suitable in listening tests, particularly through a CRT. | Original-machine samples are needed to determine whether the remaining grit is inherent to the machine. It is more apparent over clear HDMI audio; this is a listening observation, not proof of its source. |
+| Audio | DAC writes, sound-clock latching, filtering and output work. Tempest's Music Teacher 1 recordings confirm sidebands on original hardware, supporting the audible grit as characteristic of the machine. | Exact sideband levels, timing and analog response remain unverified. The receiver and recording path affect comparisons. |
 | Expander 1 and tape | Firmware execution, host signaling, digital tape save/load, Timeshare UART and independent printer capture are implemented. Difficult tape and peripheral paths have been exercised. | Detailed guides retain the evidence limits for individual workflows. Analog cassette circuitry, physical printing and Expander 2 acoustic modem behavior are outside the implemented digital interfaces. |
 
 The [cartridge status](CARTRIDGES.md), [joystick notes](JOYSTICK.md), [audio investigation](AUDIO-DIAGNOSTIC.md), and [Expander 1 notes](EXPANDER1.md) describe the boundaries in more detail.
@@ -57,6 +57,8 @@ Music Teacher exposed timing variation that filtering alone could not explain. C
 Board connection records revealed missing request-latch, WACK sampling, and request-synchronization behavior in the external clock gate. The corrected model passed a circuit-derived edge test. In the recorded full-ROM comparison, DAC period RMS deviation fell from 20.315 to 8.875 us, and the approximately 60 Hz sidebands fell by about 9.5 dB. Those are improvements within the simulation, not measurements of agreement with an original VideoBrain.
 
 The recorded CPU clock-gate audit measured 6..7 lost half-clocks for RAM/cartridge reads against a 7..9 expectation derived from a secondary description. That audit's assertion failed. This remains a hardware measurement question, not an established explanation for an audible defect. See [CPU clock gate](CPU-CLOCK-GATE.md).
+
+Tempest subsequently supplied Music Teacher 1 recordings from an original VideoBrain. Sidebands are present on that hardware too, supporting the remaining audible grit as original-machine behavior. Their presence is no longer evidence of a core defect by itself; exact agreement in sideband strength, timing and analog response remains unverified.
 
 ### APL/S and Expander 1 extended the test surface
 
@@ -100,6 +102,6 @@ Original-machine testing is the principal next step, with UV201 the highest prio
 
 The remaining Information Manager pass is intended to complete the [manual](INFOMAN-MANUAL.md): exercise its commands, document supported workflows and distinguish prototype software bugs from hardware behavior. Existing command-specific verification limits remain in the [research notes](INFOMAN.md).
 
-Core quality-of-life features meet the current release goals. Relative analog movement for Tennis, spinner support and MIDI input for Music Teacher or homebrew are optional future work. A 1080p 5x crop is deferred because native interlacing needs separate handling.
+Core quality-of-life features meet the current release goals, including relative analog movement for Tennis with three speed settings. Spinner support and MIDI input for Music Teacher or homebrew are optional future work. A 1080p 5x crop is deferred because native interlacing needs separate handling.
 
 Further [Music Teacher patch](MUSIC-TEACHER-PATCH.md) improvements and a possible musical homebrew exploring the machine's full audible frequency range are software projects, separate from core release requirements.
