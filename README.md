@@ -99,9 +99,11 @@ The PC number row and numeric keypad also map `1234567890` to the VideoBrain key
 
 ## Joysticks
 
-VideoBrain supports 4 analog joysticks with one fire button each, though only one game (Tennis) supports 4 players. The VideoBrain joystick does not self-center. This can make things bit awkward in Tennis. Relative analog mode allows you to move around in Tennis without snapping back to the center; 3 speeds are provided.
+VideoBrain supports 4 analog joysticks with one fire button each, though only one game (Tennis) supports 4 players. 
 
 Use Calibrate Sticks when joysticks are active in-game to fully calibrate all joysticks for use. Joysticks drift diagonally until calibrated.
+
+The physical VideoBrain joystick does not automatically re-center itself. This can make things bit awkward in Tennis. Joysticks > Analog Mode > Relative allows you to move around in Tennis without snapping back to the center when using a modern self-centering joystick; 3 speeds are provided.
 
 Tennis and other games do not share centering positions - this is correct to hardware. Auto applies the correct centering. You can override this in the OSD.
 
@@ -109,15 +111,13 @@ Joysticks > Paired Sticks lets a controller's right stick and Fire (Paired) oper
 
 ## Video
 
-VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary; no issue has been observed in use. Native interlaced output remains the accuracy baseline. A 1080p 5x crop is deferred for later consideration.
+VideoBrain native output is interlaced. Video > 240p > On toggles progressive output. This changes vertical rollover and could affect joystick reads across that boundary; no issue has been observed in use.
 
 ## Timeshare online over UART
 
-The Timeshare cartridge can connect to remote text services through MiSTer's HPS UART and a Linux network bridge. Interactive sessions with Telehack have been verified at 300 baud, bringing online text adventures and commands to the VideoBrain's 24-column, 15-line display. Timeshare sends and displays uppercase characters only.
+The Timeshare cartridge can connect to remote text services through MiSTer's HPS UART and a Linux network bridge. Expander 1 firmware (boot1.rom) is required. See the [Timeshare setup and Telehack example](docs/EXPANDER1.md#timeshare-over-uart) for connection commands, keyboard controls, and display setup.
 
-Expander 1 firmware (boot1.rom) is required. See the [Timeshare setup and Telehack example](docs/EXPANDER1.md#timeshare-over-uart) for connection commands, keyboard controls, and display setup.
-
-For printer output, select System > UART Output > Printer and use the [Linux file-capture utility](docs/EXPANDER1.md#printer-file-capture). It captures the actual printer stream, including Information Manager's PTR output. Modem is the default for Timeshare; the UART serves one port at a time. Printer capture is simulation-tested; live MiSTer capture remains unverified.
+For printer output, select System > UART Output > Printer and use the [Linux file-capture utility](docs/EXPANDER1.md#printer-file-capture). It captures the actual printer stream, including Information Manager's PTR output. Modem is the default for Timeshare; the UART serves one port at a time.
 
 ## Tools
 
@@ -125,11 +125,7 @@ See [tools/README.md](tools/README.md) for BIOS and cartridge assembly, keyboard
 
 ## Building
 
-Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/README.md](verilator/README.md).
-
-Run the routine simulation regressions from WSL or Linux with `python3 -B verilator/tests/run_regressions.py`. Add `--roms` for the short original-ROM checks; `--list` shows the plan and exclusions. Long captures and MiSTer hardware checks are separate.
-
-See [contributing](CONTRIBUTING.md) for user-supplied ROM paths and validation requirements.
+Use Quartus 17.0.2. Simulation and regression instructions are in [verilator/README.md](verilator/README.md). See [contributing](CONTRIBUTING.md) for user-supplied ROM paths and validation requirements.
 
 ## Sources
 
